@@ -1,0 +1,4 @@
+interface:
+  display_name: "Arbor"
+  short_description: "Initialize and refresh project memory"
+  default_prompt: "Use $arbor to initialize project memory and load startup context."

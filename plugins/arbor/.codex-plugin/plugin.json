@@ -1,0 +1,37 @@
+{
+  "name": "arbor",
+  "version": "0.1.0",
+  "description": "Initialize and maintain project-local Codex memory with Arbor startup, memory hygiene, and AGENTS drift workflows.",
+  "author": {
+    "name": "Shawn"
+  },
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "memory",
+    "hooks",
+    "project-context",
+    "agents"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks.json",
+  "interface": {
+    "displayName": "Arbor",
+    "shortDescription": "Project-local memory and hook workflows",
+    "longDescription": "Arbor initializes project-local Codex memory, registers project-level hook intents, loads startup context in a stable order, emits memory hygiene packets, and emits AGENTS drift packets for durable project guidance updates.",
+    "developerName": "Shawn",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Initialize Arbor in this project",
+      "Resume this repo with Arbor context",
+      "Refresh project memory before commit"
+    ],
+    "brandColor": "#2F6F4E",
+    "screenshots": []
+  }
+}

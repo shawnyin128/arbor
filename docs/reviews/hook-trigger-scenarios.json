@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "source": "docs/reviews/hook-trigger-scenarios.md",
+  "description": "Machine-checkable trigger expectations for the Arbor hook scenario corpus. Markdown remains the human-readable expression source; this sidecar supplies structured dispatch expectations.",
+  "field_semantics": {
+    "expected_hooks": "Hooks that must be selected when the decision is trigger. Single-label H1/H2/H3 rows must use exactly one expected hook and no optional hooks.",
+    "optional_expected_hooks": "Hooks that may also be selected without failing a MULTI or ambiguous scenario. Non-MULTI rows must leave this empty.",
+    "forbidden_hooks": "Hooks that must not be selected for the scenario."
+  },
+  "hook_ids": {
+    "H1": "arbor.session_startup_context",
+    "H2": "arbor.in_session_memory_hygiene",
+    "H3": "arbor.goal_constraint_drift"
+  },
+  "default_expectations": {
+    "H1": {
+      "fixture": "clean_git_project",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.session_startup_context"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "requires_agent_judgment": false
+    },
+    "H2": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.in_session_memory_hygiene"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.session_startup_context", "arbor.goal_constraint_drift"],
+      "requires_agent_judgment": false
+    },
+    "H3": {
+      "fixture": "durable_drift_docs",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.goal_constraint_drift"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.session_startup_context", "arbor.in_session_memory_hygiene"],
+      "requires_agent_judgment": false
+    },
+    "NONE": {
+      "fixture": "clean_git_project",
+      "allowed_decisions": ["none"],
+      "expected_hooks": [],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.session_startup_context", "arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "requires_agent_judgment": false
+    },
+    "MULTI": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["trigger", "ambiguous"],
+      "expected_hooks": [],
+      "optional_expected_hooks": ["arbor.session_startup_context", "arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "forbidden_hooks": [],
+      "requires_agent_judgment": true
+    }
+  },
+  "overrides": {
+    "H1-P005": {"fixture": "missing_agents"},
+    "H1-P013": {"fixture": "missing_memory"},
+    "H2-P002": {"fixture": "stale_memory"},
+    "H2-P007": {"fixture": "stale_memory"},
+    "H2-P012": {"fixture": "stale_memory"},
+    "H2-P015": {"fixture": "stale_memory"},
+    "H2-P017": {"fixture": "stale_memory"},
+    "H3-P002": {"fixture": "durable_drift_docs", "optional_args": {"arbor.goal_constraint_drift": ["--doc", "docs/constraints.md"]}},
+    "H3-P005": {"fixture": "durable_drift_docs", "optional_args": {"arbor.goal_constraint_drift": ["--doc", "docs/project-map.md"]}},
+    "H3-P006": {"fixture": "durable_drift_docs", "optional_args": {"arbor.goal_constraint_drift": ["--doc", "docs/project-map.md"]}},
+    "H3-P016": {"fixture": "durable_drift_docs", "optional_args": {"arbor.goal_constraint_drift": ["--doc", "docs/workflow.md"]}},
+    "H3-P019": {"fixture": "durable_drift_docs", "optional_args": {"arbor.goal_constraint_drift": ["--doc", "docs/project-map.md"]}},
+    "M-P001": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["trigger", "ambiguous"],
+      "expected_hooks": ["arbor.session_startup_context"],
+      "optional_expected_hooks": ["arbor.in_session_memory_hygiene"],
+      "forbidden_hooks": ["arbor.goal_constraint_drift"],
+      "requires_agent_judgment": true
+    },
+    "M-P002": {
+      "fixture": "stale_memory",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.session_startup_context", "arbor.in_session_memory_hygiene"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.goal_constraint_drift"],
+      "requires_agent_judgment": false
+    },
+    "M-P003": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": false
+    },
+    "M-P004": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["ambiguous", "trigger"],
+      "expected_hooks": [],
+      "optional_expected_hooks": ["arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": true
+    },
+    "M-P005": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": false
+    },
+    "M-P006": {
+      "fixture": "missing_agents",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.session_startup_context", "arbor.goal_constraint_drift"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.in_session_memory_hygiene"],
+      "requires_agent_judgment": false
+    },
+    "M-P007": {
+      "fixture": "clean_git_project",
+      "allowed_decisions": ["trigger", "ambiguous"],
+      "expected_hooks": ["arbor.session_startup_context"],
+      "optional_expected_hooks": ["arbor.goal_constraint_drift"],
+      "forbidden_hooks": ["arbor.in_session_memory_hygiene"],
+      "requires_agent_judgment": true
+    },
+    "M-P008": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["trigger", "ambiguous"],
+      "expected_hooks": ["arbor.session_startup_context"],
+      "optional_expected_hooks": ["arbor.in_session_memory_hygiene"],
+      "forbidden_hooks": ["arbor.goal_constraint_drift"],
+      "requires_agent_judgment": true
+    },
+    "M-P009": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": false
+    },
+    "M-P010": {
+      "fixture": "clean_git_project",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.session_startup_context", "arbor.goal_constraint_drift"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.in_session_memory_hygiene"],
+      "requires_agent_judgment": false
+    },
+    "M-P012": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["ambiguous", "trigger"],
+      "expected_hooks": [],
+      "optional_expected_hooks": ["arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": true
+    },
+    "M-P013": {
+      "fixture": "clean_git_project",
+      "allowed_decisions": ["ambiguous", "trigger"],
+      "expected_hooks": [],
+      "optional_expected_hooks": ["arbor.session_startup_context", "arbor.in_session_memory_hygiene"],
+      "forbidden_hooks": ["arbor.goal_constraint_drift"],
+      "requires_agent_judgment": true
+    },
+    "M-P014": {
+      "fixture": "durable_drift_docs",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.goal_constraint_drift"],
+      "optional_expected_hooks": ["arbor.in_session_memory_hygiene"],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": false
+    },
+    "M-P015": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.in_session_memory_hygiene"],
+      "optional_expected_hooks": ["arbor.goal_constraint_drift"],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": false
+    },
+    "M-P016": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["ambiguous", "trigger"],
+      "expected_hooks": [],
+      "optional_expected_hooks": ["arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": true
+    },
+    "M-P017": {
+      "fixture": "durable_drift_docs",
+      "allowed_decisions": ["none", "ambiguous", "trigger"],
+      "expected_hooks": [],
+      "optional_expected_hooks": ["arbor.goal_constraint_drift"],
+      "forbidden_hooks": ["arbor.session_startup_context", "arbor.in_session_memory_hygiene"],
+      "requires_agent_judgment": true
+    },
+    "M-P019": {
+      "fixture": "uncommitted_changes",
+      "allowed_decisions": ["ambiguous", "trigger"],
+      "expected_hooks": [],
+      "optional_expected_hooks": ["arbor.session_startup_context", "arbor.in_session_memory_hygiene"],
+      "forbidden_hooks": ["arbor.goal_constraint_drift"],
+      "requires_agent_judgment": true
+    },
+    "M-P020": {
+      "fixture": "stale_memory",
+      "allowed_decisions": ["trigger"],
+      "expected_hooks": ["arbor.in_session_memory_hygiene", "arbor.goal_constraint_drift"],
+      "optional_expected_hooks": [],
+      "forbidden_hooks": ["arbor.session_startup_context"],
+      "requires_agent_judgment": false
+    },
+    "EV-P002": {"fixture": "outside_root_path"},
+    "EV-P004": {"fixture": "clean_git_project"},
+    "EV-P007": {"fixture": "missing_agents"},
+    "EV-P008": {"fixture": "missing_memory"},
+    "EV-P009": {"fixture": "durable_drift_docs", "optional_args": {"arbor.goal_constraint_drift": ["--doc", "docs/project-map.md"]}},
+    "EV-P010": {"fixture": "outside_root_path", "optional_args": {"arbor.goal_constraint_drift": ["--doc", "/outside/project-map.md"]}}
+  }
+}
