@@ -1,6 +1,8 @@
 # Arbor
 
-Arbor is a Codex plugin that gives each repository a project-local memory workflow.
+Arbor is a Codex plugin that makes Codex better at long-running repository work.
+
+Codex is strongest when it has the right project context. In real projects, that context is split across docs, git history, current diffs, earlier session notes, and durable project rules. Arbor turns that into a repeatable workflow: every repo gets a project guide, short-term session memory, and hooks that restore the right context at the right time.
 
 It creates and maintains:
 
@@ -8,7 +10,18 @@ It creates and maintains:
 - `.codex/memory.md` for short-term, uncommitted session memory.
 - `.codex/hooks.json` for project-level Arbor hook registration.
 
+The main benefit is continuity. Arbor helps Codex resume a repo without re-discovering the same facts, keep uncommitted work separate from durable project knowledge, and update project guidance when goals or constraints change.
+
 Arbor fixes the workflow order. It does not limit how much code, documentation, git history, or diff context the agent can read.
+
+## Why Use Arbor
+
+- **Faster repo resumption**: Arbor always starts from durable project guidance, git history, short-term memory, and current git status.
+- **Cleaner memory boundaries**: uncommitted session state goes in `.codex/memory.md`; durable goals, constraints, and project map entries go in `AGENTS.md`.
+- **Less repeated context work**: decisions and project structure stop living only in chat history.
+- **Project-local by default**: Arbor writes to the current repo, not a global memory store.
+- **Hook-ready workflow**: startup context, memory hygiene, and AGENTS drift each have clear project-level hook intents.
+- **Agent-friendly design**: Arbor controls the workflow shape without restricting the agent's reading depth or reasoning.
 
 ## Install
 
@@ -52,9 +65,9 @@ $arbor
 
 ### `$arbor`
 
-Use `$arbor` when you want Codex to initialize or resume a repository with project-local memory.
+Use `$arbor` when you want Codex to stay oriented across a real development workflow, especially when work spans multiple sessions or depends on git history.
 
-It is responsible for:
+What it does well:
 
 - creating `AGENTS.md` when missing;
 - creating `.codex/memory.md` when missing;
@@ -62,6 +75,14 @@ It is responsible for:
 - loading startup context in the fixed order: `AGENTS.md`, formatted `git log`, `.codex/memory.md`, `git status`;
 - refreshing short-term memory when current-session or uncommitted work makes `.codex/memory.md` stale;
 - preparing durable `AGENTS.md` updates when project goals, constraints, or project map entries change.
+
+Use it when:
+
+- starting work in a new repo;
+- resuming a repo after time away;
+- preparing to commit and wanting memory to reflect only unresolved uncommitted work;
+- changing project goals, constraints, naming, architecture, or project map;
+- building workflows where git log and project docs are part of the agent's long-term context.
 
 ## Usage
 
@@ -106,41 +127,6 @@ AGENTS.md
 - `arbor.goal_constraint_drift`: emits project guide context for durable `AGENTS.md` goal, constraint, and map updates.
 
 The hooks emit context packets. The agent decides whether to edit `.codex/memory.md` or `AGENTS.md`.
-
-## Maintainer Validation
-
-Before publishing a release, run:
-
-```bash
-python3 scripts/validate_plugin_install.py --codex-probe
-python3 -m unittest tests/test_arbor_skill.py
-conda run -n arbor python -m ruff check . --no-cache
-```
-
-Current release validation:
-
-- packaged payload: 13/13 expected files matched;
-- Codex marketplace add: passed;
-- packaged initialization smoke: passed;
-- all three packaged hook smokes: passed;
-- full unit suite: 186 tests passed;
-- authenticated real-runtime corpus: 150/150 scenarios and 111/111 selected hook executions passed.
-
-## Release Payload
-
-The installable plugin lives in:
-
-```text
-plugins/arbor
-```
-
-The marketplace entry lives in:
-
-```text
-.agents/plugins/marketplace.json
-```
-
-Development and review tooling is not part of the plugin payload.
 
 ## Version
 

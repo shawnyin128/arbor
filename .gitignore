@@ -1,3 +1,19 @@
 __pycache__/
 *.pyc
 .coverage
+.DS_Store
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Project-local Arbor runtime state should be generated in target projects,
+# not published from this plugin repository.
+/.codex/
+
+# Development and review-only trees. The public plugin marketplace should stay
+# focused on the installable payload under plugins/arbor.
+/docs/
+/scripts/
+/skills/
+/tests/
+AGENTS.md
