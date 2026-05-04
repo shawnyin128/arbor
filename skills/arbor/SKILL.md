@@ -1,6 +1,6 @@
 ---
 name: arbor
-description: Initialize and maintain project-local Codex memory for daily development under the Arbor workflow. Use when starting or resuming work in a repo, creating `.codex/memory.md`, creating or updating `AGENTS.md`, loading startup context from project docs, formatted git log, session memory, and git status, refreshing stale pre-triage observations, or detecting stable project guide, constraint, or project-map changes.
+description: Initialize and maintain project-local Arbor memory for daily development under the Arbor workflow. Use when starting or resuming work in a repo, creating `.arbor/memory.md`, migrating legacy `.codex/memory.md`, creating or updating `AGENTS.md`, loading startup context from project docs, formatted git log, session memory, and git status, refreshing stale pre-triage observations, or detecting stable project guide, constraint, or project-map changes.
 ---
 
 # Arbor
@@ -13,12 +13,12 @@ Fix the workflow order, not the agent's reading depth. Keep Arbor outcome-first:
 
 When initializing, resuming, or orienting in a project:
 
-1. Ensure `AGENTS.md` and `.codex/memory.md` exist. Use `scripts/init_project_memory.py --root <project-root>` when useful.
+1. Ensure `AGENTS.md` and `.arbor/memory.md` exist. Use `scripts/init_project_memory.py --root <project-root>` when useful. This explicit initialization flow migrates legacy `.codex/memory.md` by copying it to `.arbor/memory.md` when the canonical file is missing.
 2. Register project-local Arbor hook intents when the project should keep the workflow active. Use `scripts/register_project_hooks.py --root <project-root>` when useful. This writes `.codex/hooks.json` in the project and preserves unrelated hook entries.
 3. Load startup context in this order:
    - `AGENTS.md`
    - formatted `git log`
-   - `.codex/memory.md`
+   - `.arbor/memory.md`
    - `git status`
 4. Use `scripts/collect_project_context.py --root <project-root>` when a deterministic ordered context packet is useful. The script does not decide how much context is enough.
 5. Read additional docs, diffs, source files, or logs when the project map, task risk, or user request calls for them.
@@ -27,7 +27,7 @@ Collector sections include `Status`, `Source`, optional `Detail`, and raw body. 
 
 ## Session Memory
 
-Use `.codex/memory.md` for short-term, pre-triage observations only:
+Use `.arbor/memory.md` for short-term, pre-triage observations only:
 
 - Undecided bugs, hypotheses, concerns, risks, and notes.
 - Items not already resolved by git history.
@@ -43,21 +43,21 @@ Treat long-term context as a layered project record:
 - `git log` is the completed-work history: committed features, fixes, and validation evidence.
 - project docs are the deeper knowledge base: design notes, review docs, domain context, and detailed decisions.
 
-Update `AGENTS.md` only when the stable guide or map should change. Do not compress all long-term memory into `AGENTS.md`. Put completed implementation history in commits, keep deeper durable knowledge in project docs, and keep only undecided transient observations in `.codex/memory.md`.
+Update `AGENTS.md` only when the stable guide or map should change. Do not compress all long-term memory into `AGENTS.md`. Put completed implementation history in commits, keep deeper durable knowledge in project docs, and keep only undecided transient observations in `.arbor/memory.md`.
 
 ## Project Hooks
 
 Arbor hook registration is project-level. `.codex/hooks.json` is the visible project contract for three hook intents:
 
 - `arbor.session_startup_context`: load startup context in the required order.
-- `arbor.in_session_memory_hygiene`: emit memory hygiene context so the agent can refresh `.codex/memory.md` when uncommitted work or conversation state makes it stale.
+- `arbor.in_session_memory_hygiene`: emit memory hygiene context so the agent can refresh `.arbor/memory.md` when uncommitted work or conversation state makes it stale.
 - `arbor.goal_constraint_drift`: emit AGENTS drift context so the agent can update stable `AGENTS.md` goal, constraint, or map sections when needed.
 
 Do not store Arbor hook state in user-global memory. Re-register hooks when needed; registration is idempotent and should preserve unrelated project hooks.
 
 ## Resources
 
-- `references/memory-template.md`: template for `.codex/memory.md`
+- `references/memory-template.md`: template for `.arbor/memory.md`
 - `references/agents-template.md`: template for `AGENTS.md`
 - `references/project-hooks-template.md`: project hook contract
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files

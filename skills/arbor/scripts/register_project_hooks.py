@@ -11,8 +11,14 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Iterable
 
+from arbor_project_state import (
+    CANONICAL_MEMORY_PATH,
+    CODEX_HOOK_CONFIG_PATH,
+    PROJECT_GUIDE_PATH,
+    project_path,
+    resolve_project_root,
+)
 
-HOOK_CONFIG_RELATIVE_PATH = Path(".codex") / "hooks.json"
 HOOK_CONFIG_VERSION = 1
 
 ARBOR_HOOKS: list[dict[str, Any]] = [
@@ -35,9 +41,9 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
             ],
         },
         "order": [
-            "AGENTS.md",
+            str(PROJECT_GUIDE_PATH),
             "formatted git log",
-            ".codex/memory.md",
+            str(CANONICAL_MEMORY_PATH),
             "git status",
         ],
         "depth_policy": "agent-selected; no fixed read limits",
@@ -61,12 +67,12 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
             ],
         },
         "reads": [
-            ".codex/memory.md",
+            str(CANONICAL_MEMORY_PATH),
             "git status --short",
             "selected diffs when the agent decides they are needed",
             "recent conversation context available to the running agent",
         ],
-        "writes": [".codex/memory.md"],
+        "writes": [str(CANONICAL_MEMORY_PATH)],
         "depth_policy": "agent-selected; no fixed read limits",
     },
     {
@@ -88,8 +94,8 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
                 }
             ],
         },
-        "reads": ["AGENTS.md", "project docs selected by the agent"],
-        "writes": ["AGENTS.md"],
+        "reads": [str(PROJECT_GUIDE_PATH), "project docs selected by the agent"],
+        "writes": [str(PROJECT_GUIDE_PATH)],
         "allowed_sections": ["Project Goal", "Project Constraints", "Project Map"],
         "depth_policy": "agent-selected; no fixed read limits",
     },
@@ -109,20 +115,11 @@ class HookRegistrationError(ValueError):
     """Raised when Arbor hooks cannot be registered cleanly."""
 
 
-def ensure_under_root(root: Path, path: Path) -> None:
-    if path != root and root not in path.parents:
-        raise HookRegistrationError(f"refusing to write outside project root: {path}")
-
-
 def hook_config_path(root: Path) -> Path:
-    root = root.resolve()
-    if not root.exists():
-        raise HookRegistrationError(f"project root does not exist: {root}")
-    if not root.is_dir():
-        raise HookRegistrationError(f"project root is not a directory: {root}")
-    path = (root / HOOK_CONFIG_RELATIVE_PATH).resolve()
-    ensure_under_root(root, path)
-    return path
+    try:
+        return project_path(resolve_project_root(root), CODEX_HOOK_CONFIG_PATH)
+    except ValueError as exc:
+        raise HookRegistrationError(str(exc)) from exc
 
 
 def load_hook_config(path: Path) -> dict[str, Any]:

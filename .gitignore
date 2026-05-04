@@ -9,6 +9,7 @@ __pycache__/
 # Project-local Arbor runtime state should be generated in target projects,
 # not published from this plugin repository.
 /.codex/
+/.arbor/
 
 # Development and review-only trees. Keep the public repository focused on the
 # installable root plugin payload.

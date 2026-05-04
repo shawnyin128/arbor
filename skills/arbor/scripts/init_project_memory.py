@@ -1,57 +1,43 @@
 #!/usr/bin/env python3
-"""Initialize project-local Codex memory files."""
+"""Initialize project-local Arbor memory files."""
 
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from arbor_project_state import (
+    PROJECT_GUIDE_PATH,
+    ProjectFileAction,
+    ProjectStateError,
+    ensure_file,
+    ensure_memory_file,
+    project_path,
+    resolve_project_root,
+)
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_DIR = SKILL_ROOT / "references"
-
-
-@dataclass(frozen=True)
-class InitAction:
-    path: Path
-    status: str
-
-
-class InitError(ValueError):
-    """Raised when project memory files cannot be initialized cleanly."""
 
 
 def read_template(name: str) -> str:
     return (REFERENCE_DIR / name).read_text(encoding="utf-8")
 
 
-def ensure_file(path: Path, content: str, dry_run: bool) -> InitAction:
-    if path.exists():
-        if not path.is_file():
-            raise InitError(f"cannot initialize {path}: expected a file but found a directory")
-        return InitAction(path=path, status="exists")
-    if path.parent.exists() and not path.parent.is_dir():
-        raise InitError(f"cannot initialize {path}: parent path is not a directory")
-    if not dry_run:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
-    return InitAction(path=path, status="would_create" if dry_run else "created")
-
-
-def init_project_memory(root: Path, dry_run: bool = False) -> list[InitAction]:
-    root = root.resolve()
+def init_project_memory(root: Path, dry_run: bool = False) -> list[ProjectFileAction]:
+    root = resolve_project_root(root)
     return [
-        ensure_file(root / ".codex" / "memory.md", read_template("memory-template.md"), dry_run),
-        ensure_file(root / "AGENTS.md", read_template("agents-template.md"), dry_run),
+        *ensure_memory_file(root, read_template("memory-template.md"), dry_run),
+        ensure_file(project_path(root, PROJECT_GUIDE_PATH), read_template("agents-template.md"), dry_run),
     ]
 
 
-def render_actions(actions: Iterable[InitAction]) -> str:
+def render_actions(actions: Iterable[ProjectFileAction]) -> str:
     lines = ["# Arbor Initialization", ""]
     for action in actions:
-        lines.append(f"- {action.status}: {action.path}")
+        suffix = f" ({action.detail})" if action.detail else ""
+        lines.append(f"- {action.status}: {action.path}{suffix}")
     return "\n".join(lines)
 
 
@@ -71,7 +57,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         actions = init_project_memory(args.root, dry_run=args.dry_run)
-    except InitError as exc:
+    except ProjectStateError as exc:
         parser.error(str(exc))
     print(render_actions(actions))
     return 0

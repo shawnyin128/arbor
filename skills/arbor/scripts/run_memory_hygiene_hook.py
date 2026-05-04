@@ -7,24 +7,17 @@ import argparse
 import shlex
 from pathlib import Path
 
-from collect_project_context import ContextSection, read_file_section, run_git_section
+from arbor_project_state import (
+    CANONICAL_MEMORY_PATH,
+    LEGACY_CODEX_MEMORY_PATH,
+    ProjectStateError,
+    resolve_project_root,
+)
+from collect_project_context import ContextSection, read_memory_section, run_git_section
 
 
 DISALLOWED_DIFF_ARGS = {"--output", "-o", "--ext-diff", "--no-index"}
 DISALLOWED_DIFF_ARG_PREFIXES = ("--output=",)
-
-
-class MemoryHygieneHookError(ValueError):
-    """Raised when the memory hygiene hook cannot resolve its project root."""
-
-
-def resolve_project_root(root: Path) -> Path:
-    resolved = root.resolve()
-    if not resolved.exists():
-        raise MemoryHygieneHookError(f"project root does not exist: {resolved}")
-    if not resolved.is_dir():
-        raise MemoryHygieneHookError(f"project root is not a directory: {resolved}")
-    return resolved
 
 
 def parse_optional_git_args(raw: str | list[str] | None) -> list[str] | None:
@@ -58,7 +51,7 @@ def validate_diff_args(args: list[str], root: Path | None = None) -> None:
 def collect_memory_hygiene_context(root: Path, diff_args: list[str] | None = None) -> list[ContextSection]:
     resolved = resolve_project_root(root)
     sections = [
-        read_file_section("1. .codex/memory.md", resolved / ".codex" / "memory.md"),
+        read_memory_section("1. .arbor/memory.md", resolved),
         run_git_section("2. git status", resolved, ["status", "--short"]),
         run_git_section("3. git diff --stat", resolved, ["diff", "--stat"]),
         run_git_section("4. git diff --cached --stat", resolved, ["diff", "--cached", "--stat"]),
@@ -75,11 +68,13 @@ def render_memory_hygiene_packet(sections: list[ContextSection]) -> str:
         "",
         "## Agent Instructions",
         "",
-        "- Decide whether `.codex/memory.md` is stale using this packet plus current conversation context.",
-        "- If an update is needed, edit only the project-local `.codex/memory.md`.",
+        "- Decide whether `.arbor/memory.md` is stale using this packet plus current conversation context.",
+        "- If an update is needed, edit only the project-local `.arbor/memory.md`.",
         "- Keep only short-term, undecided pre-triage observations about uncommitted work.",
         "- Remove resolved, committed, or durable items that belong in docs, review files, or `AGENTS.md`.",
         "- Do not update `AGENTS.md` from this hook.",
+        f"- If only legacy `{LEGACY_CODEX_MEMORY_PATH}` exists, run explicit Arbor initialization/migration before editing.",
+        f"- Do not merge legacy `{LEGACY_CODEX_MEMORY_PATH}` into `{CANONICAL_MEMORY_PATH}` from this hook.",
         "",
     ]
     for section in sections:
@@ -118,7 +113,7 @@ def main() -> int:
     try:
         diff_args = parse_optional_git_args(args.diff_args)
         output = run_memory_hygiene_hook(args.root, diff_args)
-    except (argparse.ArgumentTypeError, MemoryHygieneHookError) as exc:
+    except (argparse.ArgumentTypeError, ProjectStateError) as exc:
         parser.error(str(exc))
     print(output, end="")
     return 0

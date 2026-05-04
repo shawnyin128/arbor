@@ -9,6 +9,11 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from arbor_project_state import (
+    CANONICAL_MEMORY_PATH,
+    LEGACY_CODEX_MEMORY_PATH,
+    PROJECT_GUIDE_PATH,
+)
 
 DEFAULT_GIT_LOG_ARGS = ["--date=iso", "--pretty=format:%H%x09%ad%x09%s"]
 
@@ -69,6 +74,23 @@ def run_git(root: Path, args: list[str]) -> str:
     return run_git_section("", root, args).body
 
 
+def read_memory_section(title: str, root: Path) -> ContextSection:
+    canonical = root / CANONICAL_MEMORY_PATH
+    if canonical.exists():
+        return read_file_section(title, canonical)
+    legacy = root / LEGACY_CODEX_MEMORY_PATH
+    if legacy.exists():
+        section = read_file_section(title, legacy)
+        return ContextSection(
+            title=title,
+            body=section.body,
+            status=f"legacy-{section.status}",
+            source=str(legacy),
+            detail=f"canonical {CANONICAL_MEMORY_PATH} is missing; run explicit Arbor initialization to migrate",
+        )
+    return read_file_section(title, canonical)
+
+
 def parse_git_log_args(raw: str | list[str] | None) -> list[str]:
     if not raw:
         return list(DEFAULT_GIT_LOG_ARGS)
@@ -86,9 +108,9 @@ def collect_startup_context(root: Path, git_log_args: list[str] | None = None) -
     root = root.resolve()
     log_args = git_log_args if git_log_args is not None else list(DEFAULT_GIT_LOG_ARGS)
     return [
-        read_file_section("1. AGENTS.md", root / "AGENTS.md"),
+        read_file_section("1. AGENTS.md", root / PROJECT_GUIDE_PATH),
         run_git_section("2. formatted git log", root, ["log", *log_args]),
-        read_file_section("3. .codex/memory.md", root / ".codex" / "memory.md"),
+        read_memory_section("3. .arbor/memory.md", root),
         run_git_section("4. git status", root, ["status", "--short"]),
     ]
 

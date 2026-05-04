@@ -7,7 +7,7 @@ Describe the stable project objective here.
 ## Project Constraints
 
 - Record durable engineering, workflow, validation, style, and collaboration constraints here.
-- Keep transient current-session progress in `.codex/memory.md`.
+- Keep transient current-session progress in `.arbor/memory.md`.
 
 ## Project Map
 

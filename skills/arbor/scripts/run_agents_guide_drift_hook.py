@@ -7,6 +7,12 @@ import argparse
 import shlex
 from pathlib import Path
 
+from arbor_project_state import (
+    CANONICAL_MEMORY_PATH,
+    PROJECT_GUIDE_PATH,
+    ProjectStateError,
+    resolve_project_root,
+)
 from collect_project_context import ContextSection, read_file_section, run_git_section
 
 
@@ -15,15 +21,6 @@ ALLOWED_AGENTS_SECTIONS = ["Project Goal", "Project Constraints", "Project Map"]
 
 class AgentsGuideDriftHookError(ValueError):
     """Raised when the AGENTS guide drift hook cannot resolve project-local inputs."""
-
-
-def resolve_project_root(root: Path) -> Path:
-    resolved = root.resolve()
-    if not resolved.exists():
-        raise AgentsGuideDriftHookError(f"project root does not exist: {resolved}")
-    if not resolved.is_dir():
-        raise AgentsGuideDriftHookError(f"project root is not a directory: {resolved}")
-    return resolved
 
 
 def ensure_under_root(root: Path, path: Path) -> None:
@@ -51,7 +48,7 @@ def resolve_doc_path(root: Path, doc_path: Path) -> Path:
 def collect_agents_guide_drift_context(root: Path, doc_paths: list[Path] | None = None) -> list[ContextSection]:
     resolved = resolve_project_root(root)
     sections = [
-        read_file_section("1. AGENTS.md", resolved / "AGENTS.md"),
+        read_file_section("1. AGENTS.md", resolved / PROJECT_GUIDE_PATH),
         run_git_section("2. git status", resolved, ["status", "--short"]),
     ]
     for index, doc_path in enumerate(doc_paths or [], start=3):
@@ -70,8 +67,8 @@ def render_agents_guide_drift_packet(sections: list[ContextSection]) -> str:
         "- Decide whether `AGENTS.md` needs a durable update using this packet plus current conversation context.",
         f"- If an update is needed, edit only these sections: {allowed}.",
         "- Keep current uncommitted progress, transient observations, and implementation notes out of `AGENTS.md`.",
-        "- Put short-term undecided work in `.codex/memory.md`; put feature/review evidence in review docs.",
-        "- Do not update `.codex/memory.md` from this hook.",
+        f"- Put short-term undecided work in `{CANONICAL_MEMORY_PATH}`; put feature/review evidence in review docs.",
+        f"- Do not update `{CANONICAL_MEMORY_PATH}` from this hook.",
         "",
     ]
     for section in sections:
@@ -115,7 +112,7 @@ def main() -> int:
     try:
         doc_paths = parse_doc_paths(args.doc, args.doc_paths)
         output = run_agents_guide_drift_hook(args.root, doc_paths)
-    except (argparse.ArgumentTypeError, AgentsGuideDriftHookError) as exc:
+    except (argparse.ArgumentTypeError, AgentsGuideDriftHookError, ProjectStateError) as exc:
         parser.error(str(exc))
     print(output, end="")
     return 0

@@ -10,7 +10,7 @@ The hook file is a visible project artifact, not user-global state. A later Arbo
    - Event: `session.start`
    - Entrypoint: `scripts/run_session_startup_hook.py --root ${PROJECT_ROOT}`
    - Optional argument channel: `--git-log-args "${GIT_LOG_ARGS}"`
-   - Required order: `AGENTS.md`, formatted `git log`, `.codex/memory.md`, `git status`
+   - Required order: `AGENTS.md`, formatted `git log`, `.arbor/memory.md`, `git status`
 
 2. `arbor.in_session_memory_hygiene`
    - Event: `conversation.checkpoint`
@@ -18,7 +18,7 @@ The hook file is a visible project artifact, not user-global state. A later Arbo
    - Optional argument channel: `--diff-args "${DIFF_ARGS}"`
    - Emits a memory hygiene packet with current memory, git status, unstaged diff stat, staged diff stat, and optional selected diff.
    - Rejects side-effecting selected diff options such as `--output`.
-   - The running agent decides whether to edit project-local `.codex/memory.md` using the packet plus conversation context.
+   - The running agent decides whether to edit project-local `.arbor/memory.md` using the packet plus conversation context.
 
 3. `arbor.goal_constraint_drift`
    - Event: `project.guide_drift`
