@@ -1,88 +1,95 @@
 # Arbor
 
-Arbor is a Codex plugin for project-local development memory.
+Arbor is a Codex plugin that gives each repository a project-local memory workflow.
 
-It initializes a repository with durable project guidance in `AGENTS.md`, short-term session memory in `.codex/memory.md`, and project-level Arbor hooks in `.codex/hooks.json`. The goal is to keep Codex oriented across daily development work without turning the skill into a bottleneck: Arbor fixes the workflow order, while the agent remains free to read as much code, docs, git history, and diff context as the task requires.
+It creates and maintains:
 
-## What Arbor Provides
+- `AGENTS.md` for durable project goals, constraints, and project map.
+- `.codex/memory.md` for short-term, uncommitted session memory.
+- `.codex/hooks.json` for project-level Arbor hook registration.
 
-- Project initialization for `AGENTS.md` and `.codex/memory.md`.
-- Project-level hook registration in `.codex/hooks.json`.
-- Startup context loading in this order:
-  1. `AGENTS.md`
-  2. formatted `git log`
-  3. `.codex/memory.md`
-  4. `git status`
-- In-session memory hygiene for uncommitted work and stale short-term notes.
-- Durable project guide drift context for project goals, constraints, and project map changes.
+Arbor fixes the workflow order. It does not limit how much code, documentation, git history, or diff context the agent can read.
 
 ## Install
 
-### From GitHub
-
-Add this repository as a Codex plugin marketplace:
+Install Arbor from GitHub:
 
 ```bash
-codex plugin marketplace add <owner>/<repo>
+codex plugin marketplace add shawnyin128/arbor
 ```
 
-You can also use a Git URL:
+If `codex` is not on your `PATH` on macOS:
 
 ```bash
-codex plugin marketplace add https://github.com/<owner>/<repo>.git
+/Applications/Codex.app/Contents/Resources/codex plugin marketplace add shawnyin128/arbor
 ```
 
-To pin a release tag:
+To install from SSH instead:
 
 ```bash
-codex plugin marketplace add <owner>/<repo> --ref arbor-v0.1.0
+codex plugin marketplace add git@github.com:shawnyin128/arbor.git
 ```
 
-If `codex` is not on your `PATH` on macOS, use the bundled app binary:
-
-```bash
-/Applications/Codex.app/Contents/Resources/codex plugin marketplace add https://github.com/<owner>/<repo>.git
-```
-
-After adding the marketplace, install or enable the `arbor` plugin from the configured marketplace in Codex. The repo-local marketplace name is `arbor-local`, and the plugin package is `arbor`.
-
-### From a Local Checkout
-
-Clone or copy this repository, then add the repository root as a local marketplace:
-
-```bash
-/Applications/Codex.app/Contents/Resources/codex plugin marketplace add /path/to/arbor
-```
-
-For this checkout:
-
-```bash
-/Applications/Codex.app/Contents/Resources/codex plugin marketplace add /Users/shawn/Desktop/arbor
-```
-
-### Upgrade or Remove
-
-Upgrade a configured marketplace:
+To upgrade later:
 
 ```bash
 codex plugin marketplace upgrade arbor-local
 ```
 
-Remove the marketplace:
+To remove the marketplace:
 
 ```bash
 codex plugin marketplace remove arbor-local
 ```
 
-## Initialize A Project
+## Skills
 
-Open the target project in Codex and ask Arbor to initialize it:
+Arbor currently ships one skill:
+
+```text
+$arbor
+```
+
+### `$arbor`
+
+Use `$arbor` when you want Codex to initialize or resume a repository with project-local memory.
+
+It is responsible for:
+
+- creating `AGENTS.md` when missing;
+- creating `.codex/memory.md` when missing;
+- registering Arbor hooks into `.codex/hooks.json`;
+- loading startup context in the fixed order: `AGENTS.md`, formatted `git log`, `.codex/memory.md`, `git status`;
+- refreshing short-term memory when current-session or uncommitted work makes `.codex/memory.md` stale;
+- preparing durable `AGENTS.md` updates when project goals, constraints, or project map entries change.
+
+## Usage
+
+Initialize Arbor in a project:
 
 ```text
 $arbor initialize this project
 ```
 
-Expected project-local files:
+Resume work in a repository:
+
+```text
+$arbor resume this repo
+```
+
+Refresh memory before a commit:
+
+```text
+$arbor refresh project memory before commit
+```
+
+Update durable project guidance:
+
+```text
+$arbor update AGENTS.md for the new project constraints
+```
+
+After initialization, the target project should contain:
 
 ```text
 AGENTS.md
@@ -90,114 +97,60 @@ AGENTS.md
 .codex/hooks.json
 ```
 
-Arbor writes project-local files only. It does not create a global Arbor memory store.
+## Hooks
 
-## Daily Use
-
-Use Arbor when starting or resuming work in a repository:
-
-```text
-$arbor resume this repo
-```
-
-Use Arbor before committing or when the current session memory may be stale:
-
-```text
-$arbor refresh project memory before commit
-```
-
-Use Arbor when durable project guidance changes:
-
-```text
-$arbor update AGENTS.md for the new project constraints
-```
-
-## Hook Contract
-
-Arbor registers three project-level hook intents:
+`$arbor` registers three project-level hook intents:
 
 - `arbor.session_startup_context`: emits startup context in the required order.
-- `arbor.in_session_memory_hygiene`: emits current memory, git status, and diff context so the agent can refresh `.codex/memory.md`.
-- `arbor.goal_constraint_drift`: emits AGENTS/project-doc context so the agent can update durable project goal, constraint, or map sections.
+- `arbor.in_session_memory_hygiene`: emits memory, git status, and diff context for short-term memory refresh.
+- `arbor.goal_constraint_drift`: emits project guide context for durable `AGENTS.md` goal, constraint, and map updates.
 
-The hooks emit context packets. The agent decides whether to edit `.codex/memory.md` or `AGENTS.md` based on the current conversation and project state.
+The hooks emit context packets. The agent decides whether to edit `.codex/memory.md` or `AGENTS.md`.
 
-## Manual Script Usage
+## Maintainer Validation
 
-The plugin payload includes the same scripts used by the skill. From this repository root:
-
-```bash
-python3 skills/arbor/scripts/init_project_memory.py --root <project-root>
-python3 skills/arbor/scripts/register_project_hooks.py --root <project-root>
-python3 skills/arbor/scripts/run_session_startup_hook.py --root <project-root>
-python3 skills/arbor/scripts/run_memory_hygiene_hook.py --root <project-root>
-python3 skills/arbor/scripts/run_agents_guide_drift_hook.py --root <project-root>
-```
-
-## Validate The Plugin Package
-
-Before publishing or handing off a release, run:
+Before publishing a release, run:
 
 ```bash
 python3 scripts/validate_plugin_install.py --codex-probe
-python3 /Users/shawn/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/arbor
-python3 /Users/shawn/.codex/skills/.system/skill-creator/scripts/quick_validate.py plugins/arbor/skills/arbor
 python3 -m unittest tests/test_arbor_skill.py
 conda run -n arbor python -m ruff check . --no-cache
 ```
 
-The current release gate passed with:
+Current release validation:
 
-- 13/13 packaged payload files matched.
-- Codex CLI marketplace add passed.
-- Packaged initialization smoke passed.
-- All three packaged hook smokes passed.
-- Full unit suite passed: 186 tests.
-- Authenticated real-runtime corpus passed: 150/150 scenarios and 111/111 selected hook executions.
-
-The retained runtime report is stored at:
-
-```text
-docs/reviews/artifacts/feature-25-full-corpus-r4-report.json
-```
+- packaged payload: 13/13 expected files matched;
+- Codex marketplace add: passed;
+- packaged initialization smoke: passed;
+- all three packaged hook smokes: passed;
+- full unit suite: 186 tests passed;
+- authenticated real-runtime corpus: 150/150 scenarios and 111/111 selected hook executions passed.
 
 ## Release Payload
 
-The installable plugin is:
+The installable plugin lives in:
 
 ```text
 plugins/arbor
 ```
 
-The repo-local marketplace entry is:
+The marketplace entry lives in:
 
 ```text
 .agents/plugins/marketplace.json
 ```
 
-Development and review tooling is intentionally not part of the plugin payload:
-
-```text
-docs/reviews/
-docs/reviews/artifacts/
-scripts/evaluate_hook_triggers.py
-scripts/eval_fixtures.py
-scripts/plugin_trigger_adapters.py
-scripts/probe_plugin_runtime.py
-scripts/simulated_dispatcher.py
-scripts/validate_plugin_install.py
-tests/
-```
+Development and review tooling is not part of the plugin payload.
 
 ## Version
 
-Current plugin version:
+Current version:
 
 ```text
 0.1.0
 ```
 
-The version is defined in:
+Version file:
 
 ```text
 plugins/arbor/.codex-plugin/plugin.json
