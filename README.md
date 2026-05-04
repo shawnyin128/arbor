@@ -46,13 +46,13 @@ codex plugin marketplace add git@github.com:shawnyin128/arbor.git
 To upgrade later:
 
 ```bash
-codex plugin marketplace upgrade arbor-local
+codex plugin marketplace upgrade arbor
 ```
 
 To remove the marketplace:
 
 ```bash
-codex plugin marketplace remove arbor-local
+codex plugin marketplace remove arbor
 ```
 
 ## Skills

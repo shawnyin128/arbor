@@ -1,7 +1,7 @@
 {
-  "name": "arbor-local",
+  "name": "arbor",
   "interface": {
-    "displayName": "Arbor Local"
+    "displayName": "Arbor"
   },
   "plugins": [
     {
