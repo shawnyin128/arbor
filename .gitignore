@@ -19,3 +19,6 @@ AGENTS.md
 
 # Local adapter/worktree experiments; do not publish.
 /.claude/
+
+# Legacy/local marketplace experiments; Arbor publishes through .claude-plugin.
+/.agents/
