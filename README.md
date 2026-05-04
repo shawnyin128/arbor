@@ -1,16 +1,17 @@
 # Arbor
 
-Arbor is a Codex plugin that makes Codex better at long-running repository work.
+Arbor is a project-context plugin for Codex and Claude Code. It makes both runtimes better at long-running repository work.
 
-Codex is strongest when it has the right project context. In real projects, that context is split across docs, git history, current diffs, earlier session notes, and durable project rules. Arbor turns that into a repeatable workflow: every repo gets a project guide, short-term session memory, and hooks that restore the right context at the right time.
+Either runtime is strongest when it has the right project context. In real projects, that context is split across docs, git history, current diffs, earlier session notes, and durable project rules. Arbor turns that into a repeatable workflow: every repo gets a project guide, short-term session memory, and hooks that restore the right context at the right time.
 
 It creates and maintains:
 
-- `AGENTS.md` as the durable project guide and map to deeper context.
-- `.arbor/memory.md` for short-term, uncommitted session memory.
-- `.codex/hooks.json` in target projects for project-level Arbor hook registration.
+- `AGENTS.md` as the canonical durable project guide and map to deeper context (read by both runtimes).
+- `.arbor/memory.md` for short-term, uncommitted session memory (shared by both runtimes).
+- `.codex/hooks.json` in target projects for project-level Arbor hook registration (Codex installs only).
+- `CLAUDE.md` as a short Claude-native bridge pointing at `AGENTS.md` and `.arbor/memory.md` (Claude Code installs only).
 
-The main benefit is continuity. Arbor helps Codex resume a repo without re-discovering the same facts, keep uncommitted work separate from durable project knowledge, and update project guidance when goals or constraints change.
+The main benefit is continuity. Arbor helps each runtime resume a repo without re-discovering the same facts, keeps uncommitted work separate from durable project knowledge, and updates project guidance when goals or constraints change. Same project state, two runtimes, no duplication.
 
 Arbor fixes the workflow order. It does not limit how much code, documentation, git history, or diff context the agent can read.
 
@@ -25,7 +26,9 @@ Arbor fixes the workflow order. It does not limit how much code, documentation, 
 
 ## Install
 
-Install Arbor from GitHub:
+### Codex
+
+Add the marketplace and install Arbor:
 
 ```bash
 codex plugin marketplace add shawnyin128/arbor
@@ -37,45 +40,53 @@ If `codex` is not on your `PATH` on macOS:
 /Applications/Codex.app/Contents/Resources/codex plugin marketplace add shawnyin128/arbor
 ```
 
-To install from SSH instead:
+SSH:
 
 ```bash
 codex plugin marketplace add git@github.com:shawnyin128/arbor.git
 ```
 
-To upgrade later:
+Upgrade and remove:
 
 ```bash
 codex plugin marketplace upgrade arbor
-```
-
-To remove the marketplace:
-
-```bash
 codex plugin marketplace remove arbor
 ```
 
-## Skills
+### Claude Code
 
-Arbor currently ships one skill:
+From within a Claude Code session:
 
 ```text
-$arbor
+/plugin marketplace add shawnyin128/arbor
+/plugin install arbor@arbor
 ```
 
-### `$arbor`
+Run `/reload-plugins` afterward to activate the skill and the bundled `SessionStart` hook in the current session. The hook auto-injects the Arbor startup packet (AGENTS.md, formatted git log, `.arbor/memory.md`, git status) on `startup` and `resume` sources, trimmed to fit Claude Code's context-injection cap.
 
-Use `$arbor` when you want Codex to stay oriented across a real development workflow, especially when work spans multiple sessions or depends on git history.
+## Skills
+
+Arbor currently ships one skill, available on both runtimes:
+
+```text
+Codex:        $arbor
+Claude Code:  /arbor:arbor
+```
+
+### `arbor`
+
+Use Arbor when you want either runtime to stay oriented across a real development workflow, especially when work spans multiple sessions or depends on git history.
 
 What it does well:
 
 - creating `AGENTS.md` when missing;
 - creating `.arbor/memory.md` when missing;
 - migrating legacy `.codex/memory.md` by copying it to `.arbor/memory.md` during explicit initialization when the canonical file is missing;
-- registering Arbor hooks into target-project `.codex/hooks.json`;
-- loading startup context in the fixed order: `AGENTS.md`, formatted `git log`, `.arbor/memory.md`, `git status`;
-- refreshing short-term memory when current-session or uncommitted work makes `.arbor/memory.md` stale;
-- preparing `AGENTS.md` updates when the project guide or map needs to point Codex at changed durable context.
+- creating `CLAUDE.md` as a short bridge to `AGENTS.md` and `.arbor/memory.md` when initialized from a Claude Code install;
+- registering Arbor hooks into target-project `.codex/hooks.json` (Codex);
+- loading startup context in the fixed order: `AGENTS.md`, formatted `git log`, `.arbor/memory.md`, `git status` — automatically on Claude Code via `SessionStart`, on demand on Codex via the project hook intent;
+- refreshing short-term memory when current-session or uncommitted work makes `.arbor/memory.md` stale (auto via `arbor.in_session_memory_hygiene` hook intent on Codex; user-invoked on Claude Code);
+- preparing `AGENTS.md` updates when the project guide or map needs to point the agent at changed durable context (auto via `arbor.goal_constraint_drift` hook intent on Codex; user-invoked on Claude Code).
 
 How long-term memory works:
 
@@ -95,6 +106,8 @@ Use it when:
 - building workflows where git log and project docs are part of the agent's long-term context.
 
 ## Usage
+
+Invocation phrasing is the same idea on both runtimes; replace the prefix with `$arbor` on Codex or `/arbor:arbor` on Claude Code (or use natural language — both runtimes auto-trigger Arbor when the request matches its description).
 
 Initialize Arbor in a project:
 
@@ -120,7 +133,7 @@ Update the project guide or map:
 $arbor update AGENTS.md for the new project constraints
 ```
 
-After initialization, the target project should contain:
+After initialization on Codex, the target project should contain:
 
 ```text
 AGENTS.md
@@ -128,7 +141,19 @@ AGENTS.md
 .codex/hooks.json
 ```
 
+After initialization on Claude Code, the target project should contain:
+
+```text
+AGENTS.md
+.arbor/memory.md
+CLAUDE.md
+```
+
+A project that hosts both runtimes ends up with all four files, sharing the same `AGENTS.md` and `.arbor/memory.md`.
+
 ## Hooks
+
+### Codex
 
 `$arbor` registers three project-level hook intents into the target project's `.codex/hooks.json`:
 
@@ -137,6 +162,12 @@ AGENTS.md
 - `arbor.goal_constraint_drift`: emits project guide context when `AGENTS.md` may need to update its stable goals, constraints, or map pointers.
 
 The hooks are registered by the skill during project initialization; Arbor does not ship a root-level Codex hook manifest. The hooks emit context packets, and the agent decides whether to edit `.arbor/memory.md` or `AGENTS.md`.
+
+### Claude Code
+
+The plugin bundles a single `SessionStart` hook (`hooks/hooks.json` + `hooks/session-start`) that fires on the `startup` and `resume` sources. Its Python adapter calls the shared `run_session_startup_hook.py`, applies a budget-aware truncation policy so the rendered packet stays under Claude Code's `additionalContext` cap, and prints the packet to stdout for automatic injection into the conversation.
+
+Memory hygiene and goal-constraint drift are not auto-fired on Claude Code (Claude Code has no native event that delivers a context packet at the right time). Invoke them through the user-driven workflows above; the underlying scripts are the same on both runtimes.
 
 ## Legacy Memory Path
 
@@ -152,10 +183,11 @@ Current version:
 0.3.0
 ```
 
-Version file:
+Version files:
 
 ```text
 .codex-plugin/plugin.json
+.claude-plugin/plugin.json
 ```
 
 Marketplace file:
