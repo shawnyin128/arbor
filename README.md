@@ -8,7 +8,7 @@ It creates and maintains:
 
 - `AGENTS.md` as the durable project guide and map to deeper context.
 - `.codex/memory.md` for short-term, uncommitted session memory.
-- `.codex/hooks.json` for project-level Arbor hook registration.
+- `.codex/hooks.json` in target projects for project-level Arbor hook registration.
 
 The main benefit is continuity. Arbor helps Codex resume a repo without re-discovering the same facts, keep uncommitted work separate from durable project knowledge, and update project guidance when goals or constraints change.
 
@@ -71,7 +71,7 @@ What it does well:
 
 - creating `AGENTS.md` when missing;
 - creating `.codex/memory.md` when missing;
-- registering Arbor hooks into `.codex/hooks.json`;
+- registering Arbor hooks into target-project `.codex/hooks.json`;
 - loading startup context in the fixed order: `AGENTS.md`, formatted `git log`, `.codex/memory.md`, `git status`;
 - refreshing short-term memory when current-session or uncommitted work makes `.codex/memory.md` stale;
 - preparing `AGENTS.md` updates when the project guide or map needs to point Codex at changed durable context.
@@ -129,13 +129,13 @@ AGENTS.md
 
 ## Hooks
 
-`$arbor` registers three project-level hook intents:
+`$arbor` registers three project-level hook intents into the target project's `.codex/hooks.json`:
 
 - `arbor.session_startup_context`: emits startup context in the required order.
 - `arbor.in_session_memory_hygiene`: emits memory, git status, and diff context for short-term memory refresh.
 - `arbor.goal_constraint_drift`: emits project guide context when `AGENTS.md` may need to update its stable goals, constraints, or map pointers.
 
-The hooks emit context packets. The agent decides whether to edit `.codex/memory.md` or `AGENTS.md`.
+The hooks are registered by the skill during project initialization; Arbor does not ship a root-level Codex hook manifest. The hooks emit context packets, and the agent decides whether to edit `.codex/memory.md` or `AGENTS.md`.
 
 ## Version
 
