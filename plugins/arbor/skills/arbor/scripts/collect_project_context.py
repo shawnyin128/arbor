@@ -69,9 +69,13 @@ def run_git(root: Path, args: list[str]) -> str:
     return run_git_section("", root, args).body
 
 
-def parse_git_log_args(raw: str | None) -> list[str]:
+def parse_git_log_args(raw: str | list[str] | None) -> list[str]:
     if not raw:
         return list(DEFAULT_GIT_LOG_ARGS)
+    if isinstance(raw, list):
+        if not raw:
+            return list(DEFAULT_GIT_LOG_ARGS)
+        raw = " ".join(raw)
     try:
         return shlex.split(raw)
     except ValueError as exc:

@@ -1,0 +1,1 @@
+{"adapter_error": null, "decision": "none", "execution_count": 0, "expected_label": "NONE", "hooks": [], "index": 1, "passed": true, "runtime_blocker": null, "scenario_id": "N-P008", "total": 1, "trigger_adapter": "plugin-runtime-codex-exec"}

@@ -1,0 +1,2 @@
+{"adapter_error": null, "decision": "trigger", "execution_count": 1, "expected_label": "H2", "hooks": ["arbor.in_session_memory_hygiene"], "index": 1, "passed": true, "runtime_blocker": null, "scenario_id": "H2-P015", "total": 2, "trigger_adapter": "plugin-runtime-codex-exec"}
+{"adapter_error": null, "decision": "trigger", "execution_count": 1, "expected_label": "H3", "hooks": ["arbor.goal_constraint_drift"], "index": 2, "passed": true, "runtime_blocker": null, "scenario_id": "H3-P008", "total": 2, "trigger_adapter": "plugin-runtime-codex-exec"}

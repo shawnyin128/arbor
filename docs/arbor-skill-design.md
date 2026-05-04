@@ -633,6 +633,391 @@ Validation:
 - Unintended writes to `AGENTS.md` and `.codex/memory.md` report as failures.
 - CLI full-corpus mode emits valid JSON.
 
+### Feature 13: Plugin Trigger Adapter Design
+
+Deliverables:
+
+- Design notes for replacing the sidecar-backed baseline with a real plugin/runtime trigger adapter.
+- Updated review routing that marks this as a new phase after current-scope Arbor completion.
+- A per-feature review file for the plugin trigger adapter plan.
+
+Behavior:
+
+- Keep the existing trigger decision contract unchanged:
+
+```json
+{
+  "hooks": ["arbor.in_session_memory_hygiene"],
+  "decision": "trigger",
+  "confidence": "high",
+  "requires_agent_judgment": false,
+  "optional_args": {
+    "arbor.in_session_memory_hygiene": []
+  },
+  "reason": "The user asked to refresh short-term memory for uncommitted work."
+}
+```
+
+- Treat the sidecar-backed path as `sidecar-baseline`, not as the runtime target.
+- Add the real plugin trigger path behind a swappable adapter boundary so the fixture, sidecar, hook execution, and report harness stay reusable.
+- Feed the plugin trigger path only the minimum evaluation inputs: user expression or runtime event, fixture summary, hook contract, and skill metadata/trigger guidance.
+- Do not let the plugin trigger path read expected labels, expected hooks, forbidden hooks, or sidecar scoring fields.
+- Preserve JSON-only structured output for automated scoring.
+- Preserve project-local side-effect boundaries: the trigger adapter selects hooks only; hook scripts perform packet generation; the running agent edits memory or `AGENTS.md` only when appropriate.
+
+Validation:
+
+- Golden contract tests: plugin runtime trigger output has the same keys, decision vocabulary, confidence vocabulary, hook ids, and optional-arg shape as the sidecar baseline output.
+- Non-circularity tests: plugin runtime trigger code path cannot load `expected_hooks`, `optional_expected_hooks`, `forbidden_hooks`, or `allowed_decisions` from the sidecar.
+- Harness compatibility tests: the existing full-corpus harness can run with either sidecar baseline or plugin runtime trigger adapter through one adapter selection flag.
+- Semantic metrics only after plugin runtime trigger output is used: H1/H2/H3 precision and recall, `NONE` false-positive rate, near-miss false-positive rate, ambiguous-case handling, multi-hook partial match, and stability.
+- Regression gates from prior stages still apply: 100% hook execution pass rate, 0 outside-root leaks, and 0 unintended writes.
+
+Failure behavior:
+
+- Invalid JSON from the plugin trigger adapter is `trigger_gap`.
+- Unknown hook ids are `trigger_gap`.
+- Correct hook id with failing packet/side-effect assertion is `execution_gap`.
+- Fixture setup failure is `fixture_gap`.
+- Ambiguous scenario disagreement should be reviewed before being counted as a hard failure.
+
+### Feature 14: Plugin Trigger Selection and Non-Circular Input Builder
+
+Deliverables:
+
+- A plugin trigger adapter module that keeps the sidecar baseline and future real plugin runtime behind one selection boundary.
+- A harness `--trigger-adapter` option with `sidecar-baseline` as the default and `plugin-runtime-stub` as the first non-circular adapter path.
+- A plugin runtime input builder that receives runtime-like context but excludes sidecar scoring data.
+- Unit and CLI tests proving the harness can swap plugin trigger adapters without exposing expected labels, expected hooks, optional expected hooks, forbidden hooks, allowed decisions, or scenario notes to the plugin runtime path.
+
+Behavior:
+
+- Preserve the existing scenario corpus and sidecar as evaluator-only artifacts.
+- Use sidecar expectations only for the `sidecar-baseline` adapter and for evaluator comparison in later features.
+- Build plugin runtime trigger input from:
+  - user expression or runtime event text;
+  - project root;
+  - fixture/live project summary;
+  - project-local hook contract from `.codex/hooks.json`;
+  - concise `SKILL.md` metadata.
+- The `plugin-runtime-stub` adapter returns a valid trigger decision contract without selecting hooks. It exists to validate the adapter boundary, not to report semantic quality.
+- Corpus reports should identify which plugin trigger adapter produced the observed labels.
+- Semantic trigger metrics remain unreported for both `sidecar-baseline` and `plugin-runtime-stub`.
+
+Validation:
+
+- Unit tests assert plugin runtime input omits all sidecar scoring fields.
+- Unit tests assert trigger decision contract validation rejects unknown hooks, invalid decisions, invalid confidence, and optional args for unselected hooks.
+- Harness scenario tests pass with the default sidecar baseline adapter.
+- CLI smoke tests pass for `--trigger-adapter sidecar-baseline` and `--trigger-adapter plugin-runtime-stub`.
+- Full-corpus sidecar baseline execution remains passing.
+
+### Feature 15: Plugin Installation Readiness
+
+Deliverables:
+
+- A repo-local marketplace at `.agents/plugins/marketplace.json` exposing `plugins/arbor`.
+- A plugin installation-readiness validator at `scripts/validate_plugin_install.py`.
+- Packaged skill smoke tests that run from the plugin payload rather than the standalone `skills/arbor` copy.
+- An isolated Codex CLI marketplace add probe that uses a temporary `HOME` so the user's real `~/.codex/config.toml` is not modified.
+
+Behavior:
+
+- Marketplace name is `arbor-local`.
+- Marketplace entry points to `./plugins/arbor` with local source, `AVAILABLE` installation, and `ON_INSTALL` authentication.
+- The validator checks:
+  - marketplace entry shape and path;
+  - plugin manifest name, skills path, hooks path, and interface prompt bounds;
+  - packaged skill `SKILL.md`;
+  - packaged hook ids and entrypoint script resolution;
+  - packaged initialization behavior;
+  - packaged Hook 1, Hook 2, and Hook 3 entrypoint smoke behavior;
+  - optional isolated `codex plugin marketplace add <repo-root>` behavior.
+
+Validation:
+
+- `python3 scripts/validate_plugin_install.py` passes.
+- `python3 scripts/validate_plugin_install.py --codex-probe` passes.
+- Unit tests cover the install validator's marketplace and packaged hook smoke behavior.
+- Full project validation still runs after the plugin-readiness files are added.
+
+### Feature 16: Real Plugin Runtime Probe
+
+Deliverables:
+
+- `scripts/probe_plugin_runtime.py`.
+- An isolated Codex runtime probe that adds the repo-local marketplace, enables `arbor@arbor-local`, and optionally attempts a real `codex exec` run against the installed plugin.
+- Tests for isolated config mutation, exec failure classification, expected plugin side-effect checks, and default no-model-call behavior.
+- Feature review file for plugin runtime probing behavior.
+
+Behavior:
+
+- Use a temporary `HOME` so the user's real Codex config is not modified.
+- Add the `arbor-local` marketplace through the real Codex CLI.
+- Enable `arbor@arbor-local` in the isolated config using the same config table shape as installed plugins.
+- Skip real `codex exec` by default; run it only when `--attempt-exec` is provided.
+- When `--attempt-exec` is used, ask the installed `$arbor` skill to initialize a temporary project and register hooks, then assert that `AGENTS.md`, `.codex/memory.md`, and `.codex/hooks.json` exist.
+- Classify `codex exec` failures as `network_unavailable`, `auth_required`, `plugin_runtime_error`, or generic `runtime_failed` so Arbor failures are not confused with environment blockers.
+- Do not report semantic trigger metrics from this probe. It verifies runtime reachability and plugin side effects for one installed-skill path; full scenario semantics remain a later adapter feature.
+
+Validation:
+
+- Unit tests mock runtime execution and verify success/failure classification without requiring network or model calls.
+- CLI probe without `--attempt-exec` passes in the local sandbox.
+- CLI probe with `--attempt-exec` either passes in an online authenticated runtime or reports a classified blocker without mutating the user's real Codex config.
+- Existing install-readiness and full Arbor tests continue to pass.
+
+### Feature 17: Codex Exec Plugin Runtime Trigger Adapter
+
+Deliverables:
+
+- A `plugin-runtime-codex-exec` trigger adapter behind the existing Feature 14 adapter boundary.
+- A Codex exec prompt/input path that uses the installed Arbor plugin runtime, receives non-circular runtime input, and asks for the standard trigger decision contract as JSON.
+- Unit tests for valid runtime decision parsing, runtime blocker classification, harness compatibility, and continued sidecar-baseline behavior.
+- Feature review file for the Codex exec trigger adapter.
+
+Behavior:
+
+- Preserve the trigger decision contract from Feature 13.
+- Build runtime input from the user expression, project-local fixture summary, `.codex/hooks.json`, and `SKILL.md` metadata.
+- Exclude sidecar scoring fields and expected labels from the Codex exec prompt.
+- Install and enable `arbor@arbor-local` in an isolated `HOME` before the exec call.
+- Use `codex exec --ephemeral --json --output-schema --output-last-message` so the runtime result is machine-parseable.
+- The adapter selects hooks only. It must not execute hooks, initialize Arbor, update memory, or edit `AGENTS.md`.
+- Runtime blockers such as network, auth, plugin enable failure, or timeout return a valid `ambiguous` trigger decision with `requires_agent_judgment=true` and no hooks.
+- Invalid JSON, unknown hook ids, or invalid decision contract from a successful runtime call remain adapter errors.
+- Do not run full 150-scenario semantic metrics in this feature. This feature proves the runtime adapter path and blocker behavior; metric reporting is a later feature after review.
+
+Validation:
+
+- Unit tests mock Codex exec and verify a valid runtime JSON decision is parsed and contract-validated.
+- Unit tests verify the prompt excludes sidecar scoring fields.
+- Unit tests verify network/runtime blockers return a valid ambiguous decision without selecting hooks.
+- Harness scenario evaluation can use `plugin-runtime-codex-exec` without executing hooks when the runtime returns a blocker.
+- Existing sidecar-baseline full-corpus report remains passing.
+
+### Feature 18: Runtime Availability And Semantic Scoring Gates
+
+Deliverables:
+
+- Runtime availability and scoring gate fields in the full-corpus hook trigger report.
+- Tests proving runtime blockers are excluded from semantic scoring readiness.
+- A feature review file for the gate design and implementation.
+
+Behavior:
+
+- Keep `semantic_metrics.reported=false`; this feature does not implement precision, recall, false-positive, ambiguity, multi-hook, or stability formulas.
+- Add `semantic_metrics.ready_for_semantic_metrics` as the explicit handoff signal for the later metric feature.
+- Gate semantic metric readiness on:
+  - adapter eligibility: only `plugin-runtime-codex-exec` can become metric-eligible;
+  - runtime availability: runtime blocker decisions such as `network_unavailable`, `auth_required`, `project_file_mutation:<paths>`, timeout, or plugin enable failure block scoring and are not counted as semantic `NONE`;
+  - hook execution cleanliness: selected hook execution pass rate is 1.0, outside-root leaks are 0, unintended writes are 0, and assertion failures are empty.
+- Preserve sidecar and stub behavior as ineligible for semantic metrics.
+- Preserve existing hook execution-chain summary fields.
+
+Validation:
+
+- Sidecar baseline corpus still reports `semantic_metrics.reported=false` and adapter-ineligible.
+- Mocked plugin runtime blocker corpus reports runtime unavailable with blocker counts and blocked scenario ids.
+- Synthetic clean runtime results can set `ready_for_semantic_metrics=true` while still leaving formulas unreported.
+- Full sidecar baseline corpus remains passing.
+- Existing tests, compile checks, ruff, skill validation, and plugin install validation continue to pass.
+
+### Feature 19: Semantic Metric Formulas For Real Plugin Trigger Output
+
+Deliverables:
+
+- Semantic metric formulas behind the Feature 18 scoring gates.
+- Per-hook precision and recall for required hook selection.
+- `NONE` and near-miss false-positive rates.
+- Ambiguous-case acceptance and multi-hook partial-match metrics.
+- A stability placeholder that stays unreported until repeated real runtime runs exist.
+- A feature review file for the metric formulas and release boundary.
+
+Behavior:
+
+- Report semantic metrics only when `semantic_metrics.ready_for_semantic_metrics=true`.
+- Keep sidecar-baseline and plugin-runtime-stub reports ineligible.
+- Keep runtime blocker reports unscored.
+- Use evaluator-side scenario expectations only inside the harness scoring path; do not pass scoring fields into plugin runtime input.
+- Treat optional expected hooks as precision-acceptable but not required for recall.
+- Treat required hooks in non-agent-judgment scenarios as recall obligations.
+- Count selected forbidden or unexpected hooks as semantic failures.
+- Count `NONE` and `NM-*` scenarios as false positives when the runtime returns `trigger` or selects any hook.
+- Report stability as `reported=false` until the same real runtime adapter has repeated corpus runs.
+
+Release boundary:
+
+- `scripts/evaluate_hook_triggers.py`, `scripts/simulated_dispatcher.py`, `scripts/eval_fixtures.py`, `docs/reviews/hook-trigger-scenarios.*`, and review docs are repository evaluation tooling.
+- They should not be included in the Arbor plugin payload.
+- The plugin payload remains `plugins/arbor/.codex-plugin/plugin.json`, `plugins/arbor/hooks.json`, and `plugins/arbor/skills/arbor`.
+
+Validation:
+
+- Sidecar baseline corpus still passes and does not report semantic metrics.
+- Synthetic gate-ready plugin runtime results report semantic metrics.
+- Synthetic false-positive and missing-required-hook results are reflected in metric failures.
+- Runtime blocker results still withhold semantic metrics.
+- Existing full test, compile, ruff, skill validation, plugin install validation, and coverage checks continue to pass.
+
+### Feature 20: Repeated Runtime Corpus Stability Evaluation
+
+Deliverables:
+
+- A repeated full-corpus evaluation mode for the existing hook trigger harness.
+- Stability aggregation for comparable real plugin runtime reports.
+- Tests proving stability is reported only when repeated real runtime runs are gate-ready.
+- A feature review file for repeated runtime stability behavior and blocker handling.
+
+Behavior:
+
+- Add a repeat-run path that executes the same full corpus more than once under isolated per-run fixture roots.
+- Preserve the existing single-run `--all` and `--scenario-id` behavior.
+- Compare trigger decisions by scenario id using decision, selected hooks, and optional args.
+- Preserve `optional_args` in compact corpus rows so default repeated reports can be replayed for stability signatures.
+- Report stability only when:
+  - the trigger adapter is `plugin-runtime-codex-exec`;
+  - at least two corpus runs exist;
+  - every run reports semantic metrics through the existing readiness gates.
+- Keep stability unreported for sidecar, stub, single-run, empty-run, runtime blocker, and hook execution failure paths.
+- Do not retry around runtime blockers or convert blockers into semantic `NONE` results.
+
+Validation:
+
+- Unit tests cover matching repeated runtime decisions reporting `stability_rate=1.0`.
+- Unit tests cover changed repeated runtime decisions reporting unstable scenario ids.
+- Unit tests cover sidecar and runtime-blocker repeated runs withholding stability.
+- CLI tests cover `--all --repeat-runs 2` without changing default single-run output.
+- Existing full test, compile, ruff, skill validation, plugin install validation, sidecar full-corpus, runtime smoke, and coverage checks continue to pass.
+
+### Feature 21: Authenticated Installed Plugin Runtime Probe
+
+Deliverables:
+
+- Authenticated isolated runtime probing for the installed Arbor plugin.
+- Local plugin cache materialization, explicit auth copy, isolated project trust, and installed skill injection evidence.
+- A fresh-project side-effect gate that rejects pre-existing Arbor output files before `codex exec`.
+- A feature review file for authenticated runtime probe behavior.
+
+Behavior:
+
+- Copy auth only from an explicit `--auth-source-home`; never mutate the user's real Codex config.
+- Require true installed-cache evidence before reporting a runtime probe pass.
+- Treat online/headless runtime blockers as environment blockers, not semantic trigger results.
+
+Validation:
+
+- Unit tests cover auth copy, missing auth, plugin cache materialization, project trust, fresh-project side-effect gates, and installed-cache injection evidence.
+- Runtime probe commands either pass in an authenticated online runtime or report classified blockers.
+
+### Feature 22: Authenticated Runtime Corpus Controls
+
+Deliverables:
+
+- Runtime adapter options for `plugin-runtime-codex-exec`.
+- Harness CLI flags for authenticated real-runtime corpus runs:
+  - `--auth-source-home`
+  - `--runtime-timeout`
+  - `--codex-bin`
+- Tests proving authenticated runtime options are copied into isolated runtime homes and forwarded from scenario/corpus evaluation.
+- A feature review file for the corpus control surface.
+
+Behavior:
+
+- Keep the adapter read-only for trigger selection; it must not execute hooks or mutate project memory files.
+- Copy auth into each isolated runtime home only when explicitly requested.
+- Missing requested auth returns an `auth_required` runtime blocker and remains unscored.
+- Runtime options apply to `plugin-runtime-codex-exec`; sidecar and stub behavior remain unchanged.
+- Full-corpus semantic metrics remain gated on runtime availability and clean hook execution.
+
+Validation:
+
+- Unit tests cover auth copy into the adapter runtime, missing auth blocker behavior, runtime option forwarding, and CLI parsing.
+- Focused adapter/harness/probe tests, compile, and ruff continue to pass.
+
+### Feature 23: Runtime Schema Compatibility And Smoke Gates
+
+Deliverables:
+
+- A strict structured-output-compatible trigger decision schema for `plugin-runtime-codex-exec`.
+- Normalization for schema-required empty `optional_args` hook keys.
+- Stable runtime blocker diagnostics that preserve blocker counts while exposing short redacted failure detail.
+- Positive and negative authenticated runtime smoke evidence.
+- A feature review file for the schema fix and smoke results.
+
+Behavior:
+
+- `optional_args` remains part of the trigger decision contract, but the output schema declares every hook id explicitly with `additionalProperties=false`.
+- Empty schema-required optional-arg arrays are normalized away before local contract validation.
+- Non-empty optional args for unselected hooks remain invalid.
+- Runtime blocker reason strings may include a short `detail` suffix, but scoring gates still count the stable blocker class only.
+- `--runtime-timeout` rejects non-positive values before runtime execution.
+- Single-scenario smoke gates use explicit expectation flags; without those flags, default runtime blocker behavior remains unscored rather than failed:
+  - `--require-runtime-available`
+  - `--expect-decision`
+  - `--expect-hooks`
+
+Validation:
+
+- Unit tests cover strict optional-args schema shape, empty optional-args normalization, runtime detail redaction, blocker-count normalization, and timeout parser rejection.
+- Authenticated runtime smoke covers one clear positive and one negative scenario with explicit runtime availability, decision, and hook assertions before attempting a larger corpus run.
+
+### Feature 24: Runtime Batch Execution Controls
+
+Deliverables:
+
+- Selected corpus execution for authenticated real-runtime batches via `--scenario-ids`.
+- Per-scenario progress JSONL via `--progress-jsonl`.
+- Adapter-level normalization for model-natural optional hook arguments before command execution.
+- A feature review file for selected batch controls and authenticated replay evidence.
+
+Behavior:
+
+- `--scenario-ids` accepts a comma-separated list from the existing scenario corpus and reports `scenario_scope=selected`.
+- `--progress-jsonl` writes one compact event after each scenario so slow real-runtime runs can be monitored and partial failures can be replayed.
+- Smoke expectation flags remain single-scenario only; selected corpus reports keep corpus/scoring semantics.
+- Optional args are normalized at the adapter contract boundary:
+  - H3 bare doc paths and `--doc path` strings become repeated `--doc <path>` argv pairs.
+  - H2 joined or split `--diff-args ...` values become a single safe equals-form option-value argument.
+  - H1 joined or split `--git-log-args ...` values preserve spaces as a single option value.
+- Non-empty optional args for unselected hooks remain invalid.
+- Malformed optional args, including missing values and unknown hook-specific flags, fail at adapter validation before hook execution.
+
+Validation:
+
+- Unit tests cover selected scenario parsing, progress JSONL output, CLI selected-corpus reports, and optional-args normalization.
+- Authenticated real-runtime replay covers prior batch failures before attempting a larger selected batch.
+
+### Feature 25: Real Runtime Full Corpus
+
+Deliverables:
+
+- Full 150-scenario authenticated real-runtime corpus execution through `plugin-runtime-codex-exec`.
+- Adapter contract continuation for corpus runs: per-scenario adapter errors are captured in the report and progress JSONL instead of aborting the run.
+- H1/H2 single-value optional-arg normalization that accepts model-natural bare values without constraining read depth or diff/log shape.
+- Honest corpus pass/fail status: once real semantic metrics are reported, any semantic failed scenario makes the report fail and the CLI return non-zero.
+- Durable report retention via `--report-json` for expensive authenticated runtime runs.
+- Feature review file for full-corpus real-runtime execution, semantic-miss closure, and retained full-corpus artifacts.
+
+Behavior:
+
+- H1/H2 optional args are one value slot. The adapter accepts canonical equals form, joined flag/value form, split flag/value form, or a bare value, then normalizes to the canonical equals form.
+- H3 remains a structured repeated `--doc <path>` list and keeps rejecting unknown option-like values.
+- Runtime trigger input may include an outside selected-doc path when the fixture/runtime event needs hook-level project-local safety validation; it must not include outside file content or sidecar scoring labels.
+- Corpus reports distinguish:
+  - hook execution pass rate;
+  - adapter contract readiness;
+  - runtime availability;
+  - semantic trigger quality.
+- Runtime blocker reports remain unscored. Semantic report failure applies only after all scoring gates pass and semantic metrics are actually reported.
+
+Validation:
+
+- Unit tests cover bare H1/H2 optional values, adapter-error continuation, semantic report failure, and CLI non-zero exit for failed corpus reports.
+- Authenticated real-runtime validation covers the prior H2 optional-arg failures, then the full corpus.
+- Round 1 focused authenticated replay covers the four prior semantic misses and persists report/progress artifacts.
+- Round 2 authenticated full-corpus replay covers all 150 scenarios with retained report/progress artifacts and reports semantic metrics as passed. Stability remains unreported until repeated full real-runtime runs exist.
+
 ## Hook Trigger Dispatch Evaluation
 
 The standalone skill defines hook contracts and executable hook entrypoints, but it does not yet include the future plugin's runtime semantic dispatcher. The feature-level review should therefore evaluate a dispatcher as an explicit component instead of relying only on document review.
@@ -643,7 +1028,7 @@ Test the full dispatch path:
 
 ```text
 user expression + project-state fixture
--> dispatcher decision
+-> plugin trigger decision
 -> hook script execution when selected
 -> output and side-effect assertions
 ```
@@ -765,9 +1150,14 @@ Stage B deliverables:
 
 - A structured scenario sidecar with machine-checkable expected decisions and hook sets. Feature 8 supplies the first version.
 - Deterministic fixture builders for clean, non-git, missing setup, uncommitted, stale-memory, durable-drift, and outside-root cases. Feature 9 supplies the first version.
-- A simulated dispatcher adapter that emits the dispatcher output contract from sidecar expectations. Feature 10 supplies the first version.
+- A sidecar-baseline trigger adapter that emits the trigger decision contract from sidecar expectations. Feature 10 supplies the first version under the historical `simulated_dispatcher.py` name.
 - `scripts/evaluate_hook_triggers.py` or equivalent harness. Feature 11 supplies the first version for registered-hook execution assertions.
 - Full-corpus hook execution report. Feature 12 supplies the first sidecar-backed corpus report.
+- Plugin trigger adapter plan. Feature 13 defines the next-phase adapter boundary and non-circular semantic-evaluation gates.
+- Plugin trigger selection and non-circular runtime input builder. Feature 14 supplies the first adapter selection surface and plugin-runtime-stub path.
+- Plugin installation readiness. Feature 15 supplies the repo-local marketplace and isolated Codex CLI marketplace add probe.
+- Real plugin runtime probe. Feature 16 supplies the isolated installed-plugin reachability check and classified `codex exec` blocker reporting.
+- Codex exec plugin runtime trigger adapter. Feature 17 supplies the first real runtime adapter path with JSON contract output and blocker classification.
 - A result report appended to `docs/reviews/features/feature-level-hook-trigger-review.md`.
 
 ### Hook Execution Assertions
@@ -804,10 +1194,12 @@ Report metrics by scenario family and overall:
 - H3 precision and recall.
 - `NONE` false-positive rate.
 - Near-miss false-positive rate.
-- Ambiguous-case handling rate: fraction of expected ambiguous cases marked `ambiguous` or returning a documented multi-hook decision.
-- Multi-hook partial-match rate: selected hooks include at least one expected hook and do not include unrelated hooks.
+- Ambiguous-case acceptance: ambiguous or agent-judgment scenarios use an allowed decision and avoid forbidden or unexpected hooks.
+- Multi-hook required recall: selected required hooks divided by total required hooks across multi-hook scenarios.
+- Multi-hook metric inputs preserve `raw_missing_required_hooks` separately from `missing_required_hooks`; the raw field is the scoring input, while the presentation field may be cleared for an allowed ambiguous abstention.
+- Multi-hook exact-required rate: raw required hooks must actually be selected; allowed ambiguous abstention is accepted separately but is not an exact required-hook match.
 - Execution pass rate: selected hooks execute and satisfy packet and side-effect assertions.
-- Stability rate: identical inputs produce identical hook labels across repeated runs.
+- Stability stays `reported=false` until repeated real runtime corpus runs are available; identical-input stability should not be inferred from a single smoke run or sidecar replay.
 
 Repeat stochastic dispatcher runs at least 3 times for the same corpus. Any non-determinism must be reported with the affected scenario ids.
 
@@ -869,7 +1261,13 @@ Next Stage B order:
 4. Add the simulated dispatcher adapter. Complete in Feature 10.
 5. Add registered-hook execution and packet/side-effect assertions. Complete in Feature 11.
 6. Add a full-corpus hook execution report. Complete in Feature 12.
-7. Report semantic metrics only after observed labels come from a real dispatcher rather than the sidecar-backed simulator.
+7. Define the plugin trigger adapter boundary and non-circular metric gates. Complete in Feature 13.
+8. Add plugin trigger adapter selection and a non-circular plugin runtime input builder. Complete in Feature 14.
+9. Add repo-local plugin installation readiness and isolated Codex CLI marketplace add probe. Complete in Feature 15.
+10. Add an isolated installed-plugin runtime probe and classify environment blockers. Complete in Feature 16.
+11. Add the Codex exec plugin runtime trigger adapter and validate single-scenario/blocker behavior. Complete in Feature 17.
+12. Report semantic metrics only after observed labels come from the reviewed runtime adapter rather than the sidecar-backed baseline. Complete in Feature 19.
+13. Add repeated real runtime corpus stability aggregation without reporting stability for blocked, sidecar, stub, or single-run paths.
 
 ## Current Environment Notes
 

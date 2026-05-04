@@ -27,9 +27,13 @@ def resolve_project_root(root: Path) -> Path:
     return resolved
 
 
-def parse_optional_git_args(raw: str | None) -> list[str] | None:
+def parse_optional_git_args(raw: str | list[str] | None) -> list[str] | None:
     if raw is None:
         return None
+    if isinstance(raw, list):
+        if not raw:
+            return None
+        raw = " ".join(raw)
     try:
         args = shlex.split(raw)
     except ValueError as exc:

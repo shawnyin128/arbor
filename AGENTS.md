@@ -18,9 +18,17 @@ Build Arbor as a small Codex skill/plugin system for the user's daily developmen
 ## Project Map
 
 - `docs/arbor-skill-design.md`: feature design, workflow boundaries, incremental development plan, and test plan.
+- `README.md`: GitHub-facing overview, installation instructions, usage examples, validation commands, and release payload boundary.
 - `docs/reviews/arbor-skill-review.md`: high-level review index and feature routing.
 - `docs/reviews/arbor-final-delivery.md`: final current-scope delivery summary, validation snapshot, and handoff commands.
+- `docs/reviews/arbor-release-closure.md`: release scope, packaged payload inventory, exclusions, and release-gating evidence.
+- `docs/reviews/stage-b-plugin-runtime-final-review.md`: Stage B closure review for plugin runtime trigger evaluation.
+- `docs/reviews/artifacts/`: retained JSON/JSONL validation artifacts for expensive authenticated runtime replays.
 - `docs/reviews/features/`: detailed per-feature review files for progressive review reads.
+- `docs/reviews/features/feature-21-authenticated-runtime-probe.md`: authenticated installed-plugin runtime probe review, including plugin-cache materialization and current `.codex` write blocker.
+- `docs/reviews/features/feature-24-runtime-batch-execution.md`: selected real-runtime batch controls, progress JSONL, optional-args normalization, and authenticated batch replay evidence.
+- `docs/reviews/features/feature-25-real-runtime-full-corpus.md`: authenticated full-corpus runtime validation, semantic-miss replay, and retained report artifact routing.
+- `.agents/plugins/marketplace.json`: repo-local Codex marketplace entry that exposes `plugins/arbor` for isolated installation tests.
 - `.codex/hooks.json`: project-local Arbor hook contract with startup, memory hygiene, and AGENTS drift hook intents.
 - `skills/arbor/SKILL.md`: user-facing skill trigger metadata and core operating workflow.
 - `skills/arbor/references/`: templates copied into target projects.
@@ -28,5 +36,8 @@ Build Arbor as a small Codex skill/plugin system for the user's daily developmen
 - `plugins/arbor/`: repo-local Codex plugin package that distributes the accepted Arbor skill payload and hook contract.
 - `scripts/eval_fixtures.py`: deterministic temporary project fixture builders for Stage B hook trigger dispatch evaluation.
 - `scripts/simulated_dispatcher.py`: sidecar-backed simulated dispatcher adapter for Stage B harness plumbing.
-- `scripts/evaluate_hook_triggers.py`: Stage B harness that executes selected hooks through project-registered `.codex/hooks.json` entrypoints, checks packet/side-effect assertions, and reports full-corpus hook execution-chain quality.
+- `scripts/plugin_trigger_adapters.py`: plugin trigger adapter boundary, contract validation, optional-args normalization, and non-circular plugin runtime input builder for Stage B evaluation.
+- `scripts/evaluate_hook_triggers.py`: Stage B harness that executes selected hooks through project-registered `.codex/hooks.json` entrypoints, checks packet/side-effect assertions, supports selected/progress-tracked corpus runs, reports full-corpus hook execution-chain quality, and aggregates repeated real-runtime stability when gates pass.
+- `scripts/validate_plugin_install.py`: validates Arbor's repo-local plugin marketplace, packaged manifest, packaged hook entrypoints, packaged skill smoke, and isolated Codex CLI marketplace add.
+- `scripts/probe_plugin_runtime.py`: probes Arbor as an installed Codex plugin in an isolated runtime, optionally attempts real `codex exec`, and classifies runtime blockers.
 - `tests/test_arbor_skill.py`: unit and scenario tests for the skill scripts.

@@ -1,0 +1,3057 @@
+{
+  "passed": true,
+  "report_type": "plugin_trigger_adapter_hook_execution",
+  "scenario_scope": "all",
+  "scenarios": [
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P001",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P002",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P003",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P004",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P005",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P006",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "CL-P007",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P008",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "CL-P009",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "CL-P010",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/project-map.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "CL-P011",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/constraints.md",
+          "--doc",
+          "docs/project-map.md",
+          "--doc",
+          "docs/workflow.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "CL-P012",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P013",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P014",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P015",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P016",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P017",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P018",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "CL-P019",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "CL-P020",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P001",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "outside_root_path",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P002",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P003",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P004",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P005",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P006",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "missing_agents",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P007",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "missing_memory",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P008",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/constraints.md",
+          "--doc",
+          "docs/project-map.md",
+          "--doc",
+          "docs/workflow.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "EV-P009",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 2
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "outside_root_path",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "/private/tmp/arbor-f25-full-runtime-r5/EV-P010-outside_root_path-outside/project-map.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "EV-P010",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P001",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P002",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P003",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P004",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "missing_agents",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P005",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P006",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P007",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H1-P008",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P009",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P010",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P011",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P012",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "missing_memory",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P013",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P014",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H1-P015",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P016",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P017",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P018",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P019",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H1",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H1-P020",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P001",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "stale_memory",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P002",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P003",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P004",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {
+        "arbor.in_session_memory_hygiene": [
+          "--diff-args=--stat"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H2-P005",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H2-P006",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "stale_memory",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P007",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P008",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P009",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P010",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P011",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "stale_memory",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P012",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H2-P013",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P014",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "stale_memory",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {
+        "arbor.in_session_memory_hygiene": [
+          "--diff-args=-- fix-parser.txt"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H2-P015",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {
+        "arbor.in_session_memory_hygiene": [
+          "--diff-args=--stat"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H2-P016",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "stale_memory",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P017",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H2-P018",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {
+        "arbor.in_session_memory_hygiene": [
+          "--diff-args=--stat"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H2-P019",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H2-P020",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P001",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P002",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P003",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P004",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/project-map.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H3-P005",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/project-map.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P006",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/workflow.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H3-P007",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P008",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P009",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P010",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P011",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H3-P012",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/project-map.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H3-P013",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P014",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P015",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H3-P016",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P017",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "H3-P018",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/project-map.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H3-P019",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H3",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "H3-P020",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.session_startup_context",
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "M-P001",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "stale_memory",
+      "hooks": [
+        "arbor.session_startup_context",
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "M-P002",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.goal_constraint_drift",
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P003",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P004",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene",
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.in_session_memory_hygiene": [
+          "--diff-args=--stat",
+          "--diff-args=--patch"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P005",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "missing_agents",
+      "hooks": [
+        "arbor.session_startup_context",
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P006",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context",
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P007",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.session_startup_context",
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P008",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.goal_constraint_drift",
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P009",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context",
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "M-P010",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "M-P011",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "M-P012",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 4,
+          "failed_assertions": [],
+          "hook_id": "arbor.session_startup_context",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "clean_git_project",
+      "hooks": [
+        "arbor.session_startup_context"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P013",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P014",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "M-P015",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P016",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 6,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "durable_drift_docs",
+      "hooks": [
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {
+        "arbor.goal_constraint_drift": [
+          "--doc",
+          "docs/workflow.md"
+        ]
+      },
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P017",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "H2",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P018",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "uncommitted_changes",
+      "hooks": [
+        "arbor.in_session_memory_hygiene"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P019",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "trigger",
+      "executions": [
+        {
+          "assertion_count": 7,
+          "failed_assertions": [],
+          "hook_id": "arbor.in_session_memory_hygiene",
+          "passed": true,
+          "returncode": 0
+        },
+        {
+          "assertion_count": 5,
+          "failed_assertions": [],
+          "hook_id": "arbor.goal_constraint_drift",
+          "passed": true,
+          "returncode": 0
+        }
+      ],
+      "expected_label": "MULTI",
+      "fixture": "stale_memory",
+      "hooks": [
+        "arbor.in_session_memory_hygiene",
+        "arbor.goal_constraint_drift"
+      ],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "M-P020",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P001",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P002",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P003",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P004",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P005",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P006",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P007",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "ambiguous",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": true,
+      "scenario_id": "N-P008",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P009",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P010",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P011",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P012",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P013",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P014",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P015",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P016",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P017",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P018",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P019",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "N-P020",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P001",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P002",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P003",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P004",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P005",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P006",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P007",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P008",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P009",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P010",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P011",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P012",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P013",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P014",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P015",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P016",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P017",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P018",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P019",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    },
+    {
+      "decision": "none",
+      "executions": [],
+      "expected_label": "NONE",
+      "fixture": "clean_git_project",
+      "hooks": [],
+      "optional_args": {},
+      "passed": true,
+      "requires_agent_judgment": false,
+      "scenario_id": "NM-P020",
+      "trigger_adapter": "plugin-runtime-codex-exec"
+    }
+  ],
+  "summary": {
+    "assertion_failures": [],
+    "decision_counts": {
+      "ambiguous": 1,
+      "none": 47,
+      "trigger": 102
+    },
+    "failed_scenarios": [],
+    "hook_counts": {
+      "arbor.goal_constraint_drift": 37,
+      "arbor.in_session_memory_hygiene": 41,
+      "arbor.session_startup_context": 34
+    },
+    "hook_execution_pass_rate": 1.0,
+    "outside_root_leaks": 0,
+    "outside_root_rejections": 1,
+    "outside_root_rejections_passed": 1,
+    "passed_hook_executions": 112,
+    "passed_scenarios": 150,
+    "scenarios_with_hooks": 102,
+    "scenarios_without_hooks": 48,
+    "selected_hook_executions": 112,
+    "semantic_metrics": {
+      "gates": {
+        "adapter_contract": {
+          "adapter_error_count": 0,
+          "adapter_error_scenarios": [],
+          "passed": true,
+          "reason": "Adapter trigger decisions matched the contract.",
+          "status": "clean"
+        },
+        "adapter_eligibility": {
+          "passed": true,
+          "reason": "Adapter decisions come from the installed plugin runtime path.",
+          "status": "eligible"
+        },
+        "hook_execution": {
+          "assertion_failure_count": 0,
+          "hook_execution_pass_rate": 1.0,
+          "outside_root_leaks": 0,
+          "passed": true,
+          "reason": "Hook execution assertions are clean.",
+          "status": "clean",
+          "unintended_write_failures": 0
+        },
+        "runtime_availability": {
+          "blocked_scenario_count": 1,
+          "blocked_scenarios": [
+            {
+              "reason": "timeout",
+              "scenario_id": "N-P008"
+            }
+          ],
+          "blocker_counts": {
+            "timeout": 1
+          },
+          "passed": false,
+          "reason": "Runtime blocker decisions are excluded from semantic scoring.",
+          "status": "blocked",
+          "total_scenarios": 150
+        }
+      },
+      "passed": false,
+      "ready_for_semantic_metrics": false,
+      "reason": "Semantic trigger metrics are withheld until every scoring gate passes.",
+      "reported": false
+    },
+    "total_scenarios": 150,
+    "unintended_write_failures": 0
+  },
+  "trigger_adapter": "plugin-runtime-codex-exec"
+}
