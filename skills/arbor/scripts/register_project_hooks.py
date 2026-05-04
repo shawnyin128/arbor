@@ -73,7 +73,7 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
         "id": "arbor.goal_constraint_drift",
         "owner": "arbor",
         "event": "project.guide_drift",
-        "description": "Update durable project goal, constraints, or map when they change.",
+        "description": "Update the stable project guide or map when goals, constraints, or map pointers change.",
         "entrypoint": {
             "type": "skill-script",
             "skill": "arbor",

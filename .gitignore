@@ -10,10 +10,12 @@ __pycache__/
 # not published from this plugin repository.
 /.codex/
 
-# Development and review-only trees. The public plugin marketplace should stay
-# focused on the installable payload under plugins/arbor.
+# Development and review-only trees. Keep the public repository focused on the
+# installable root plugin payload.
 /docs/
 /scripts/
-/skills/
 /tests/
 AGENTS.md
+
+# Local adapter/worktree experiments; do not publish.
+/.claude/

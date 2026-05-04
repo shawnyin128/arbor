@@ -8,7 +8,7 @@
       "name": "arbor",
       "source": {
         "source": "local",
-        "path": "./plugins/arbor"
+        "path": "./"
       },
       "policy": {
         "installation": "AVAILABLE",

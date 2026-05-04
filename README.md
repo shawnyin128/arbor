@@ -6,7 +6,7 @@ Codex is strongest when it has the right project context. In real projects, that
 
 It creates and maintains:
 
-- `AGENTS.md` for durable project goals, constraints, and project map.
+- `AGENTS.md` as the durable project guide and map to deeper context.
 - `.codex/memory.md` for short-term, uncommitted session memory.
 - `.codex/hooks.json` for project-level Arbor hook registration.
 
@@ -16,8 +16,8 @@ Arbor fixes the workflow order. It does not limit how much code, documentation, 
 
 ## Why Use Arbor
 
-- **Faster repo resumption**: Arbor always starts from durable project guidance, git history, short-term memory, and current git status.
-- **Cleaner memory boundaries**: uncommitted session state goes in `.codex/memory.md`; durable goals, constraints, and project map entries go in `AGENTS.md`.
+- **Faster repo resumption**: Arbor always starts from the project guide, git history, short-term memory, and current git status.
+- **Cleaner memory boundaries**: unresolved uncommitted state goes in `.codex/memory.md`; long-term context is reconstructed from `AGENTS.md`, git history, and project docs.
 - **Less repeated context work**: decisions and project structure stop living only in chat history.
 - **Project-local by default**: Arbor writes to the current repo, not a global memory store.
 - **Hook-ready workflow**: startup context, memory hygiene, and AGENTS drift each have clear project-level hook intents.
@@ -74,14 +74,23 @@ What it does well:
 - registering Arbor hooks into `.codex/hooks.json`;
 - loading startup context in the fixed order: `AGENTS.md`, formatted `git log`, `.codex/memory.md`, `git status`;
 - refreshing short-term memory when current-session or uncommitted work makes `.codex/memory.md` stale;
-- preparing durable `AGENTS.md` updates when project goals, constraints, or project map entries change.
+- preparing `AGENTS.md` updates when the project guide or map needs to point Codex at changed durable context.
+
+How long-term memory works:
+
+Important: `AGENTS.md` is not Arbor's long-term memory database.
+
+- `AGENTS.md` is the entrypoint. It holds stable goals, constraints, and a map of where important project knowledge lives.
+- `git log` is the completed-work history. Good commits make finished features, fixes, and verification discoverable.
+- project docs hold deeper design, review, and domain context that should not be compressed into `AGENTS.md`.
+- `.codex/memory.md` is only for short-term unresolved state before it is committed, resolved, or moved to durable docs.
 
 Use it when:
 
 - starting work in a new repo;
 - resuming a repo after time away;
 - preparing to commit and wanting memory to reflect only unresolved uncommitted work;
-- changing project goals, constraints, naming, architecture, or project map;
+- changing project goals, constraints, naming, architecture, or the project map;
 - building workflows where git log and project docs are part of the agent's long-term context.
 
 ## Usage
@@ -104,7 +113,7 @@ Refresh memory before a commit:
 $arbor refresh project memory before commit
 ```
 
-Update durable project guidance:
+Update the project guide or map:
 
 ```text
 $arbor update AGENTS.md for the new project constraints
@@ -124,7 +133,7 @@ AGENTS.md
 
 - `arbor.session_startup_context`: emits startup context in the required order.
 - `arbor.in_session_memory_hygiene`: emits memory, git status, and diff context for short-term memory refresh.
-- `arbor.goal_constraint_drift`: emits project guide context for durable `AGENTS.md` goal, constraint, and map updates.
+- `arbor.goal_constraint_drift`: emits project guide context when `AGENTS.md` may need to update its stable goals, constraints, or map pointers.
 
 The hooks emit context packets. The agent decides whether to edit `.codex/memory.md` or `AGENTS.md`.
 
@@ -139,5 +148,11 @@ Current version:
 Version file:
 
 ```text
-plugins/arbor/.codex-plugin/plugin.json
+.codex-plugin/plugin.json
+```
+
+Marketplace file:
+
+```text
+.claude-plugin/marketplace.json
 ```

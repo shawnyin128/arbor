@@ -26,6 +26,7 @@ The hook file is a visible project artifact, not user-global state. A later Arbo
    - Optional argument channel: repeat `--doc "${DOC_PATH}"` for each agent-selected project-local doc.
    - Emits an AGENTS drift packet with `AGENTS.md`, git status, and optional project-local docs.
    - The running agent decides whether to edit only `Project Goal`, `Project Constraints`, or `Project Map` in `AGENTS.md`.
+   - `AGENTS.md` should remain the stable guide and map, not a complete long-term memory dump.
 
 ## Policy
 

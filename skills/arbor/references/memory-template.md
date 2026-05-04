@@ -11,8 +11,9 @@ TRIAGE BEFORE ADDING:
 
 HARD RULES:
   - No duplication with AGENTS.md, project docs, task trackers, or committed history.
-  - Keep durable goals, constraints, and project map updates in AGENTS.md.
-  - Keep completed implementation details in review docs or git history, not here.
+  - Keep stable project-guide and map updates in AGENTS.md.
+  - Keep completed implementation details in project docs or git history, not here.
+  - Do not duplicate durable context that already lives in AGENTS.md, git history, or project docs.
   - Keep this file under 30 lines when practical.
 -->
 

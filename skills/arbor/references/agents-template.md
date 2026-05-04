@@ -2,7 +2,7 @@
 
 ## Project Goal
 
-Describe the durable project objective here.
+Describe the stable project objective here.
 
 ## Project Constraints
 
@@ -11,5 +11,7 @@ Describe the durable project objective here.
 
 ## Project Map
 
+Use this as the entrypoint to durable project context, not as the whole long-term memory store.
+
 - Document major directories, modules, commands, architecture boundaries, and where to start reading.
-- Add pointers to deeper docs as the project grows.
+- Add pointers to deeper design, review, and domain docs as the project grows.

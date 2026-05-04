@@ -18,7 +18,7 @@
   "interface": {
     "displayName": "Arbor",
     "shortDescription": "Project-local memory and hook workflows",
-    "longDescription": "Arbor initializes project-local Codex memory, registers project-level hook intents, loads startup context in a stable order, emits memory hygiene packets, and emits AGENTS drift packets for durable project guidance updates.",
+    "longDescription": "Arbor initializes project-local Codex memory, registers project-level hook intents, loads startup context in a stable order, emits memory hygiene packets, and emits AGENTS drift packets when the stable project guide or map may need updates.",
     "developerName": "Shawn",
     "category": "Coding",
     "capabilities": [
