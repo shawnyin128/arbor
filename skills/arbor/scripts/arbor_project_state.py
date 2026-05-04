@@ -8,9 +8,13 @@ from pathlib import Path
 
 
 PROJECT_GUIDE_PATH = Path("AGENTS.md")
+CLAUDE_GUIDE_PATH = Path("CLAUDE.md")
 CANONICAL_MEMORY_PATH = Path(".arbor") / "memory.md"
 LEGACY_CODEX_MEMORY_PATH = Path(".codex") / "memory.md"
 CODEX_HOOK_CONFIG_PATH = Path(".codex") / "hooks.json"
+
+INSTALL_RUNTIME_CODEX = "codex"
+INSTALL_RUNTIME_CLAUDE = "claude"
 
 
 @dataclass(frozen=True)
@@ -101,3 +105,52 @@ def ensure_memory_file(root: Path, template: str, dry_run: bool) -> list[Project
         ]
 
     return [ensure_file(canonical, template, dry_run)]
+
+
+def detect_install_runtime(reference: Path | None = None) -> str | None:
+    """Identify the host runtime from the file's installed cache path.
+
+    Codex copies installed plugins under ``~/.codex/plugins/cache/...``;
+    Claude Code copies them under ``~/.claude/plugins/cache/...``. The cache
+    prefix is fixed by each runtime at install time and survives across
+    invocations regardless of how the script is launched (hook subprocess,
+    Bash tool subprocess, or direct manual run).
+
+    The match requires ``.claude``/``.codex`` to be immediately followed by
+    ``plugins`` in the path components, so a development checkout that
+    happens to live under ``.claude/worktrees/...`` or ``.codex/<other>/``
+    is not misclassified.
+
+    Returns ``"codex"`` or ``"claude"`` when the reference path lives
+    inside one of those caches; returns ``None`` for development checkouts
+    or any other location, so callers can fall back to a conservative
+    default.
+
+    This is the canonical Arbor self-adaptation primitive: scripts that
+    need a runtime-specific default should call this helper rather than
+    sniffing environment variables, which are only set inside hook
+    subprocesses.
+    """
+    target = (reference if reference is not None else Path(__file__)).resolve()
+    parts = target.parts
+    for i in range(len(parts) - 1):
+        if parts[i + 1] != "plugins":
+            continue
+        if parts[i] == ".claude":
+            return INSTALL_RUNTIME_CLAUDE
+        if parts[i] == ".codex":
+            return INSTALL_RUNTIME_CODEX
+    return None
+
+
+def ensure_claude_bridge(root: Path, template: str, dry_run: bool) -> ProjectFileAction:
+    """Create ``CLAUDE.md`` from a bridge template when it is missing.
+
+    The bridge points Claude Code at Arbor's canonical project guide
+    (``AGENTS.md``) and short-term memory (``.arbor/memory.md``). It is
+    never overwritten when it already exists; users keep full control of
+    their ``CLAUDE.md`` once it has any content.
+    """
+    resolved_root = resolve_project_root(root)
+    target = project_path(resolved_root, CLAUDE_GUIDE_PATH)
+    return ensure_file(target, template, dry_run)
