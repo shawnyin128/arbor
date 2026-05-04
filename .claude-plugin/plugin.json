@@ -1,0 +1,16 @@
+{
+  "name": "arbor",
+  "version": "0.3.0",
+  "description": "Initialize and maintain project-local Arbor memory with startup, memory hygiene, and AGENTS drift workflows.",
+  "author": {
+    "name": "Shawn"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "memory",
+    "hooks",
+    "project-context",
+    "agents"
+  ]
+}

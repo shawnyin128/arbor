@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Claude Code SessionStart hook adapter for Arbor.
+
+Reads Claude Code hook event JSON from stdin, invokes the shared Arbor
+startup-context script with the project root, applies a truncation policy
+sized for Claude Code's ``additionalContext`` injection cap (10K chars),
+and emits the trimmed packet to stdout. Plain stdout from a SessionStart
+hook is automatically treated as ``additionalContext`` by Claude Code, so
+no JSON envelope is needed for the success path.
+
+Soft-fails on stderr with a non-zero exit code rather than blocking the
+session: a missing ``cwd``, an unreadable shared script, or a downstream
+error all degrade to "no Arbor context this session" instead of failing
+session start.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+# Claude Code caps additionalContext at 10K chars; overflow routes the
+# excess to a file with a preview note. We aim under that with headroom
+# so the truncation notice plus any wrapper-added text stays in budget.
+INJECTION_BUDGET = 9500
+
+# Sources we refresh context on. clear/compact mean the user just reset
+# context deliberately; do not re-inject Arbor context in those cases.
+RELEVANT_SOURCES = {"startup", "resume"}
+
+# Section headers emitted by collect_project_context.collect_startup_context.
+# Used to locate where to replace bodies during budget-aware truncation.
+GIT_LOG_PATTERN = re.compile(
+    r"(## 2\. formatted git log\n)(.*?)(?=## 3\.)",
+    re.DOTALL,
+)
+GUIDE_PATTERN = re.compile(
+    r"(## 1\. AGENTS\.md\n)(.*?)(?=## 2\.)",
+    re.DOTALL,
+)
+
+TRUNCATION_NOTICE = (
+    "\n[truncated — Arbor SessionStart context exceeded the runtime "
+    "injection budget; the agent can run deeper reads on demand]\n\n"
+)
+
+
+def _emit_error(message: str) -> None:
+    print(f"arbor session-start: {message}", file=sys.stderr)
+
+
+def resolve_plugin_root() -> Path:
+    env = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if env:
+        return Path(env).resolve()
+    return Path(__file__).resolve().parent.parent
+
+
+def parse_hook_payload(raw: str) -> dict:
+    if not raw.strip():
+        return {}
+    return json.loads(raw)
+
+
+def replace_section(packet: str, pattern: re.Pattern[str], replacement_body: str) -> str:
+    return pattern.sub(rf"\1{replacement_body}", packet, count=1)
+
+
+def apply_budget(packet: str, budget: int) -> str:
+    if len(packet) <= budget:
+        return packet
+    trimmed = replace_section(packet, GIT_LOG_PATTERN, TRUNCATION_NOTICE)
+    if len(trimmed) <= budget:
+        return trimmed
+    trimmed = replace_section(trimmed, GUIDE_PATTERN, TRUNCATION_NOTICE)
+    if len(trimmed) <= budget:
+        return trimmed
+    # Last resort: hard cut and append notice.
+    headroom = budget - len(TRUNCATION_NOTICE) - 4
+    if headroom <= 0:
+        return TRUNCATION_NOTICE.lstrip("\n")
+    return trimmed[:headroom].rstrip() + TRUNCATION_NOTICE
+
+
+def main() -> int:
+    try:
+        payload = parse_hook_payload(sys.stdin.read())
+    except json.JSONDecodeError as exc:
+        _emit_error(f"could not parse hook event JSON: {exc}")
+        return 1
+
+    source = payload.get("source")
+    if source is not None and source not in RELEVANT_SOURCES:
+        return 0
+
+    cwd = payload.get("cwd")
+    if not cwd:
+        _emit_error("hook event payload missing 'cwd'; skipping startup context")
+        return 1
+
+    plugin_root = resolve_plugin_root()
+    script = plugin_root / "skills" / "arbor" / "scripts" / "run_session_startup_hook.py"
+    if not script.is_file():
+        _emit_error(f"shared startup script not found at {script}")
+        return 1
+
+    proc = subprocess.run(
+        [sys.executable, str(script), "--root", cwd],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        detail = proc.stderr.strip() or proc.stdout.strip() or "no output"
+        _emit_error(f"shared startup script exited {proc.returncode}: {detail}")
+        return 1
+
+    sys.stdout.write(apply_budget(proc.stdout, INJECTION_BUDGET))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
