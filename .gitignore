@@ -11,12 +11,20 @@ __pycache__/
 /.codex/
 /.arbor/
 
-# Development and review-only trees. Keep the public repository focused on the
-# installable root plugin payload.
+# Development, review, and validation-only trees. Keep the public repository
+# focused on the installable plugin payload; internal review logs, heavy
+# simulation runners, and test fixtures stay local unless explicitly approved.
 /docs/
 /scripts/
 /tests/
 AGENTS.md
+
+# Internal skill validation artifacts. Runtime skill references can be published,
+# but fixture corpora and baseline harnesses are development-only.
+skills/*/references/*-self-test-results.jsonl
+skills/*/references/*-simulation-cases.md
+skills/*/references/*-feature-registry.json
+skills/*/scripts/check_*_baselines.py
 
 # Local adapter/worktree experiments; do not publish.
 /.claude/

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Converge"
+  short_description: "Decide Arbor loop convergence"
+  default_prompt: "Use $converge to decide whether develop and evaluate agree, update feature status, route correction loops, or escalate to the user."

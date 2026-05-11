@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evaluate"
+  short_description: "Independently test Arbor work"
+  default_prompt: "Use $evaluate to independently validate a develop handoff, add adversarial checks, and append evaluator evidence for converge."

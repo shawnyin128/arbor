@@ -1,0 +1,4 @@
+interface:
+  display_name: "Intake"
+  short_description: "Classify requests for Arbor workflow"
+  default_prompt: "Use $intake to classify whether this request belongs in Arbor-managed workflow."

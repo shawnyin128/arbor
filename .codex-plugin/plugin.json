@@ -1,7 +1,7 @@
 {
   "name": "arbor",
-  "version": "0.3.0",
-  "description": "Initialize and maintain project-local Arbor memory with startup, memory hygiene, and AGENTS drift workflows.",
+  "version": "0.4.0",
+  "description": "Maintain project-local Arbor memory and run structured Arbor workflow skills from intake through release finalization.",
   "author": {
     "name": "Shawn"
   },
@@ -16,8 +16,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Arbor",
-    "shortDescription": "Project-local memory and hook workflows",
-    "longDescription": "Arbor initializes project-local memory, registers project-level Codex hook intents, loads startup context in a stable order, emits memory hygiene packets, and emits AGENTS drift packets when the stable project guide or map may need updates.",
+    "shortDescription": "Project memory and workflow skills",
+    "longDescription": "Arbor initializes project-local memory, registers project-level Codex hook intents, loads startup context in a stable order, emits memory hygiene packets, emits AGENTS drift packets, classifies user requests for Arbor-managed development workflow, turns Arbor-managed requests into reviewable brainstorm plans, executes authorized develop units with developer self-test and review handoff evidence, independently evaluates completed develop handoffs, decides convergence, and internally finalizes release evidence before selecting the next feature.",
     "developerName": "Shawn",
     "category": "Coding",
     "capabilities": [
@@ -28,7 +28,12 @@
     "defaultPrompt": [
       "Initialize Arbor in this project",
       "Resume this repo with Arbor context",
-      "Refresh project memory before commit"
+      "Refresh project memory before commit",
+      "Classify this request with intake",
+      "Plan this Arbor-managed request with brainstorm",
+      "Develop this authorized Arbor feature",
+      "Evaluate this Arbor develop handoff",
+      "Converge this Arbor feature loop and route release finalization"
     ],
     "brandColor": "#2F6F4E",
     "screenshots": []

@@ -66,11 +66,26 @@ Run `/reload-plugins` afterward to activate the skill and the bundled `SessionSt
 
 ## Skills
 
-Arbor currently ships one skill, available on both runtimes:
+Arbor currently ships six internally stable skills, available on both runtimes:
 
 ```text
 Codex:        $arbor
 Claude Code:  /arbor:arbor
+
+Codex:        $intake
+Claude Code:  /arbor:intake
+
+Codex:        $brainstorm
+Claude Code:  /arbor:brainstorm
+
+Codex:        $develop
+Claude Code:  /arbor:develop
+
+Codex:        $evaluate
+Claude Code:  /arbor:evaluate
+
+Codex:        $converge
+Claude Code:  /arbor:converge
 ```
 
 ### `arbor`
@@ -105,6 +120,124 @@ Use it when:
 - changing project goals, constraints, naming, architecture, or the project map;
 - building workflows where git log and project docs are part of the agent's long-term context.
 
+### `intake`
+
+Use `intake` when user input needs to be classified against Arbor's development workflow before any work begins.
+
+What it does well:
+
+- deciding whether a request belongs in Arbor-managed workflow or should stay as direct work;
+- splitting compound requests into multiple intents when some parts need Arbor and others do not;
+- distinguishing future backlog work from immediate active work;
+- attaching short fragments or constraints to the current context instead of creating new items;
+- selecting only one of the declared workflow routes: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, or `none`;
+- emitting UI-ready structured output so a future interface can render boundary decisions, warnings, route choices, and review focus without parsing prose.
+
+Use it when:
+
+- a user proposes a feature, bug, optimization, or later idea;
+- a request may need planning, implementation, evaluation, convergence, or release;
+- a prompt is ambiguous and may be a context patch rather than a new work item;
+- you need to decide whether a document, codebase analysis, test request, or release instruction should enter Arbor.
+
+### `brainstorm`
+
+Use `brainstorm` after `intake` routes an Arbor-managed request to planning, clarification, impact analysis, research/experiment design, or feature breakdown.
+
+What it does well:
+
+- selecting and enforcing the required evidence mode: current conversation, user artifact, project context, codebase, paper, paper plus code, or mixed evidence;
+- refusing to make settled claims before required evidence is loaded;
+- asking one blocking clarification question instead of a broad questionnaire;
+- exposing hidden design decisions that would otherwise become silent defaults;
+- comparing approaches when there are real alternatives;
+- splitting broad work into independently testable features;
+- producing acceptance criteria and a shared review test plan before development;
+- creating `docs/review/<feature>-review.md` with the Context/Test Plan section for ready implementation work;
+- returning `route_correction` when a request is too direct or belongs to another skill.
+
+Use it when:
+
+- a request is too broad to implement safely in one pass;
+- a codebase, paper, proposal, reviewer comment, or project artifact must be read before planning;
+- the user wants to discuss an implementation, research, or experiment direction before coding;
+- the next development unit needs explicit scope, acceptance criteria, and tests.
+
+### `develop`
+
+Use `develop` when an Arbor-managed feature or artifact change is authorized to execute.
+
+What it does well:
+
+- consuming upstream scope from known Arbor skills or another valid handoff source;
+- recording why execution is authorized without owning the approval process;
+- giving the agent implementation freedom inside the accepted scope;
+- running developer self-tests against the brainstorm review test scope or recording why they could not run;
+- appending developer review handoff evidence to the existing review document;
+- routing only completed developer handoffs to `evaluate`.
+
+Use it when:
+
+- `brainstorm` produced a selected feature and initialized review document that is ready for development;
+- `intake` routed a clear managed artifact or narrow active implementation with an existing review context directly to development;
+- `converge` selected evaluator findings for a correction loop;
+- developer self-test and review handoff evidence must be prepared for `evaluate`.
+
+### `evaluate`
+
+Use `evaluate` when a completed Arbor develop handoff needs independent validation before convergence.
+
+What it does well:
+
+- consuming `develop.ready_for_evaluate` handoff evidence;
+- loading the shared review document with brainstorm Context/Test Plan and Developer Round;
+- replaying developer self-tests when useful;
+- adding independent adversarial unit, scenario, edge, negative, mutation, static, schema, or coverage checks;
+- appending Evaluator Round evidence to the same review document;
+- routing completed evaluation results to `converge`.
+
+Use it when:
+
+- developer self-tests passed but need independent replay and attack;
+- a review document contains a brainstorm test plan and Developer Round ready for evaluation;
+- you need blocking findings, test gaps, scope drift, or residual risks structured for convergence;
+- managed documentation artifacts need scenario/content validation against the review plan.
+
+### `converge`
+
+Use `converge` after `evaluate` appends an Evaluator Round for an Arbor-managed feature.
+
+What it does well:
+
+- deciding whether develop and evaluate agree;
+- checking whether the accepted result still satisfies brainstorm goals, acceptance criteria, non-goals, and test scope;
+- routing implementation/test findings back to `develop`;
+- routing planning contradictions or missing brainstorm evidence back to `brainstorm`;
+- routing missing developer/evaluator evidence to the owner of that evidence;
+- updating the selected feature to `done` only after convergence is justified;
+- routing converged features to internal `release` finalization.
+
+Use it when:
+
+- `evaluate` emitted a completed evaluation result for an Arbor feature;
+- the workflow needs to decide whether to loop back to develop/evaluate or close the feature;
+- the feature registry needs a final status update after independent evaluation;
+- the current feature should move into release finalization after convergence.
+
+### `release`
+
+`release` is primarily an internal skill invoked after `converge`, not the normal user-facing entrypoint.
+
+What it does well:
+
+- verifying convergence evidence and release readiness for the current feature;
+- enforcing the git convention `<type>[optional scope]: <description>` with optional body and footers;
+- gating commit, push, PR, tag, and publish behind explicit user authorization;
+- appending Release Round evidence to the review document;
+- selecting the next unfinished feature through structured `workflow_continuation`.
+
+Use it directly only when a manual release request has equivalent convergence evidence loaded.
+
 ## Usage
 
 Invocation phrasing is the same idea on both runtimes; replace the prefix with `$arbor` on Codex or `/arbor:arbor` on Claude Code (or use natural language — both runtimes auto-trigger Arbor when the request matches its description).
@@ -131,6 +264,36 @@ Update the project guide or map:
 
 ```text
 $arbor update AGENTS.md for the new project constraints
+```
+
+Classify whether a request belongs in Arbor workflow:
+
+```text
+$intake classify this request before we decide what to do
+```
+
+Plan an Arbor-managed request before development:
+
+```text
+$brainstorm clarify and plan this feature before develop
+```
+
+Execute an authorized Arbor feature:
+
+```text
+$develop implement this selected feature and prepare review handoff
+```
+
+Evaluate a completed develop handoff:
+
+```text
+$evaluate independently validate this develop handoff
+```
+
+Decide whether a completed develop/evaluate loop has converged:
+
+```text
+$converge decide whether this feature is done and route release finalization
 ```
 
 After initialization on Codex, the target project should contain:

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Develop"
+  short_description: "Implement and self-test Arbor work"
+  default_prompt: "Use $develop to execute an authorized Arbor feature, self-test against the review plan, and append developer handoff evidence for evaluate."

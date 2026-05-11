@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brainstorm"
+  short_description: "Clarify and plan Arbor work"
+  default_prompt: "Use $brainstorm to clarify requirements, expose hidden decisions, and create the review plan before development."
