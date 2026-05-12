@@ -29,5 +29,8 @@ skills/*/scripts/check_*_baselines.py
 # Local adapter/worktree experiments; do not publish.
 /.claude/
 
-# Legacy/local marketplace experiments; Arbor publishes through .claude-plugin.
-/.agents/
+# Codex marketplace manifest. Keep other local .agents experiments ignored.
+/.agents/*
+!/.agents/plugins/
+/.agents/plugins/*
+!/.agents/plugins/marketplace.json
