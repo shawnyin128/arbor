@@ -66,7 +66,7 @@ Run `/reload-plugins` afterward to activate the skill and the bundled `SessionSt
 
 ## Skills
 
-Arbor currently ships six internally stable skills, available on both runtimes:
+Arbor ships the core project-context skill plus six internally stable workflow skills, available on both runtimes:
 
 ```text
 Codex:        $arbor
@@ -86,7 +86,25 @@ Claude Code:  /arbor:evaluate
 
 Codex:        $converge
 Claude Code:  /arbor:converge
+
+Codex:        $release
+Claude Code:  /arbor:release
 ```
+
+The managed development loop is:
+
+```text
+intake -> brainstorm -> develop -> release(checkpoint_develop)
+-> evaluate -> release(checkpoint_evaluate)
+-> converge -> release(finalize_feature)
+```
+
+`intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry.
+
+Two workflow artifacts carry state between skills:
+
+- `.arbor/workflow/features.json` is the feature queue and status index.
+- `docs/review/<feature>-review.md` is the shared evidence document for one feature, starting with the brainstorm Context/Test Plan and then accumulating Developer, Evaluator, Convergence, and Release rounds.
 
 ### `arbor`
 
@@ -174,7 +192,7 @@ What it does well:
 - giving the agent implementation freedom inside the accepted scope;
 - running developer self-tests against the brainstorm review test scope or recording why they could not run;
 - appending developer review handoff evidence to the existing review document;
-- routing only completed developer handoffs to `evaluate`.
+- routing only completed developer handoffs to `release` for a checkpoint before `evaluate`.
 
 Use it when:
 
@@ -203,6 +221,8 @@ Use it when:
 - you need blocking findings, test gaps, scope drift, or residual risks structured for convergence;
 - managed documentation artifacts need scenario/content validation against the review plan.
 
+Successful evaluate handoffs route through `release` for an evaluator checkpoint before `converge`.
+
 ### `converge`
 
 Use `converge` after `evaluate` appends an Evaluator Round for an Arbor-managed feature.
@@ -226,17 +246,18 @@ Use it when:
 
 ### `release`
 
-`release` is primarily an internal skill invoked after `converge`, not the normal user-facing entrypoint.
+`release` is primarily an internal skill invoked after `develop`, `evaluate`, and `converge`, not the normal user-facing entrypoint.
 
 What it does well:
 
+- checkpointing developer and evaluator evidence before the next workflow skill runs;
 - verifying convergence evidence and release readiness for the current feature;
 - enforcing the git convention `<type>[optional scope]: <description>` with optional body and footers;
 - gating commit, push, PR, tag, and publish behind explicit user authorization;
 - appending Release Round evidence to the review document;
 - selecting the next unfinished feature through structured `workflow_continuation`.
 
-Use it directly only when a manual release request has equivalent convergence evidence loaded.
+Use it directly only when a manual release request has equivalent review or convergence evidence loaded.
 
 ## Usage
 
@@ -296,6 +317,12 @@ Decide whether a completed develop/evaluate loop has converged:
 $converge decide whether this feature is done and route release finalization
 ```
 
+Finalize or checkpoint a feature when the required review evidence is already loaded:
+
+```text
+$release finalize this converged feature using the Arbor git convention
+```
+
 After initialization on Codex, the target project should contain:
 
 ```text
@@ -343,7 +370,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-0.3.0
+0.4.0
 ```
 
 Version files:

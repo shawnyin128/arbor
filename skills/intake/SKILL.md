@@ -1,15 +1,15 @@
 ---
 name: intake
-description: Classify user input for Arbor-managed development workflow, decide whether the request belongs in Arbor, split compound intents, choose persistence behavior, attach context patches, and route only to declared internal workflow skills using UI-ready structured output.
+description: Internally classify user input for Arbor-managed development workflow, decide whether the request belongs in Arbor, split compound intents, choose persistence behavior, attach context patches, and silently route only to declared workflow skills.
 ---
 
 # Intake
 
 ## Purpose
 
-Use `intake` to decide whether a user request should enter Arbor's development workflow. `intake` is a gatekeeper, not a universal router and not a solver.
+Use `intake` to decide whether a user request should enter Arbor's development workflow. `intake` is a silent internal gatekeeper, not a universal router, not a solver, and not a user-facing stopping point.
 
-The skill must produce stable structured output that a future UI layer can render. The UI owns presentation. The skill owns classification, boundary decisions, persistence decisions, and routing.
+The skill must produce stable structured output for runtime handoff, replay, and debug review. The downstream skill or normal assistant owns visible user output. `intake` owns classification, boundary decisions, persistence decisions, and routing.
 
 ## Checklist
 
@@ -21,7 +21,7 @@ Complete these steps in order:
 4. **Decide persistence**: determine whether this creates backlog work, updates active state, writes an artifact, or writes nothing.
 5. **Choose route**: select only one declared workflow skill, `none`, or report a route gap.
 6. **Run self-check**: verify the decision does not hit an intake anti-pattern.
-7. **Return structured output first**: emit the UI-ready JSON-shaped decision before any prose explanation.
+7. **Return structured internal output**: emit the JSON-shaped decision for runtime handoff; do not produce primary user-facing prose.
 
 ## Declared Workflow Skills
 
@@ -48,7 +48,7 @@ Read active context
 -> Structured output
 ```
 
-The terminal state is a structured intake decision. Do not invoke implementation, evaluation, release, or documentation work from inside `intake`.
+The terminal state is a structured intake decision that must immediately hand off to a downstream skill or normal assistant. Do not invoke implementation, evaluation, release, or documentation work from inside `intake`, and do not stop the user experience at `intake`.
 
 ## Core Rules
 
@@ -62,7 +62,21 @@ The terminal state is a structured intake decision. Do not invoke implementation
 8. Do not route every technical question into Arbor.
 9. Do not route every file edit into Arbor.
 10. Do not use `evaluate` for generic assessment.
-11. Emit structured fields before user-facing prose.
+11. Do not produce primary user-facing prose; downstream output is the user-facing response.
+
+## Visibility
+
+`intake` is hidden by default. It should not be manually invoked in normal user workflows and should not render a primary user card.
+
+Use its structured output for:
+
+- runtime routing;
+- downstream handoff;
+- persistence decisions;
+- replay and audit;
+- debug or reviewer trace views.
+
+Only expose intake details in an explicit debug, review, or trace mode. If the route requires clarification, route to `brainstorm` or report a resolution need for the runtime; do not ask clarification as `intake`.
 
 ## Anti-Patterns
 
@@ -219,6 +233,8 @@ Return this structure first:
     "confidence": "high"
   },
   "ui": {
+    "visibility": "hidden",
+    "display_mode": "none",
     "summary": "",
     "badges": [],
     "warnings": [],
@@ -241,11 +257,13 @@ Use these enums:
 - `persistence.active_state`: `yes`, `no`, `maybe`, `requires_permission`
 - `persistence.artifact_write`: `none`, `direct`, `defer`, `yes`
 - `routing.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
+- `ui.visibility`: `hidden` or `debug`
+- `ui.display_mode`: `none` or `trace`
 - `ui.resolution_kind`: `none`, `context_lookup`, `user_decision`, `permission`
 
 When the route depends on active context, set `routing.next_skill` to `none`, `resolution_required` to `true`, and list possible declared routes in `possible_routes`.
 
-When `routing.resolution_required` is `true`, set `ui.requires_resolution` to `true`. Use `ui.requires_user_decision` only when the user must choose or grant permission.
+When `routing.resolution_required` is `true`, set `ui.requires_resolution` to `true`. Use `ui.requires_user_decision` only when the user must choose or grant permission. Even then, keep `ui.visibility=hidden`; the downstream skill or system UI owns the visible prompt.
 
 ## Self-Check
 
@@ -258,6 +276,7 @@ Before returning, check:
 5. Did I classify proposal/report/paper/reviewer/docs/explanation requests by intent and downstream impact instead of keywords?
 6. Did I preserve raw user input separately from normalized classification?
 7. Did I include UI fields for warnings, review focus, and user decisions?
+8. Did I keep intake hidden and avoid treating it as the visible user response?
 
 If any answer fails, revise the structured output before responding.
 

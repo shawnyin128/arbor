@@ -1,4 +1,4 @@
 interface:
-  display_name: "Intake"
-  short_description: "Classify requests for Arbor workflow"
-  default_prompt: "Use $intake to classify whether this request belongs in Arbor-managed workflow."
+  display_name: "Internal Intake"
+  short_description: "Silently route Arbor workflow requests"
+  default_prompt: "Use $intake only for Arbor runtime routing, simulation, or debug review; normal users should not invoke it directly."

@@ -11,7 +11,7 @@ The skill exists after `intake` has decided the request belongs in Arbor and nee
 ## Position In The Workflow
 
 ```text
-intake -> brainstorm -> develop -> evaluate -> converge -> release
+intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature)
 ```
 
 `brainstorm` receives an Arbor-managed request or active context. It returns a structured plan that can be reviewed by a user or UI and then routed onward.
@@ -280,7 +280,7 @@ When approaches are useful, include:
 
 ## Required Output Shape
 
-`brainstorm` should emit structured output first:
+`brainstorm` should emit structured output for runtime and put the user-facing inline review packet in `user_response`.
 
 ```json
 {
@@ -360,6 +360,46 @@ When approaches are useful, include:
 }
 ```
 
+## Inline Review Packet
+
+The visible `user_response` should lower user review cost. It should answer five plain questions:
+
+1. How is the problem being framed?
+2. What small steps should the work be split into?
+3. How will each small step be verified?
+4. What defaults or assumptions did the agent make that the user did not state?
+5. What will the user get when the idea is finished?
+
+Use this natural-language shape by default:
+
+```markdown
+**Understanding And Recommendation**
+
+**How I Would Handle This**
+...
+
+**Suggested Small Steps**
+...
+
+**How I Would Validate Each Step**
+...
+
+**Default Decisions I Made**
+...
+
+**Expected Delivery**
+...
+
+**Next**
+...
+```
+
+Avoid exposing machine names such as `feature_registry`, `review_doc`, `terminal_state`, `evaluator_focus`, `source_intake`, or `route` in the primary inline text. The structured fields still keep those machine concepts for runtime and later UI work.
+
+The visible tables must paraphrase structured data. Do not paste internal feature labels, test labels, status labels, or handoff phrases into user-facing cells. Each row should describe the user-level action, why it matters, and how completion is recognized. A reader should not need to know Arbor internals to understand a row.
+
+Do not show internal shorthand in the primary inline text. Status strings such as `ready_for_develop`, route assignments such as `next_skill=develop`, feature ids such as `F1`, fixture ids such as `Case 2`, and abbreviations such as `RFD` or `dev/eval` must be translated into plain user-facing language.
+
 ## Terminal States
 
 `brainstorm` can end in one of these states:
@@ -396,5 +436,8 @@ Before returning a final brainstorm plan, check:
 9. Did I avoid implementation?
 10. Did I identify unresolved assumptions?
 11. Did I make the next route explicit?
+12. Did I make the inline response understandable without Arbor-internal field names?
+13. Did I paraphrase internal labels into user-level action and verification language?
+14. Did I translate status codes, feature ids, fixture ids, and abbreviations before writing visible text?
 
 If any check fails, revise the output or return `needs_clarification` / `needs_evidence`.

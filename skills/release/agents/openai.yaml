@@ -1,4 +1,4 @@
 interface:
   display_name: "Release"
-  short_description: "Finalize converged Arbor features"
-  default_prompt: "Use $release after converge to finalize the current Arbor feature, enforce commit-message convention, gate commit/push/PR/tag/publish behind explicit confirmation, and return workflow continuation."
+  short_description: "Checkpoint or finalize Arbor features"
+  default_prompt: "Use $release as an internal Arbor checkpoint/finalization gate; show only concise release status unless debug review is requested."

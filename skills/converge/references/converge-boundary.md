@@ -5,7 +5,7 @@
 `converge` sits after `evaluate`:
 
 ```text
-intake -> brainstorm -> develop -> evaluate -> converge -> release -> next feature
+intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature) -> next feature
 ```
 
 It is a decision point, not a planner, developer, evaluator, or releaser. It routes converged features to internal `release`; release handles finalization and next-feature continuation.
@@ -33,6 +33,25 @@ If this evidence is missing, return `needs_evidence` rather than guessing.
 2. Does the latest result still satisfy brainstorm goals, acceptance criteria, non-goals, and test scope?
 
 Both must be true to return `converged`.
+
+## User-Facing Convergence Packet
+
+`user_response` is the visible decision packet. It should not repeat the full evaluator test report. It should explain the convergence decision and the next workflow owner.
+
+Use these sections:
+
+| Section | Purpose |
+| --- | --- |
+| Convergence Decision | State whether the feature converged, needs development, needs planning, needs evidence, needs a user decision, is blocked, or was misrouted. |
+| Why This Decision | Explain the main evidence behind the decision in natural language. |
+| Agreement Check | Use a Markdown table comparing developer side, evaluator side, and the resulting decision for the main agreement questions. |
+| Goal Alignment | Explain whether the result still satisfies the brainstorm goal and feature scope. |
+| Remaining Issues | Use a Markdown table listing blocking issues, their source, whether they block completion, and the next owner. |
+| Next Step | State the next workflow step in plain language. |
+
+Do not include a "What Will Be Preserved" section. Persistence and checkpoint details belong in structured fields for release and workflow continuation.
+
+`Agreement Check` and `Remaining Issues` must be tables with user-readable cells. Keep internal ids, field names, terminal-state strings, route assignments, and finding ids out of primary visible text.
 
 ## Route Decisions
 

@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: Independently validate an Arbor develop handoff by replaying developer evidence, adding adversarial unit/scenario checks, appending evaluator review evidence, and emitting structured output for converge.
+description: Independently validate an Arbor develop handoff by replaying developer evidence, adding adversarial unit/scenario checks, appending evaluator review evidence, and emitting structured output for release checkpointing before converge.
 ---
 
 # Evaluate
@@ -11,11 +11,11 @@ Validate completed Arbor work by trying to break it.
 
 Use `evaluate` when `develop` has completed one Arbor-managed feature or managed artifact and produced a `ready_for_evaluate` handoff.
 
-`evaluate` is the independent testing role. Its job is to attack the implementation against the brainstorm Context/Test Plan, developer self-test evidence, code/artifact diff, and likely adjacent behavior. It appends an Evaluator Round to the same review document and routes the result to `converge`.
+`evaluate` is the independent testing role. Its job is to attack the implementation against the brainstorm Context/Test Plan, developer self-test evidence, code/artifact diff, and likely adjacent behavior. It appends an Evaluator Round to the same review document and routes the result to `release` for an evaluator checkpoint before `converge`.
 
-It does not implement fixes, approve plans, decide convergence, commit, push, tag, or release.
+It does not implement fixes, approve plans, decide convergence, commit, push, tag, or release. It also does not decide whether a checkpoint can skip convergence; `release` records the evaluation checkpoint and routes onward.
 
-The terminal state is a structured `evaluate.v1` output plus, when evaluation reaches an appendable state, an Evaluator Round in the existing review document. The next workflow skill is normally `converge`, except for missing handoff evidence, blocked execution, or route correction.
+The terminal state is a structured `evaluate.v1` output plus, when evaluation reaches an appendable state, an Evaluator Round in the existing review document. The next workflow skill is normally `release` with `release_context.release_mode=checkpoint_evaluate`, except for missing handoff evidence, blocked execution, or route correction.
 
 ## Checklist
 
@@ -43,19 +43,19 @@ Confirm evaluator-ready handoff
 -> Add independent adversarial checks
 -> Classify findings and residual risk
 -> Append Evaluator Round
--> Route to converge or the correct blocker state
+-> Route to release checkpoint or the correct blocker state
 ```
 
 ## Terminal States
 
-- `accepted`: evaluation found no blocking issue; route to `converge`.
-- `changes_requested`: evaluation found actionable implementation/test defects; route to `converge`.
-- `needs_brainstorm`: evaluation found unclear requirements, invalid test plan, or scope/design mismatch; route to `converge`.
+- `accepted`: evaluation found no blocking issue; route to `release` for checkpointing before converge.
+- `changes_requested`: evaluation found actionable implementation/test defects; route to `release` for checkpointing before converge.
+- `needs_brainstorm`: evaluation found unclear requirements, invalid test plan, or scope/design mismatch; route to `release` for checkpointing before converge.
 - `needs_develop_handoff`: the developer handoff, review document, Developer Round, changed files, or replay evidence is missing or invalid; route to `develop`.
 - `blocked`: evaluation cannot run because required files, dependencies, permissions, or environment are unavailable; route to `none`.
 - `route_correction`: request belongs to another skill or direct work.
 
-Only completed evaluation states (`accepted`, `changes_requested`, `needs_brainstorm`) route to `converge`.
+Only completed evaluation states (`accepted`, `changes_requested`, `needs_brainstorm`) route to `release`. The release checkpoint then routes the same evaluation evidence to `converge`.
 
 ## Core Rules
 
@@ -77,7 +77,7 @@ No. Developer self-tests are evidence to replay or challenge. Evaluation must ad
 
 ### "Evaluate Can Fix The Bug"
 
-No. Record findings and route to `converge`. Implementation fixes belong to `develop` after convergence selects the next action.
+No. Record findings and route to `release` for checkpointing. Implementation fixes belong to `develop` after convergence selects the next action.
 
 ### "Evaluate Means Generic Assessment"
 
@@ -141,11 +141,58 @@ If a reader cannot understand what was tested from the table row and scenario ro
 
 Prefer test-matrix examples like "Copied a completed handoff and changed its source from develop to a manual packet." Avoid category-only labels such as "source-gate adversarial replay."
 
+### User-Facing Evaluation Packet
+
+`user_response` is the visible evaluation summary. It should reduce review cost by leading with the evaluation result and findings, then showing the evidence behind that result.
+
+Use this shape by default:
+
+```markdown
+**Evaluation Verdict**
+...
+
+**Findings First**
+...
+
+**How I Challenged The Work**
+...
+
+**Plan Coverage**
+...
+
+**What I Checked**
+...
+
+**Unit Tests**
+...
+
+**Scenario Tests**
+...
+
+**Other Checks**
+...
+
+**Evaluator Judgments I Made**
+...
+
+**Risks And Gaps**
+...
+
+**Next Step**
+...
+```
+
+Write each section in natural language. For `Findings First`, say clearly whether there are blocking findings. For `What I Checked`, include developer evidence replay and evaluator-added checks. For `How I Challenged The Work`, describe adversarial scenarios, edge cases, negative cases, mutation/static probes, or why they were blocked. For `Plan Coverage`, map the evaluation back to the planned acceptance and test scope in user-level language. For `Evaluator Judgments I Made`, expose judgment calls such as whether a missing check blocks acceptance, whether a failure belongs to implementation or planning, or why documentation was validated through content/scenario checks.
+
+`Unit Tests` and `Scenario Tests` must be shown as Markdown tables, not bullets or loose prose. Use natural-language columns such as `Check`, `Behavior Covered`, `Expected`, `Actual`, and `Result`. Do not list only command names or test ids. Explain what each unit test or scenario test actually proved, what behavior it exercised, and whether it passed, failed, was blocked, or was not applicable. If no unit or scenario tests were appropriate, still include the table with a row explaining why the category was not applicable.
+
+Do not expose machine-oriented labels in visible text. Avoid schema field names, route assignments, terminal-state strings, fixture ids, synthetic feature ids, and shorthand such as `dev/eval`. Internal evidence may stay in structured fields; the visible text should explain the situation a user cares about.
+
 ### After Evaluation
 
-- If there are no blocking findings and independent checks ran, return `accepted -> converge`.
-- If implementation behavior, developer evidence, or test coverage failed, return `changes_requested -> converge`.
-- If the plan itself is contradictory or underspecified, return `needs_brainstorm -> converge`.
+- If there are no blocking findings and independent checks ran, return `accepted -> release`.
+- If implementation behavior, developer evidence, or test coverage failed, return `changes_requested -> release`.
+- If the plan itself is contradictory or underspecified, return `needs_brainstorm -> release`.
 - If developer handoff evidence is missing, return `needs_develop_handoff -> develop`.
 - If the environment prevents evaluation, return `blocked -> none`.
 Return a `feature_registry_signal` recommending the next feature status for `converge`; do not edit final registry status inside `evaluate`.
@@ -187,7 +234,7 @@ Append an Evaluator Round to the same review document. Include:
 - blocked or skipped checks and residual risk;
 - findings with id, priority, location, evidence, recommendation, and whether they block acceptance;
 - acceptance verdict;
-- recommended next route for `converge`.
+- recommended next route for `release` checkpoint and downstream `converge`.
 
 Do not rewrite prior rounds. Do not store evaluator evidence inside skill `references/`.
 
@@ -204,9 +251,9 @@ Do not rewrite prior rounds. Do not store evaluator evidence inside skill `refer
 
 | Terminal state | Evaluation | Review append | Findings | Next |
 | --- | --- | --- | --- | --- |
-| `accepted` | `passed` | `appended` | no blocking findings | `converge` |
-| `changes_requested` | `failed` or `partial` | `appended` | one or more blocking/actionable findings | `converge` |
-| `needs_brainstorm` | `blocked` or `partial` | `appended` | requirement/test-plan/scope finding | `converge` |
+| `accepted` | `passed` | `appended` | no blocking findings | `release` |
+| `changes_requested` | `failed` or `partial` | `appended` | one or more blocking/actionable findings | `release` |
+| `needs_brainstorm` | `blocked` or `partial` | `appended` | requirement/test-plan/scope finding | `release` |
 | `needs_develop_handoff` | `not_started` or `blocked` | `not_required` or `blocker_packet` | handoff blocker | `develop` |
 | `blocked` | `blocked` | `blocker_packet` or `not_required` | environment/dependency blocker | `none` |
 | `route_correction` | `not_started` | `not_required` | route issue | declared route or `none` |
@@ -271,8 +318,12 @@ Return this structure first:
   },
   "route": {
     "terminal_state": "accepted",
-    "next_skill": "converge",
-    "reason": ""
+    "next_skill": "release",
+    "next_skill_context": {
+      "release_mode": "checkpoint_evaluate",
+      "next_after_release": "converge"
+    },
+    "reason": "Evaluator evidence is appended; release should checkpoint before converge."
   },
   "ui": {
     "summary": "",
@@ -304,6 +355,8 @@ Use these enums:
 - `feature_registry_signal.feature_id`: must match `source.feature_id` whenever evaluation emits a registry-backed signal
 - `route.terminal_state`: `accepted`, `changes_requested`, `needs_brainstorm`, `needs_develop_handoff`, `blocked`, `route_correction`
 - `route.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
+- `route.next_skill_context.release_mode`: `checkpoint_evaluate` when a completed evaluation state routes to `release`
+- `route.next_skill_context.next_after_release`: `converge` when a completed evaluation state routes to `release`
 
 When adding a terminal state, update the status matrix, output enums, simulation cases, baseline JSONL, and `scripts/check_evaluate_baselines.py` in the same change.
 
@@ -327,11 +380,12 @@ Before returning:
 6. Did I add independent adversarial unit/scenario/edge/negative checks where relevant?
 7. Did I map evaluation checks to the planned test scope?
 8. Did I append an Evaluator Round to `source.review_doc_path` without overwriting prior rounds?
-9. Did I route only completed evaluation states to `converge`?
+9. Did I route only completed evaluation states to `release`, with `route.next_skill_context.release_mode=checkpoint_evaluate` and `next_after_release=converge`?
 10. Did I emit a feature-registry signal without marking the feature done?
 11. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
 12. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
 13. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+14. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

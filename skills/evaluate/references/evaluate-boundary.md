@@ -2,14 +2,14 @@
 
 ## Purpose
 
-`evaluate` independently validates one completed Arbor `develop` handoff. It consumes the same shared review document created by `brainstorm` and appended by `develop`, checks the selected feature in `.arbor/workflow/features.json` when present, attacks the implementation with additional tests and probes, appends an Evaluator Round, and routes the result to `converge`.
+`evaluate` independently validates one completed Arbor `develop` handoff. It consumes the same shared review document created by `brainstorm` and appended by `develop`, checks the selected feature in `.arbor/workflow/features.json` when present, attacks the implementation with additional tests and probes, appends an Evaluator Round, and routes the result to `release` for checkpointing before `converge`.
 
 It does not implement fixes, approve plans, decide convergence, commit, push, tag, or release.
 
 ## Position In The Workflow
 
 ```text
-intake -> brainstorm -> develop -> evaluate -> converge -> release
+intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature)
 ```
 
 `evaluate` normally receives:
@@ -161,19 +161,45 @@ Examples:
 - Prefer test-matrix example: "Copied a completed handoff and changed its source from develop to a manual packet."
 - Avoid test-matrix example: "Source-gate adversarial replay."
 
+## User-Facing Evaluation Packet
+
+`user_response` is the inline summary for the user. It should be review-oriented: lead with the verdict and findings, then show enough evidence for the user to understand why the evaluator reached that result.
+
+Use these sections:
+
+| Section | Purpose |
+| --- | --- |
+| Evaluation Verdict | State whether the work passed independent evaluation, needs changes, needs planning, needs a developer handoff, is blocked, or was misrouted. |
+| Findings First | List blocking findings first, or state that no blocking findings were found. |
+| How I Challenged The Work | Explain adversarial scenarios, edge cases, negative cases, mutation/static probes, or why they were blocked. |
+| Plan Coverage | Explain how checks map back to acceptance criteria and planned test scope in user-level language. |
+| What I Checked | Summarize developer replay, inspected artifacts, and evaluator-added checks after the attack strategy and plan coverage are clear. |
+| Unit Tests | Use a Markdown table to explain concrete unit-level checks in natural language, including what behavior each check exercised and the observed result. |
+| Scenario Tests | Use a Markdown table to explain concrete workflow or user-situation checks in natural language, including what scenario each check exercised and the observed result. |
+| Other Checks | Explain edge, negative, mutation, static, content, structure, coverage, or blocked checks that do not fit unit or scenario tests. |
+| Evaluator Judgments I Made | Expose evaluation-time judgment calls, such as whether a missing test blocks acceptance, whether a failure belongs to implementation or planning, or why documentation was validated with content/scenario checks. |
+| Risks And Gaps | Record blocked checks, skipped checks, residual risk, and uncertainty. |
+| Next Step | Explain where the workflow goes next in plain language. |
+
+Put `How I Challenged The Work` and `Plan Coverage` before `What I Checked`. The user should first understand the evaluation strategy and the relationship to the plan, then inspect the detailed test list.
+
+`Unit Tests` and `Scenario Tests` must be tables with human-readable columns such as `Check`, `Behavior Covered`, `Expected`, `Actual`, and `Result`. If a category is not applicable or could not run, include a table row that explains why instead of omitting the section.
+
+The visible text must not require the user to know the structured schema. Do not expose field names, assignment-style routes, terminal-state strings, fixture ids, synthetic feature ids, or unexplained shorthand. Keep internal evidence in structured fields or secondary evidence lists; primary prose should explain the workflow situation and user-visible risk.
+
 ## Relationship To Other Skills
 
 ### `develop`
 
 `develop` creates implementation and developer evidence. `evaluate` consumes it, replays it, and challenges it.
 
-If developer evidence is missing, return `needs_develop_handoff`. If evaluator finds implementation defects, append findings and route to `converge`; do not fix the defects directly.
+If developer evidence is missing, return `needs_develop_handoff`. If evaluator finds implementation defects, append findings and route to `release` for checkpointing before `converge`; do not fix the defects directly.
 
 ### `brainstorm`
 
 `brainstorm` owns the Context/Test Plan. `evaluate` checks whether the implementation and developer self-tests cover that plan.
 
-If evaluation reveals missing or contradictory requirements, invalid acceptance criteria, or a bad test plan, route `needs_brainstorm` to `converge`.
+If evaluation reveals missing or contradictory requirements, invalid acceptance criteria, or a bad test plan, route `needs_brainstorm` to `release` for checkpointing before `converge`.
 
 ### `converge`
 
@@ -185,14 +211,14 @@ If evaluation reveals missing or contradictory requirements, invalid acceptance 
 
 | Terminal state | Evaluation status | Review append status | Finding requirement | Next skill |
 | --- | --- | --- | --- | --- |
-| `accepted` | `passed` | `appended` | zero blocking findings | `converge` |
-| `changes_requested` | `failed` or `partial` | `appended` | one or more blocking implementation/test findings | `converge` |
-| `needs_brainstorm` | `blocked` or `partial` | `appended` | requirements, acceptance, or test-plan finding | `converge` |
+| `accepted` | `passed` | `appended` | zero blocking findings | `release` |
+| `changes_requested` | `failed` or `partial` | `appended` | one or more blocking implementation/test findings | `release` |
+| `needs_brainstorm` | `blocked` or `partial` | `appended` | requirements, acceptance, or test-plan finding | `release` |
 | `needs_develop_handoff` | `not_started` or `blocked` | `not_required` or `blocker_packet` | missing/invalid developer handoff | `develop` |
 | `blocked` | `blocked` | `blocker_packet` or `not_required` | unavailable environment/file/dependency | `none` |
 | `route_correction` | `not_started` | `not_required` | route issue | declared route or `none` |
 
-Only `accepted`, `changes_requested`, and `needs_brainstorm` may route to `converge`.
+Only `accepted`, `changes_requested`, and `needs_brainstorm` may route to `release`. That route must carry `route.next_skill_context.release_mode=checkpoint_evaluate` plus `next_after_release=converge`; release then routes the same evaluator evidence to `converge`.
 
 ## Output Shape
 
@@ -254,8 +280,12 @@ Only `accepted`, `changes_requested`, and `needs_brainstorm` may route to `conve
   },
   "route": {
     "terminal_state": "accepted",
-    "next_skill": "converge",
-    "reason": ""
+    "next_skill": "release",
+    "next_skill_context": {
+      "release_mode": "checkpoint_evaluate",
+      "next_after_release": "converge"
+    },
+    "reason": "Evaluator evidence is appended; release should checkpoint before converge."
   },
   "ui": {
     "summary": "",
@@ -287,7 +317,8 @@ Before returning:
 6. Did I add independent adversarial checks?
 7. Did I map checks to planned scope?
 8. Did I append an Evaluator Round to the same review document?
-9. Did I route completed evaluation states only to `converge`?
+9. Did I route completed evaluation states only to `release`, with machine-readable checkpoint intent before `converge`?
 10. Did I emit a feature-registry signal instead of directly finalizing status?
 11. Did every test-matrix row include a concrete representative example and every scenario row start with a human workflow situation instead of a synthetic id?
 12. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+13. Did the visible response lead with verdict and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?

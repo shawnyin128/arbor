@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Clarify Arbor-managed requirements, load required evidence, expose hidden decisions, compare approaches, split broad work into independently testable features, and produce a UI-ready structured plan before develop/evaluate begins.
+description: Clarify Arbor-managed requirements, load required evidence, expose hidden decisions, compare approaches, split broad work into independently testable features, and produce a natural-language review packet plus structured plan before develop/evaluate begins.
 ---
 
 # Brainstorm
@@ -9,7 +9,7 @@ description: Clarify Arbor-managed requirements, load required evidence, expose 
 
 Use `brainstorm` after `intake` has routed an Arbor-managed request to planning, clarification, impact analysis, or feature breakdown.
 
-`brainstorm` does not implement, execute tests, converge, release, commit, or push. Its terminal output is a structured `brainstorm.v1` plan plus, for ready implementation work, a `.arbor/workflow/features.json` feature registry and a `docs/review/<feature>-review.md` Context/Test Plan section that downstream skills append to.
+`brainstorm` does not implement, execute tests, converge, release, commit, or push. Its terminal output is a structured `brainstorm.v1` plan, a natural-language inline review packet for the user, and, for ready implementation work, a `.arbor/workflow/features.json` feature registry plus a `docs/review/<feature>-review.md` Context/Test Plan section that downstream skills append to.
 
 The terminal state is one of: `needs_clarification`, `needs_evidence`, `ready_for_user_review`, `ready_for_develop`, `route_correction`, or `blocked`.
 
@@ -27,7 +27,7 @@ Follow this normal sequence for brainstorm runs. Stop early with the correct ter
 8. **Create feature registry**: for ready broad or implementation work, create or update `.arbor/workflow/features.json` with all split features, their statuses, active feature, and review document paths.
 9. **Create review context**: for the selected ready feature, create `docs/review/<feature>-review.md` with the Context/Test Plan section unless the request is read-only.
 10. **Self-review**: check for missing evidence, hidden assumptions, oversized features, weak test scope, missing registry state, and accidental implementation.
-11. **Return structured output first**: emit the UI-ready JSON-shaped plan before any prose explanation.
+11. **Return structured output and review packet**: emit the JSON-shaped plan for runtime, and put the user-facing natural-language review packet in `user_response`.
 
 ## Process Flow
 
@@ -251,6 +251,52 @@ Return this structure first:
 }
 ```
 
+## User-Facing Review Packet
+
+`user_response` is the inline output the user reads. Write it in plain natural language, not as a dump of machine fields. Do not expose names such as `feature_registry`, `review_doc`, `terminal_state`, `evaluator_focus`, `source_intake`, or `route`.
+
+The tables in `user_response` must be human-readable. Do not copy structured labels such as feature names, summaries, test labels, or review-context phrases directly into visible table cells when they are internal shorthand. Rewrite them into plain action/result language. For example, say "define which requests should enter Arbor" instead of "intake routing contract", and say "confirm comparison rules stay consistent" instead of "baseline field assertions".
+
+Do not expose internal shorthand in visible text. Avoid status codes like `ready_for_develop`, assignments like `next_skill=develop`, feature ids like `F1`, fixture labels like `Case 2`, and unexplained abbreviations like `RFD` or `dev/eval`. Translate them into user-level language such as "the plan is approved and can move into implementation", "the first step", or "the implementation and review loop".
+
+Default format:
+
+```markdown
+**Understanding And Recommendation**
+
+**How I Would Handle This**
+- ...
+
+**Suggested Small Steps**
+| Step | What It Solves | Done Means |
+| --- | --- | --- |
+| First step | ... | ... |
+
+**How I Would Validate Each Step**
+| Step | Main Validation Goal | Scenarios To Cover |
+| --- | --- | --- |
+| First step | ... | ... |
+
+**Default Decisions I Made**
+| Default Decision | Why I Handled It This Way | What It Affects | Needs Your Confirmation |
+| --- | --- | --- | --- |
+| ... | ... | ... | yes/no |
+
+**Expected Delivery**
+- ...
+
+**Next**
+...
+```
+
+Adapt the content to the terminal state:
+
+- If evidence is missing, say what cannot be concluded yet and what evidence must be read before splitting work.
+- If clarification is needed, ask the single blocking question under `Next`.
+- If the plan is ready, make the first small step and the approval need obvious.
+
+Keep the wording review-oriented. The user should quickly understand how the problem is being framed, what small steps exist, how each step will be verified, what defaults were assumed, and what delivery looks like.
+
 Use these enums:
 
 - `source_intake.arbor_managed`: `yes`, `mixed`, `context_dependent`, `uncertain`
@@ -281,6 +327,9 @@ Before returning, check:
 7. Did I create the review Context/Test Plan artifact for the selected ready feature?
 8. Did I avoid implementation, test execution, commit, push, and release claims?
 9. Did I make the next route and approval state explicit?
+10. Did I write `user_response` as a plain-language review packet that avoids machine field names?
+11. Did every visible table cell use user-level descriptions instead of copied internal labels?
+12. Did I avoid status codes, feature ids, fixture ids, and unexplained abbreviations in visible text?
 
 If any answer fails, revise the structured output before responding.
 

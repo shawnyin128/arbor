@@ -60,9 +60,9 @@ If no declared skill fits, `intake` must return a route gap instead of inventing
 
 ## Output Shape
 
-`intake` output is a contract between the skill layer and a future UI layer. The skill should produce stable structured data; the UI decides how to render that data as cards, tables, warnings, confirmations, or compact summaries.
+`intake` output is an internal contract between the skill layer, runtime routing, replay, and optional debug UI. It is not the primary user-visible output. The downstream skill or normal assistant owns the response the user sees.
 
-The skill may include a short `user_response`, but the structured fields are the primary output. Do not hide important decisions only in prose.
+The skill may include an empty or minimal `user_response` for testing, but normal runtime should not stop at `intake`. Do not hide important decisions only in prose.
 
 When running in simulation or structured mode, `intake` should produce:
 
@@ -95,6 +95,8 @@ When running in simulation or structured mode, `intake` should produce:
     "confidence": "high"
   },
   "ui": {
+    "visibility": "hidden",
+    "display_mode": "none",
     "summary": "",
     "badges": [],
     "warnings": [],
@@ -117,15 +119,17 @@ Use stable enums, not mixed booleans and strings:
 - `persistence.active_state`: `yes`, `no`, `maybe`, `requires_permission`
 - `persistence.artifact_write`: `none`, `direct`, `defer`, `yes`
 - `routing.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
+- `ui.visibility`: `hidden`, `debug`
+- `ui.display_mode`: `none`, `trace`
 - `ui.resolution_kind`: `none`, `context_lookup`, `user_decision`, `permission`
 
 When the route depends on active context, set `routing.next_skill` to `none`, `resolution_required` to `true`, and list possible declared routes in `possible_routes`. Do not output undeclared routes such as `state_dependent`.
 
 When `routing.resolution_required` is `true`, set `ui.requires_resolution` to `true`. Use `ui.requires_user_decision` only when the user must choose or grant permission. Context lookup can require resolution without requiring a user decision.
 
-## UI-Ready Output Rules
+## Hidden Output Rules
 
-The structured output should make review cheap for the user:
+The structured output should make routing and later review cheap without making intake a user-facing stop:
 
 - put the route, persistence decision, and boundary decision in separate fields;
 - include confidence and reason for every major decision;
@@ -136,7 +140,9 @@ The structured output should make review cheap for the user:
 - include `review_focus` when a human should inspect only a small subset of the decision;
 - keep enum-like fields stable so a UI can render filters and badges without parsing prose;
 - keep raw user input separate from normalized classification;
-- never require the UI to infer state transitions from natural-language text.
+- never require the UI to infer state transitions from natural-language text;
+- set `ui.visibility=hidden` and `ui.display_mode=none` for normal operation;
+- reserve intake trace rendering for explicit debug/review mode.
 
 Good UI-level review targets include:
 

@@ -2,29 +2,32 @@
 
 ## Position
 
-`release` sits after `converge` as an internal finalization step:
+`release` sits after `develop`, `evaluate`, and `converge` as an internal checkpoint/finalization step:
 
 ```text
-intake -> brainstorm -> develop -> evaluate -> converge -> release -> next feature
+intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature) -> next feature
 ```
 
-It is a current-feature finalization gate, not a planner, developer, evaluator, convergence judge, or primary user-facing entrypoint.
+It is a current-feature state-tracking and finalization gate, not a planner, developer, evaluator, convergence judge, or primary user-facing entrypoint. Its user visibility is status-only: report what checkpoint/release action happened, whether confirmation is needed, and what comes next; keep detailed release reasoning in structured fields, review docs, or debug traces.
 
 ## Inputs
 
 Minimum evidence:
 
-- selected feature id from the convergence handoff;
+- selected feature id from the develop, evaluate, or convergence handoff;
 - `.arbor/workflow/features.json` and the selected source feature registry row;
 - shared review document path;
-- Convergence Round or equivalent convergence packet;
-- latest Developer Round and Evaluator Round references;
+- mode-specific review evidence:
+  - `checkpoint_develop`: Context/Test Plan and latest Developer Round;
+  - `checkpoint_evaluate`: Context/Test Plan, latest Developer Round, latest Evaluator Round, evaluator terminal state, feature registry signal, and blocking finding count;
+  - `finalize_feature`: Convergence Round or equivalent convergence packet plus latest Developer Round and Evaluator Round references;
 - requested release action;
 - git status, selected files, dirty scope, and branch/remotes when relevant;
-- user authorization for external actions.
+- replayable `checkpoint_authorization` evidence for local checkpoint commits, with `source=user` or `source=policy`;
+- user authorization for public/external actions;
 - feature registry rows needed for next-feature continuation.
 
-If convergence evidence is missing, return `needs_converge`. If authorization is missing for an external action, return `needs_confirmation`.
+If finalization convergence evidence is missing, return `needs_converge`. If authorization is missing for an external action, return `needs_confirmation`.
 
 ## External Action Boundary
 
@@ -36,6 +39,8 @@ Safe local preparation:
 - classify dirty scope as `clean`, `selected_only`, `unrelated`, or `unknown`;
 - draft commit message;
 - append Release Round or blocker packet.
+- create a local checkpoint only when workflow checkpoint policy or explicit user authorization allows it;
+- route the same feature to the next stage after a checkpoint state;
 - select the next unfinished feature after a release-final state.
 
 Confirmation-gated actions:
@@ -47,9 +52,20 @@ Confirmation-gated actions:
 - creating a tag;
 - publishing a package, plugin, release artifact, or marketplace entry.
 
-The user must authorize the specific action. "Release this" can authorize preparation, but not every external action unless the prompt clearly asks for it.
+The user must authorize the specific action. "Release this" can authorize preparation, but not every external action unless the prompt clearly asks for it. For Arbor-managed checkpoint mode, local git commits may be authorized by an active workflow checkpoint policy; public actions still require explicit user authorization. Checkpoint authorization must be machine-readable through `checkpoint_authorization.source`, `checkpoint_authorization.ref`, `checkpoint_authorization.scope`, and `allows_local_commit`.
 
 Standalone `stage` has no completed release terminal. `release` may prepare an exact stage file list, and staging may happen as part of an explicitly authorized commit, but a stage-only request should not be reported as completed release delivery.
+
+## User-Visible Boundary
+
+`release` should not render a full workflow panel. It should emit a compact status notification:
+
+- checkpoint mode: checkpoint saved or blocked, commit hash when created, and next skill;
+- finalization mode: readiness, commit/push/PR/tag/publish result when performed, and next feature;
+- confirmation mode: the exact action requiring authorization;
+- blocked mode: the blocker and next safe action.
+
+Do not show `checkpoint_handoff`, `feature_registry_signal`, dirty-scope analysis, selected-file reasoning, or authorization internals as primary UI. These remain machine-readable for the workflow and available in review/debug views.
 
 ## Commit Convention
 
@@ -91,6 +107,20 @@ Commit, stage, push, PR, tag, or publish success must not proceed from `unrelate
 For public action success, the requested action and recorded effect must match. For example, a `push` request cannot report `external_effect=tag`, even if tag metadata is present.
 
 ## Route Decisions
+
+### Checkpointed
+
+Use when a developer or evaluator checkpoint has mode-specific review evidence, safe selected files, and local checkpoint authorization through user approval or workflow checkpoint policy.
+
+Action:
+
+- append Release Round;
+- record checkpoint mode and selected files;
+- preserve the upstream handoff in `checkpoint_handoff`, including terminal state, review round reference, and feature registry signal when the checkpoint comes from evaluate;
+- record performed checkpoint commit when it was created, or the prepared checkpoint evidence when local commits are not authorized;
+- route `checkpoint_develop` to `evaluate`;
+- route `checkpoint_evaluate` to `converge`;
+- keep `workflow_continuation.status=none` because this is the same feature, not next-feature selection.
 
 ### Ready
 
@@ -165,7 +195,10 @@ Action:
 
 Append a Release Round to the same review document with:
 
-- source convergence round;
+- release mode;
+- source checkpoint or convergence round;
+- checkpoint authorization evidence;
+- checkpoint handoff preservation evidence;
 - selected release action;
 - readiness checks and results;
 - selected files;
@@ -180,7 +213,13 @@ Do not rewrite prior rounds.
 
 ## Workflow Continuation
 
-Before a release-ready terminal state, `release` must prove the selected source feature exists in `source.feature_registry_path`. The selected source feature registry row must match `source.feature_id`, `source.review_doc_path`, and `release_context.feature_status`; release-ready states require that row status to be `done`.
+Before a checkpoint or final release terminal state, `release` must prove the selected source feature exists in `source.feature_registry_path` when a registry path is available. The selected source feature registry row must match `source.feature_id`, `source.review_doc_path`, and `release_context.feature_status`. Finalize-feature release-ready states require that row status to be `done`; checkpoint states keep the current feature status, usually `in_evaluate`.
+
+After `checkpointed`, `release` routes the same feature to the next stage:
+
+1. `checkpoint_develop` routes to `evaluate`;
+2. `checkpoint_evaluate` routes to `converge`;
+3. `workflow_continuation.status` remains `none` because the current feature is still active.
 
 After `ready`, `committed`, or `pushed`, `release` is responsible for returning the next feature to process:
 

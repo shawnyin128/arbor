@@ -1,6 +1,6 @@
 ---
 name: develop
-description: Execute an authorized Arbor-managed feature or artifact change, consume upstream plan/context, run developer self-tests against the review plan, append developer review handoff evidence, and emit structured output for evaluate.
+description: Execute an authorized Arbor-managed feature or artifact change, consume upstream plan/context, run developer self-tests against the review plan, append developer review handoff evidence, and emit structured output for release checkpointing before evaluate.
 ---
 
 # Develop
@@ -9,9 +9,9 @@ description: Execute an authorized Arbor-managed feature or artifact change, con
 
 Use `develop` when Arbor has an authorized implementation or managed-artifact unit ready to execute.
 
-`develop` is not a coding-style constraint. Use normal engineering judgment and the repo's conventions. The skill's job is workflow discipline: consume upstream context, preserve traceability, implement, self-test against the brainstorm review test scope, append developer evidence, and hand off to `evaluate`.
+`develop` is not a coding-style constraint. Use normal engineering judgment and the repo's conventions. The skill's job is workflow discipline: consume upstream context, preserve traceability, implement, self-test against the brainstorm review test scope, append developer evidence, and hand off to `release` for a developer checkpoint before `evaluate`.
 
-It does not approve plans, independently validate like `evaluate`, decide convergence, commit, push, tag, or release.
+It does not approve plans, independently validate like `evaluate`, decide convergence, commit, push, tag, or release. It also does not decide whether a checkpoint should bypass evaluation; `release` records the checkpoint and routes onward.
 
 ## Checklist
 
@@ -37,7 +37,25 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
 - `ready_for_evaluate`: implementation, self-test, and developer review handoff are complete.
 - `route_correction`: request belongs to another skill or direct work.
 
-Only `ready_for_evaluate` may route to `evaluate`.
+Only `ready_for_evaluate` may route to `release`, and the release handoff must identify `release_context.release_mode=checkpoint_develop` so the next workflow step can continue to `evaluate` after state is tracked.
+
+## User-Facing Development Packet
+
+`user_response` is the visible development summary. It must lower the user's review cost; do not make the user read internal schema fields to understand what happened.
+
+Write it in plain natural language with these sections:
+
+1. **What I Completed**: summarize the implemented change or explain why implementation did not start.
+2. **How It Maps To The Plan**: map the accepted plan, selected work, or incoming correction to the actual work in user-level words.
+3. **What Changed**: list changed code, docs, or artifacts and the practical impact.
+4. **Implementation Defaults I Chose**: expose implementation-time decisions the user did not explicitly specify, such as fallback behavior, scope interpretation, test substitution, naming, file placement, or engineering tradeoffs. If there were no material hidden decisions, say so explicitly.
+5. **How I Self-Tested**: show the developer-side checks, what each check was meant to prove, and the observed result.
+6. **Risks And Gaps**: list unresolved risks, skipped checks, blockers, or deviations from the plan.
+7. **Next Step**: describe the next workflow step in plain language, such as saving a checkpoint before independent evaluation, returning to planning, or stopping because authorization is missing.
+
+For non-success states, keep the same readable shape but make the blocker clear. For example, say "the plan has not been confirmed yet, so implementation cannot start" instead of exposing the internal authorization state.
+
+Never expose machine-oriented labels in `user_response`. Avoid schema field names, terminal-state strings, route assignments, feature ids, fixture ids, and shorthand such as `dev/eval`. If a table is useful, translate every cell into user-facing language; do not copy internal labels from `source`, `route`, `review_handoff`, `self_test`, `feature_registry_update`, or other structured fields.
 
 ## Upstream Source Contract
 
@@ -102,7 +120,7 @@ No. First identify source, scope, and authorization. If those are missing, stop 
 
 ### "Failed Runs Can Still Look Successful"
 
-No. Non-success terminal states must not carry success statuses or route to `evaluate`.
+No. Non-success terminal states must not carry success statuses or route to `release`.
 
 ### "Review Evidence Belongs In Skill References"
 
@@ -145,7 +163,7 @@ Do not invent approval evidence. If a required approval cannot be pointed to, re
 | `blocked` | `not_started` or `partial` | `not_run` or `blocked` | `blocker_packet` or `not_required` | `none` |
 | `implementation_failed` | `failed` or `partial` | `not_run`, `partial`, or `blocked` | `blocker_packet` or `appended` | `none` |
 | `self_test_failed` | `completed` or `partial` | `failed` or `partial` | `appended` | `none` |
-| `ready_for_evaluate` | `completed` | `passed` or `partial` | `appended` | `evaluate` |
+| `ready_for_evaluate` | `completed` | `passed` or `partial` | `appended` | `release` |
 | `route_correction` | `not_started` | `not_run` | `not_required` | declared route or `none` |
 
 ## Structured Output Contract
@@ -232,8 +250,12 @@ Return this structure first:
   },
   "route": {
     "terminal_state": "ready_for_evaluate",
-    "next_skill": "evaluate",
-    "reason": ""
+    "next_skill": "release",
+    "next_skill_context": {
+      "release_mode": "checkpoint_develop",
+      "next_after_release": "evaluate"
+    },
+    "reason": "Developer handoff is ready; release should checkpoint before evaluation."
   },
   "ui": {
     "summary": "",
@@ -262,6 +284,8 @@ Use these enums:
 - `feature_registry_update.feature_id`: must match `source.feature_id` whenever a registry-backed run updates workflow state
 - `route.terminal_state`: `needs_brainstorm`, `needs_selection`, `blocked`, `implementation_failed`, `self_test_failed`, `ready_for_evaluate`, `route_correction`
 - `route.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
+- `route.next_skill_context.release_mode`: `checkpoint_develop` when `ready_for_evaluate` routes to `release`
+- `route.next_skill_context.next_after_release`: `evaluate` when `ready_for_evaluate` routes to `release`
 
 When adding a terminal state, update the status matrix, output enums, simulation cases, baseline JSONL, and `scripts/check_develop_baselines.py` in the same change.
 
@@ -289,7 +313,9 @@ Before returning:
 10. Did I update the selected feature status in `.arbor/workflow/features.json` when the run changed workflow state?
 11. Did the output statuses match the status matrix?
 12. Did blocked or failed runs expose a machine-readable `handoff_kind`, `blocker_kind`, and replay target where useful?
-13. Did I route to `evaluate` only from `ready_for_evaluate`?
+13. Did I route to `release` only from `ready_for_evaluate`, with `route.next_skill_context.release_mode=checkpoint_develop` and `next_after_release=evaluate`?
+14. Did `user_response` expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
+15. Did `user_response` explain the development result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

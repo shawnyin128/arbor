@@ -4,14 +4,14 @@
 
 `develop` executes one Arbor-managed feature or managed artifact change with a clear execution basis. It consumes a scoped plan or handoff from known Arbor skills, manually approved project context, or any other source that provides enough executable scope, authorization when needed, success criteria, test expectations, feature registry state, and review context.
 
-The skill combines implementation, developer self-test, and developer review handoff. It does not independently validate like `evaluate`, decide convergence like `converge`, create the brainstorm Context/Test Plan section, or handle git release gates like `release`.
+The skill combines implementation, developer self-test, and developer review handoff. It does not independently validate like `evaluate`, decide convergence like `converge`, create the brainstorm Context/Test Plan section, or handle git checkpoint/release gates like `release`.
 
-`develop` is intentionally light on how the agent writes code. It should not constrain implementation strategy beyond the upstream contract and the repository's own conventions. Its core value is handoff discipline: consume upstream cleanly, cover the brainstorm test scope with self-tests, append developer evidence, and give downstream `evaluate` a structured attack surface.
+`develop` is intentionally light on how the agent writes code. It should not constrain implementation strategy beyond the upstream contract and the repository's own conventions. Its core value is handoff discipline: consume upstream cleanly, cover the brainstorm test scope with self-tests, append developer evidence, and give downstream `release` a checkpoint packet that preserves state before `evaluate` attacks the work.
 
 ## Position In The Workflow
 
 ```text
-intake -> brainstorm -> develop -> evaluate -> converge -> release
+intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature)
 ```
 
 `develop` commonly receives one of these upstream states:
@@ -23,7 +23,7 @@ intake -> brainstorm -> develop -> evaluate -> converge -> release
 
 These are examples, not a closed list. Other upstream sources can be valid when they provide the fallback upstream contract below.
 
-Its terminal state is a `develop.v1` structured output plus code/artifact changes and a developer review entry for downstream `evaluate`.
+Its terminal state is a `develop.v1` structured output plus code/artifact changes and a developer review entry for downstream `release` checkpointing before `evaluate`.
 
 ## Current Flow Being Preserved
 
@@ -34,7 +34,7 @@ The existing Arbor development flow is:
 3. Self-test the change with artifact-appropriate checks, such as unit, integration, scenario, content, structure, dry-run, compile, lint, type, schema, or coverage checks.
 4. Append a structured Developer Round to the same existing review document named by `source.review_doc_path` for downstream evaluation.
 5. Update the selected feature status in `.arbor/workflow/features.json`.
-6. Route to `evaluate` with enough evidence for an independent tester to attack the change.
+6. Route to `release` with enough evidence for a developer checkpoint; release then routes the same feature to `evaluate`.
 
 This is intentionally not only coding. Documentation, project maps, workflow guides, and review artifacts can be developed when they are part of the managed development workflow.
 
@@ -284,15 +284,15 @@ If a test cannot run, record:
 - residual risk;
 - recommended evaluator replay.
 
-Developer self-test is not independent validation. Passing self-tests should route to `evaluate`, not directly to `converge` or `release`.
+Developer self-test is not independent validation. Passing self-tests should route to `release` for a developer checkpoint, not directly to `evaluate`, `converge`, or finalization release.
 
 For `ready_for_evaluate`, `planned_test_coverage` must be non-empty, concrete passing check evidence must be present, and `uncovered_planned_tests` must be empty. Concrete result evidence comes from passed self-test table rows or passed `verification_checks` for content checks, structure checks, dry runs, schema checks, compile/lint/type checks, or other checks appropriate to the artifact. Raw command, unit-test, and scenario fields identify targets; they do not prove results by themselves.
 
 Each `verification_checks` item must be replayable evidence, not a vague claim. Record the inspected `artifact`, the `check` performed, the `expected_result`, the `actual_result`, and the pass/fail `result`. Avoid entries such as `looks good`, `manual review passed`, or `checked output`; they do not tell `evaluate` what to attack.
 
-For `ready_for_evaluate`, only `verification_checks` with `result=passed` count as completed evidence. A passed check's `actual_result` must not contradict the result by saying the check was not run, skipped, failed, blocked, or unavailable. If any planned check is skipped, failed, blocked, or not run, record it in `uncovered_planned_tests`, `not_run`, or the relevant failure/blocker evidence and use `self_test_failed`, `blocked`, or another non-ready terminal state instead of routing to `evaluate`.
+For `ready_for_evaluate`, only `verification_checks` with `result=passed` count as completed evidence. A passed check's `actual_result` must not contradict the result by saying the check was not run, skipped, failed, blocked, or unavailable. If any planned check is skipped, failed, blocked, or not run, record it in `uncovered_planned_tests`, `not_run`, or the relevant failure/blocker evidence and use `self_test_failed`, `blocked`, or another non-ready terminal state instead of routing to `release`.
 
-For `ready_for_evaluate`, `self_test.not_run` must be empty. A ready handoff cannot carry unresolved planned checks in a side field while routing to `evaluate`.
+For `ready_for_evaluate`, `self_test.not_run` must be empty. A ready handoff cannot carry unresolved planned checks in a side field while routing to `release`.
 
 For `ready_for_evaluate`, the raw `self_test.commands`, `self_test.unit_tests`, and `self_test.scenario_tests` fields are identifiers for commands, unit-test targets, and scenario targets. They should not carry result summaries such as passed, failed, skipped, blocked, not run, exit code, assertion error, exception, or traceback. Observed results belong in `review_handoff.self_test_table` or `verification_checks`.
 
@@ -374,7 +374,7 @@ The review entry must include:
 - planned checks not covered and why;
 - known risks and residual gaps;
 - evaluator focus areas;
-- next route, usually `evaluate`.
+- next route, usually `release` with checkpoint intent.
 
 Review documents are durable development evidence. They do not belong in skill `references/`.
 
@@ -461,8 +461,12 @@ Review documents are durable development evidence. They do not belong in skill `
   },
   "route": {
     "terminal_state": "ready_for_evaluate",
-    "next_skill": "evaluate",
-    "reason": ""
+    "next_skill": "release",
+    "next_skill_context": {
+      "release_mode": "checkpoint_develop",
+      "next_after_release": "evaluate"
+    },
+    "reason": "Developer handoff is ready; release should checkpoint before evaluation."
   },
   "ui": {
     "summary": "",
@@ -488,6 +492,26 @@ Use these status values:
 - `review_handoff.self_test_table`: detailed test rows written into the Developer Round; required and non-empty whenever `review_handoff.status=appended`
 - `route.terminal_state`: `needs_brainstorm`, `needs_selection`, `blocked`, `implementation_failed`, `self_test_failed`, `ready_for_evaluate`, `route_correction`
 
+## User-Facing Development Packet
+
+`user_response` is the inline surface for the user. It is not a debug dump of `develop.v1`; it is a natural-language review packet that lets the user quickly judge whether development did what they expected.
+
+The visible response should include:
+
+| Section | Purpose |
+| --- | --- |
+| What I Completed | State the implemented change, or clearly state why development did not start. |
+| How It Maps To The Plan | Explain how the work maps to the approved plan, selected work item, or evaluator-requested correction. |
+| What Changed | Name the changed files or artifacts and describe their practical impact. |
+| Implementation Defaults I Chose | Expose implementation-time decisions the user did not explicitly specify, or state that there were no material hidden decisions. |
+| How I Self-Tested | Summarize developer-side checks, what each check was proving, and the observed result. |
+| Risks And Gaps | List deviations, skipped checks, residual risks, blockers, or missing approvals. |
+| Next Step | Say the next workflow step in plain language. For success this is checkpointing before independent evaluation; for blockers this is planning, selection, approval, or stop. |
+
+For tables, every row and column must be written for a human reviewer. Translate internal sources, route reasons, status codes, check identifiers, and feature registry state into ordinary language.
+
+Do not expose internal machine labels in `user_response`, including schema field names, terminal-state strings, route assignments, feature ids, fixture ids, and shorthand such as `dev/eval`. The structured JSON can keep machine-readable values; the visible text should be plain language.
+
 ## Terminal States
 
 `develop` can end in:
@@ -509,10 +533,10 @@ Use these status values:
 | `blocked` | `not_started` or `partial` | `not_run` or `blocked` | `blocker_packet` or `not_required` | `none` | unavailable files, permissions, dependencies, approval, or upstream artifacts |
 | `implementation_failed` | `failed` or `partial` | `not_run`, `partial`, or `blocked` | `blocker_packet` or `appended` | `none` | attempted changes, failure point, residual state, and recovery suggestion |
 | `self_test_failed` | `completed` or `partial` | `failed` or `partial` | `appended` | `none` | failing commands, failing scenarios, changed files, and evaluator/developer replay focus |
-| `ready_for_evaluate` | `completed` | `passed` or `partial` | `appended` | `evaluate` | changed files, self-test evidence, known risks, and evaluator focus |
+| `ready_for_evaluate` | `completed` | `passed` or `partial` | `appended` | `release` | changed files, self-test evidence, known risks, evaluator focus, and checkpoint intent |
 | `route_correction` | `not_started` | `not_run` | `not_required` | appropriate declared route or `none` | reason the request belongs elsewhere |
 
-Only `ready_for_evaluate` may route to `evaluate`. Non-success states must not claim `implementation.status=completed`, `self_test.status=passed`, and `review_handoff.status=appended` together unless the matrix permits it.
+Only `ready_for_evaluate` may route to `release`, and that route must carry `route.next_skill_context.release_mode=checkpoint_develop` plus `next_after_release=evaluate`. Non-success states must not claim `implementation.status=completed`, `self_test.status=passed`, and `review_handoff.status=appended` together unless the matrix permits it.
 
 Blocked or failed states do not always need a full developer review document. They must still emit enough structured evidence for user review, `brainstorm`, or `converge` to decide the next step. If any code or artifact changed before failure, record those changes and the residual risk.
 
@@ -535,6 +559,8 @@ Before returning:
 9. Did every self-test table row use specific `covers`, and did raw self-test fields stay as identifiers instead of result summaries?
 10. Did the output statuses match the terminal-state matrix?
 11. Did I list changed files, impact, tests, risks, and evaluator focus?
-12. Did I route to `evaluate` only from `ready_for_evaluate`?
+12. Did I route to `release` only from `ready_for_evaluate`, with machine-readable checkpoint intent before `evaluate`?
+13. Did the visible response expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
+14. Did the visible response explain the result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.

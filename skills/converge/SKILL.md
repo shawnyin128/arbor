@@ -65,6 +65,40 @@ For next feature selection after `converged`, do not choose the next feature in 
 
 For detailed boundary rationale, read `references/converge-boundary.md`.
 
+## User-Facing Convergence Packet
+
+`user_response` is the visible convergence decision. Keep it decision-oriented and shorter than an evaluation report. It should answer whether the feature converged, why, whether developer and evaluator evidence agree, whether the result still matches the brainstorm goal, what blocking issue remains, and where the workflow goes next.
+
+Use this shape by default:
+
+```markdown
+**Convergence Decision**
+...
+
+**Why This Decision**
+...
+
+**Agreement Check**
+| Question | Developer Side | Evaluator Side | Decision |
+| --- | --- | --- | --- |
+| ... | ... | ... | ... |
+
+**Goal Alignment**
+...
+
+**Remaining Issues**
+| Issue | Source | Blocks Completion | Next Owner |
+| --- | --- | --- | --- |
+| ... | ... | ... | ... |
+
+**Next Step**
+...
+```
+
+Do not include a "What Will Be Preserved" section in the visible response. Persistence, checkpoint, review-document, and registry details belong in the structured output for downstream skills, not in the user-facing packet.
+
+`Agreement Check` and `Remaining Issues` must be Markdown tables with natural-language cells. Do not expose field names, route assignments, terminal-state strings, fixture ids, synthetic feature ids, finding ids, or unexplained shorthand. Describe the user-visible situation instead, such as "the reviewer found a blocking regression" rather than a finding id.
+
 ## Structured Output Contract
 
 Return this structure first:
@@ -172,3 +206,4 @@ Before returning:
 7. Did I update only the selected feature status?
 8. Did I append a Convergence Round to the same review document?
 9. If the feature converged, did I route to internal release and defer next-feature selection?
+10. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?

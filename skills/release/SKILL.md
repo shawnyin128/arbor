@@ -1,35 +1,38 @@
 ---
 name: release
-description: Internally finalize an Arbor feature after convergence by verifying review evidence, feature status, git readiness, commit-message convention, workflow continuation, and user confirmation before commit, push, PR, tag, or publish.
+description: Internally checkpoint or finalize an Arbor feature by verifying review evidence, feature status, git readiness, commit-message convention, workflow continuation, and user confirmation before commit, push, PR, tag, or publish.
 ---
 
 # Release
 
 ## Purpose
 
-Use `release` after `converge` has finalized an Arbor-managed feature. It is primarily an internal finalization skill in the Arbor pipeline, not the main user-facing entrypoint.
+Use `release` after `develop`, after `evaluate`, and after `converge` for Arbor-managed work. It is primarily an internal checkpoint/finalization skill in the Arbor pipeline, not the main user-facing entrypoint; finalization mode is the internal finalization gate for converged features.
 
-`release` is a workflow gate for current-feature finalization. It verifies that the selected feature is converged, prepares safe local release evidence, enforces the commit convention, blocks commit, push, PR, tag, or publish actions unless the user explicitly authorized that action, then reports the next unfinished feature through `workflow_continuation`.
+`release` is a workflow gate for state tracking and current-feature finalization. In checkpoint mode, it records the latest developer or evaluator state before the next skill runs. In finalization mode, it verifies that the selected feature is converged, prepares safe local release evidence, enforces the commit convention, blocks push, PR, tag, or publish actions unless the user explicitly authorized that action, then reports the next unfinished feature through `workflow_continuation`.
 
 It does not plan, implement, evaluate, or decide convergence.
 
+`release` has status-only user visibility. It may report concise action results such as checkpoint saved, commit hash, push status, confirmation needed, blocker, or next skill. It must not expose checkpoint handoff internals, dirty-scope reasoning, or full release evidence as the primary UI unless the user opens a debug/review trace.
+
 ## Checklist
 
-1. **Confirm source**: prefer a `converge.converged` handoff; accept a manual release request only when equivalent convergence evidence is loaded.
+1. **Confirm source**: accept `develop.ready_for_evaluate` for `checkpoint_develop`, completed `evaluate` states for `checkpoint_evaluate`, and `converge.converged` or equivalent evidence for `finalize_feature`.
 2. **Load state**: read `.arbor/workflow/features.json`, the selected feature's registry row, the selected review document, git status, and relevant diff/branch state.
-3. **Verify convergence evidence**: confirm the selected source feature exists in the registry, its registry status is `done`, and the review document has Context/Test Plan, Developer Round, Evaluator Round, and Convergence Round.
+3. **Verify mode evidence**: for develop checkpoints, confirm Context/Test Plan and Developer Round; for evaluate checkpoints, confirm Context/Test Plan, Developer Round, and Evaluator Round; for finalization, confirm the selected source feature exists in the registry, its registry status is `done`, and the review document has Context/Test Plan, Developer Round, Evaluator Round, and Convergence Round.
 4. **Classify requested action**: local summary, stage, commit, push, PR, tag, publish, or route correction.
 5. **Run readiness checks**: replay requested or policy-required checks when feasible; record blocked checks and residual risk.
 6. **Prepare commit convention**: use `<type>[optional scope]: <description>` with optional body/footer.
-7. **Gate external actions**: do not commit, push, open PR, tag, publish, or otherwise make externally visible changes without explicit user authorization.
+7. **Gate external actions**: checkpoint commits may be performed only when the Arbor workflow checkpoint policy or the user explicitly authorizes local checkpointing; push, PR, tag, publish, or other public/external actions always require explicit user authorization.
 8. **Append release evidence**: append a Release Round to the same review document when release reaches a meaningful terminal state.
-9. **Select continuation**: after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json` or report that none remains.
+9. **Select continuation**: after a checkpoint state, route to the next stage for the same feature; after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json` or report that none remains.
 10. **Update registry when justified**: update release metadata/status only for the selected feature.
 11. **Return structured output first**: emit `release.v1` before prose.
 
 ## Terminal States
 
 - `ready`: release readiness is verified, but no externally visible action was requested.
+- `checkpointed`: a developer or evaluator checkpoint was safely recorded and the same feature can continue to the next workflow skill.
 - `prepared`: safe local release preparation is complete; confirmation is needed for the next external action.
 - `committed`: an explicitly authorized commit succeeded.
 - `pushed`: an explicitly authorized push, PR, tag, or publish step succeeded.
@@ -40,8 +43,8 @@ It does not plan, implement, evaluate, or decide convergence.
 
 ## Core Rules
 
-1. Do not release a feature unless convergence evidence is loaded.
-2. Do not infer user authorization from broad intent; confirm the specific external action.
+1. Do not finalize a feature unless convergence evidence is loaded.
+2. Do not infer user authorization from broad intent; confirm the specific external action. Local checkpoint commits are permitted only by explicit user authorization or an active Arbor workflow checkpoint policy.
 3. Do not plan feature scope.
 4. Do not change implementation files.
 5. Do not re-run develop/evaluate logic except for release-readiness checks.
@@ -54,13 +57,16 @@ It does not plan, implement, evaluate, or decide convergence.
 12. For public action success, require `release_action.external_effect == release_context.release_action`.
 13. Do not treat standalone `stage` as a completed release terminal; stage can be prepared or folded into an authorized commit.
 14. When continuation is available, `workflow_continuation.next_feature_id` must not equal `source.feature_id`.
-15. For release-ready states, the selected source feature must exist in `source.feature_registry_path`; the source feature status must match `release_context.feature_status` and must be `done`.
+15. For finalize-feature release-ready states, the selected source feature must exist in `source.feature_registry_path`; the source feature status must match `release_context.feature_status` and must be `done`. Checkpoint states must prove the selected source feature exists when a registry is available, but they do not require status `done`.
 16. When continuation is available, include registry evidence: `registry_path` must match `source.feature_registry_path`, `registry_index` must identify the selected row, the row id must match `next_feature_id`, and the row status must match `next_feature_status`.
+17. Keep user-facing release output status-only; detailed handoff, authorization, and evidence fields are for structured state, review documents, or debug views.
 
 ## Route Rules
 
 | Situation | Terminal state | Next skill |
 | --- | --- | --- |
+| Developer handoff is checkpointed | `checkpointed` | `evaluate` |
+| Evaluator evidence is checkpointed | `checkpointed` | `converge` |
 | Converged feature is release-ready and no external action requested | `ready` | `none` |
 | Local release prep is complete but confirmation is required | `prepared` or `needs_confirmation` | `none` |
 | Commit/push/PR/tag/publish explicitly authorized and succeeds | `committed` or `pushed` | `none` |
@@ -83,9 +89,16 @@ Return this structure first:
     "feature_id": "",
     "feature_registry_path": ".arbor/workflow/features.json",
     "review_doc_path": "docs/review/<feature>-review.md",
-    "convergence_round_ref": ""
+    "convergence_round_ref": "",
+    "develop_terminal_state": "",
+    "developer_round_ref": "",
+    "evaluate_terminal_state": "",
+    "evaluator_round_ref": "",
+    "feature_registry_signal": null,
+    "blocking_finding_count": 0
   },
   "release_context": {
+    "release_mode": "finalize_feature",
     "feature_status": "done",
     "convergence_loaded": true,
     "developer_round_loaded": true,
@@ -95,6 +108,20 @@ Return this structure first:
     "selected_files": [],
     "dirty_worktree": true,
     "dirty_scope": "selected_only"
+  },
+  "checkpoint_authorization": {
+    "source": "none",
+    "ref": "",
+    "scope": "",
+    "allows_local_commit": false
+  },
+  "checkpoint_handoff": {
+    "status": "not_required",
+    "preserved_terminal_state": "",
+    "preserved_round_ref": "",
+    "preserved_feature_registry_signal": null,
+    "next_skill": "none",
+    "reason": ""
   },
   "readiness": {
     "checks": [],
@@ -145,9 +172,13 @@ Return this structure first:
     "reason": ""
   },
   "ui": {
+    "visibility": "status",
+    "display_mode": "release_status",
     "summary": "",
+    "status_items": [],
     "warnings": [],
-    "next_actions": []
+    "next_actions": [],
+    "debug_details_available": false
   },
   "user_response": ""
 }
@@ -155,7 +186,10 @@ Return this structure first:
 
 Use these enums:
 
-- `source.from_skill`: `converge`, `manual_release_request`, or `unknown`
+- `source.from_skill`: `develop`, `evaluate`, `converge`, `manual_release_request`, or `unknown`
+- `release_context.release_mode`: `checkpoint_develop`, `checkpoint_evaluate`, `finalize_feature`, or `unknown`
+- `checkpoint_authorization.source`: `user`, `policy`, or `none`; checkpoint commits require `user` or `policy`
+- `checkpoint_handoff.status`: `preserved`, `not_required`, or `blocked`
 - `release_context.release_action`: `summary`, `stage`, `commit`, `push`, `pr`, `tag`, `publish`, or `unknown`
 - `release_context.dirty_scope`: `clean`, `selected_only`, `unrelated`, or `unknown`
 - `release_action.status`: `not_run`, `prepared`, `completed`, `blocked`
@@ -164,14 +198,26 @@ Use these enums:
 - `review_append.status`: `appended`, `blocker_packet`, or `not_required`
 - `workflow_continuation.status`: `available`, `none`, or `blocked`
 - `workflow_continuation.next_skill`: `brainstorm`, `develop`, `evaluate`, or `none`
-- `route.terminal_state`: `ready`, `prepared`, `committed`, `pushed`, `needs_confirmation`, `needs_converge`, `blocked`, or `route_correction`
-- `route.next_skill`: `converge` or `none`
+- `route.terminal_state`: `ready`, `checkpointed`, `prepared`, `committed`, `pushed`, `needs_confirmation`, `needs_converge`, `blocked`, or `route_correction`
+- `route.next_skill`: `evaluate`, `converge`, or `none`
+- `ui.visibility`: `status` or `debug`
+- `ui.display_mode`: `release_status` or `trace`
+
+## User-Visible Status
+
+Use `ui.summary`, `ui.status_items`, `ui.warnings`, and `ui.next_actions` for concise status output only:
+
+- checkpoint mode: checkpoint status, commit hash when created, and next skill;
+- finalization mode: commit message, commit hash, push/PR/tag/publish status when performed, and next feature;
+- blocked or confirmation mode: blocker or exact confirmation needed.
+
+Do not make the primary UI display `checkpoint_handoff`, `feature_registry_signal`, `dirty_scope`, selected-file reasoning, or authorization internals. Those fields remain available for review documents and debug traces.
 
 ## Self-Check
 
 Before returning:
 
-1. Did I load registry, the selected source feature row, review doc, convergence evidence, and git state?
+1. Did I load registry, the selected source feature row, review doc, mode-specific review evidence, and git state?
 2. Did I avoid implementation changes and convergence decisions?
 3. Did I verify the selected release action and whether it is externally visible?
 4. Did I require explicit confirmation before commit, push, PR, tag, or publish?
@@ -180,4 +226,6 @@ Before returning:
 7. Did successful commit/push/PR/tag/publish output include performed evidence and metadata?
 8. Did public action success match the requested action and safe dirty scope?
 9. Did I append release evidence or a blocker packet to the review document?
-10. If release reached a final state, did I select a different unfinished feature from the registry row data or explicitly report that none remains?
+10. If release reached a checkpoint state, did I route the same feature to the next stage without selecting a new feature?
+11. If release reached a final state, did I select a different unfinished feature from the registry row data or explicitly report that none remains?
+12. Did I keep user-visible release output status-only while preserving detailed evidence in structured fields?
