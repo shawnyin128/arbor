@@ -231,6 +231,7 @@ Short, fragmentary, or constraint-like inputs should first try to attach to curr
 - "Continue."
 - "We do not need scaling."
 - "Use our own quantizer."
+- "Based on my requirements, think through what to do and design a plan."
 
 Only create a new item if the input cannot reasonably attach to current context and contains an independent work item.
 
@@ -242,6 +243,19 @@ Recommended context priority:
 4. backlog.
 
 If current conversation and workflow artifacts conflict, `intake` should surface the conflict instead of silently choosing.
+
+### Affirmative Planning Continuations
+
+Short acknowledgements can carry real planning intent when they attach to an active engineering context. Examples include "based on my requirements," "think through what to do," "design a plan," "split the work," "decide the checks," or "how should we approach this."
+
+Use this rule only when the continuation has both:
+
+- a reference back to prior requirements or active context;
+- planning, design, feature-split, acceptance, or verification intent.
+
+If the active context is code cleanup, implementation planning, experiment design, release preparation, workflow policy, or another Arbor-managed engineering task, classify the input as an active planning continuation and route to `brainstorm`. The first brainstorm action should load the relevant active context and evidence before producing a settled plan.
+
+If there is no active engineering context, or the context is non-engineering work such as travel planning, email drafting, or prose-only writing support, do not route merely because the user used planning language. Keep the request direct or context-dependent according to the real topic.
 
 ## Documentation Boundaries
 

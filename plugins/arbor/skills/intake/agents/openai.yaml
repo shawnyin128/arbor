@@ -1,4 +1,4 @@
 interface:
   display_name: "Intake"
   short_description: "Automatically decide direct vs Arbor-managed workflow routing while keeping intake output hidden"
-  default_prompt: "Use intake automatically for possible Arbor-managed or boundary-ambiguous development requests before downstream workflow skills. Keep normal intake output hidden and use exact structured enum values; explicit dollar-skill invocation is only for debug, simulation, or review."
+  default_prompt: "Use intake automatically for possible Arbor-managed or boundary-ambiguous development requests, including planning continuations attached to active engineering context, before downstream workflow skills. Keep normal intake output hidden and use exact structured enum values; explicit dollar-skill invocation is only for debug, simulation, or review."
