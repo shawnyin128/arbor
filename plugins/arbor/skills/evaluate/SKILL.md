@@ -17,6 +17,10 @@ It does not implement fixes, approve plans, decide convergence, commit, push, ta
 
 The terminal state is a structured `evaluate.v1` output plus, when evaluation reaches an appendable state, an Evaluator Round in the existing review document. The next workflow skill is normally `release` with `release_context.release_mode=checkpoint_evaluate`, except for missing handoff evidence, blocked execution, or route correction.
 
+`evaluate` is a mandatory user-visible checkpoint by default. The user must be able to see the independent validation result, findings, adversarial checks, unit tests, scenario tests, evaluator judgments, and residual risks before the workflow continues into convergence.
+
+The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `evaluate` may continue automatically only when evaluation evidence is appendable, no blocker requires a user decision, and the next route remains inside the develop/evaluate/converge loop.
+
 ## Checklist
 
 You MUST complete these steps in order:
@@ -337,7 +341,25 @@ Return this structure first:
         "actual_result": "",
         "evidence": []
       }
-    ]
+    ],
+    "checkpoint": {
+      "visibility": "user_visible",
+      "continue_policy": "must_stop",
+      "reason": "The independent evaluation result, findings, tests, and residual risks must be visible before convergence.",
+      "resume_after": "user_acknowledgement"
+    },
+    "workflow_automation": {
+      "policy": "develop_evaluate_converge",
+      "enabled": false,
+      "eligible": false,
+      "stop_conditions": [
+        "blocking finding that needs user decision",
+        "plan or scope contradiction",
+        "missing developer handoff",
+        "blocked evaluation",
+        "route correction"
+      ]
+    }
   },
   "user_response": ""
 }
@@ -357,6 +379,12 @@ Use these enums:
 - `route.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
 - `route.next_skill_context.release_mode`: `checkpoint_evaluate` when a completed evaluation state routes to `release`
 - `route.next_skill_context.next_after_release`: `converge` when a completed evaluation state routes to `release`
+- `ui.checkpoint.visibility`: `user_visible`
+- `ui.checkpoint.continue_policy`: `must_stop` or `auto_continue_allowed`
+- `ui.checkpoint.resume_after`: `user_acknowledgement`, `auto_policy`, `develop_handoff_ready`, or `blocker_resolved`
+- `ui.workflow_automation.policy`: `develop_evaluate_converge` or `none`
+
+For every terminal state, default to `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`. `evaluate` may record `release -> converge` as the next workflow path, but that route is normally a resume target after the visible evaluation checkpoint, not permission to continue silently in the same turn. Use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no stop condition applies.
 
 When adding a terminal state, update the status matrix, output enums, simulation cases, baseline JSONL, and `scripts/check_evaluate_baselines.py` in the same change.
 
@@ -381,11 +409,12 @@ Before returning:
 7. Did I map evaluation checks to the planned test scope?
 8. Did I append an Evaluator Round to `source.review_doc_path` without overwriting prior rounds?
 9. Did I route only completed evaluation states to `release`, with `route.next_skill_context.release_mode=checkpoint_evaluate` and `next_after_release=converge`?
-10. Did I emit a feature-registry signal without marking the feature done?
-11. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
-12. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
-13. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
-14. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+10. Did I include a user-visible checkpoint that prevents silent continuation into convergence?
+11. Did I emit a feature-registry signal without marking the feature done?
+12. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
+13. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
+14. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+15. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

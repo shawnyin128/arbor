@@ -15,6 +15,10 @@ It does not plan, implement, evaluate, or decide convergence.
 
 `release` has status-only user visibility. It may report concise action results such as checkpoint saved, commit hash, push status, confirmation needed, blocker, or next skill. It must not expose checkpoint handoff internals, dirty-scope reasoning, or full release evidence as the primary UI unless the user opens a debug/review trace.
 
+`release` participates in the checkpoint policy but should stay status-only. In checkpoint mode after `develop` or `evaluate`, it may allow automatic continuation only when no external action, blocker, dirty-scope conflict, or confirmation need exists. In finalization mode after `converge`, it must surface status and stop before any externally visible action such as commit, push, PR, tag, or publish unless the user explicitly authorized that exact action.
+
+When the user explicitly enables `develop_evaluate_converge` automation, `release` may carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. This policy does not authorize commit, push, PR, tag, publish, next-feature release, or any other external action.
+
 ## Checklist
 
 1. **Confirm source**: accept `develop.ready_for_evaluate` for `checkpoint_develop`, completed `evaluate` states for `checkpoint_evaluate`, and `converge.converged` or equivalent evidence for `finalize_feature`.
@@ -60,6 +64,7 @@ It does not plan, implement, evaluate, or decide convergence.
 15. For finalize-feature release-ready states, the selected source feature must exist in `source.feature_registry_path`; the source feature status must match `release_context.feature_status` and must be `done`. Checkpoint states must prove the selected source feature exists when a registry is available, but they do not require status `done`.
 16. When continuation is available, include registry evidence: `registry_path` must match `source.feature_registry_path`, `registry_index` must identify the selected row, the row id must match `next_feature_id`, and the row status must match `next_feature_status`.
 17. Keep user-facing release output status-only; detailed handoff, authorization, and evidence fields are for structured state, review documents, or debug views.
+18. Emit a checkpoint policy that distinguishes safe internal continuation from user-stopping external actions.
 
 ## Route Rules
 
@@ -178,7 +183,13 @@ Return this structure first:
     "status_items": [],
     "warnings": [],
     "next_actions": [],
-    "debug_details_available": false
+    "debug_details_available": false,
+    "checkpoint": {
+      "visibility": "status",
+      "continue_policy": "auto_continue_allowed",
+      "reason": "The internal checkpoint was recorded and no user-visible external action is pending.",
+      "resume_after": "auto_policy"
+    }
   },
   "user_response": ""
 }
@@ -202,6 +213,11 @@ Use these enums:
 - `route.next_skill`: `evaluate`, `converge`, or `none`
 - `ui.visibility`: `status` or `debug`
 - `ui.display_mode`: `release_status` or `trace`
+- `ui.checkpoint.visibility`: `status`, `user_visible`, or `debug`
+- `ui.checkpoint.continue_policy`: `auto_continue_allowed`, `stop_for_user`, or `must_stop`
+- `ui.checkpoint.resume_after`: `auto_policy`, `user_acknowledgement`, `user_confirmation`, `blocker_resolved`, or `none`
+
+Use `auto_continue_allowed` only for internal checkpoint states that have no externally visible action, no blocker, and no confirmation need, including internal checkpoint handoffs under an explicit `develop_evaluate_converge` automation policy. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation.
 
 ## User-Visible Status
 
@@ -229,3 +245,4 @@ Before returning:
 10. If release reached a checkpoint state, did I route the same feature to the next stage without selecting a new feature?
 11. If release reached a final state, did I select a different unfinished feature from the registry row data or explicitly report that none remains?
 12. Did I keep user-visible release output status-only while preserving detailed evidence in structured fields?
+13. Did I set checkpoint policy so internal checkpoints may continue automatically but external actions and finalization decisions stop for the user?

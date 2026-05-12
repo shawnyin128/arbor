@@ -354,11 +354,23 @@ When approaches are useful, include:
     "summary": "",
     "review_focus": [],
     "warnings": [],
-    "requires_user_decision": true
+    "requires_user_decision": true,
+    "checkpoint": {
+      "visibility": "user_visible",
+      "continue_policy": "must_stop",
+      "reason": "The plan, feature split, hidden decisions, and test goals must be visible before implementation begins.",
+      "resume_after": "user_approval"
+    }
   },
   "user_response": ""
 }
 ```
+
+## Checkpoint Policy
+
+`brainstorm` is always a user-visible checkpoint. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`.
+
+The next skill may be `develop`, but that route is a resume target after the user reviews the plan. It is not permission to silently continue into implementation in the same final response.
 
 ## Inline Review Packet
 

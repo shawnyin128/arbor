@@ -1,4 +1,4 @@
 interface:
-  display_name: "Internal Intake"
-  short_description: "Silently route Arbor workflow requests"
-  default_prompt: "Use $intake only for Arbor runtime routing, simulation, or debug review; normal users should not invoke it directly."
+  display_name: "Intake"
+  short_description: "Automatically decide direct vs Arbor-managed workflow routing while keeping intake output hidden"
+  default_prompt: "Use intake automatically for possible Arbor-managed or boundary-ambiguous development requests before downstream workflow skills. Keep normal intake output hidden and use exact structured enum values; explicit dollar-skill invocation is only for debug, simulation, or review."

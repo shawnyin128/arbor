@@ -471,11 +471,37 @@ Review documents are durable development evidence. They do not belong in skill `
   "ui": {
     "summary": "",
     "review_focus": [],
-    "warnings": []
+    "warnings": [],
+    "checkpoint": {
+      "visibility": "user_visible",
+      "continue_policy": "must_stop",
+      "reason": "The implementation summary, hidden decisions, and self-test evidence should be visible before independent evaluation.",
+      "resume_after": "user_acknowledgement"
+    },
+    "workflow_automation": {
+      "policy": "develop_evaluate_converge",
+      "enabled": false,
+      "eligible": false,
+      "stop_conditions": [
+        "material hidden/default decision",
+        "scope deviation",
+        "failed, skipped, blocked, or missing planned check",
+        "unresolved risk",
+        "missing authorization"
+      ]
+    }
   },
   "user_response": ""
 }
 ```
+
+## Checkpoint And Automation Policy
+
+`develop` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`.
+
+The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `develop` may set `continue_policy=auto_continue_allowed` only when implementation stayed in scope, all planned developer checks passed, no material hidden/default decision needs review, and no unresolved risk or deviation remains.
+
+`ui.workflow_automation` records whether that policy is enabled and eligible. Missing authorization, scope changes, failed or skipped checks, unresolved risks, or missing brainstorm context must keep the checkpoint at `must_stop`.
 
 Use these status values:
 

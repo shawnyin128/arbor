@@ -299,11 +299,37 @@ Only `accepted`, `changes_requested`, and `needs_brainstorm` may route to `relea
         "actual_result": "",
         "evidence": []
       }
-    ]
+    ],
+    "checkpoint": {
+      "visibility": "user_visible",
+      "continue_policy": "must_stop",
+      "reason": "The independent evaluation result, findings, tests, and residual risks must be visible before convergence.",
+      "resume_after": "user_acknowledgement"
+    },
+    "workflow_automation": {
+      "policy": "develop_evaluate_converge",
+      "enabled": false,
+      "eligible": false,
+      "stop_conditions": [
+        "blocking finding that needs user decision",
+        "plan or scope contradiction",
+        "missing developer handoff",
+        "blocked evaluation",
+        "route correction"
+      ]
+    }
   },
   "user_response": ""
 }
 ```
+
+## Checkpoint And Automation Policy
+
+`evaluate` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop` so the user can review findings, unit tests, scenario tests, evaluator judgments, and residual risks before convergence.
+
+The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `evaluate` may set `continue_policy=auto_continue_allowed` only when evaluation evidence is appendable, no blocker requires a user decision, and the route remains inside the develop/evaluate/converge loop.
+
+`ui.workflow_automation` records whether that policy is enabled and eligible. Missing developer handoff, blocked evaluation, route correction, plan contradiction, or a finding that needs user judgment must keep the checkpoint at `must_stop`.
 
 ## Self-Review Checklist
 

@@ -13,6 +13,8 @@ Use `brainstorm` after `intake` has routed an Arbor-managed request to planning,
 
 The terminal state is one of: `needs_clarification`, `needs_evidence`, `ready_for_user_review`, `ready_for_develop`, `route_correction`, or `blocked`.
 
+`brainstorm` is a mandatory user-visible checkpoint. Do not silently continue into `develop` in the same final response. The user must be able to inspect the plan, feature split, hidden decisions, test goals, and expected delivery before implementation starts, unless a future runtime provides an explicit reviewed checkpoint policy.
+
 ## Checklist
 
 Follow this normal sequence for brainstorm runs. Stop early with the correct terminal state when route correction, missing evidence, or a blocking clarification prevents later steps.
@@ -60,6 +62,7 @@ Confirm route
 10. Require user approval before `develop` unless the user already clearly approved a narrow low-risk plan.
 11. For ready implementation work, create the review Context/Test Plan artifact that `develop` and `evaluate` will append to.
 12. Never edit implementation files, run tests, commit, push, or declare validation success inside `brainstorm`.
+13. Always emit a user-visible checkpoint that stops automatic continuation before implementation.
 
 ## Anti-Patterns
 
@@ -245,7 +248,13 @@ Return this structure first:
     "summary": "",
     "review_focus": [],
     "warnings": [],
-    "requires_user_decision": true
+    "requires_user_decision": true,
+    "checkpoint": {
+      "visibility": "user_visible",
+      "continue_policy": "must_stop",
+      "reason": "The plan, feature split, hidden decisions, and test goals must be visible before implementation begins.",
+      "resume_after": "user_approval"
+    }
   },
   "user_response": ""
 }
@@ -303,8 +312,13 @@ Use these enums:
 - `evidence.mode`: `pure`, `user_artifact`, `project_context`, `codebase`, `paper`, `paper_and_code`, `mixed`
 - `route.terminal_state`: `needs_clarification`, `needs_evidence`, `ready_for_user_review`, `ready_for_develop`, `route_correction`, `blocked`
 - `route.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
+- `ui.checkpoint.visibility`: `user_visible`
+- `ui.checkpoint.continue_policy`: `must_stop`
+- `ui.checkpoint.resume_after`: `user_approval`, `evidence_loaded`, `clarification_answered`, or `route_correction_handled`
 
 Keep enum-like fields stable. Do not require the UI to infer terminal state, missing evidence, approval status, or review focus from prose.
+
+For all terminal states, `ui.checkpoint.visibility` must be `user_visible` and `ui.checkpoint.continue_policy` must be `must_stop`. `brainstorm` may point to `develop` as the next workflow skill, but that route is a resume target after the checkpoint, not permission to continue silently in the same turn.
 
 For ready features, define verification appropriate to the artifact. Code changes usually need unit tests, scenario tests, edge cases, negative cases, and evaluator focus. Documentation, research plans, workflow artifacts, or other non-code deliverables may use content checks, structure checks, dry runs, schema checks, or workflow scenario checks instead of pretending every artifact has unit tests. `evaluator_focus` guides independent review but is not itself a concrete verification check.
 
@@ -327,9 +341,10 @@ Before returning, check:
 7. Did I create the review Context/Test Plan artifact for the selected ready feature?
 8. Did I avoid implementation, test execution, commit, push, and release claims?
 9. Did I make the next route and approval state explicit?
-10. Did I write `user_response` as a plain-language review packet that avoids machine field names?
-11. Did every visible table cell use user-level descriptions instead of copied internal labels?
-12. Did I avoid status codes, feature ids, fixture ids, and unexplained abbreviations in visible text?
+10. Did I include a user-visible checkpoint that prevents silent continuation into implementation?
+11. Did I write `user_response` as a plain-language review packet that avoids machine field names?
+12. Did every visible table cell use user-level descriptions instead of copied internal labels?
+13. Did I avoid status codes, feature ids, fixture ids, and unexplained abbreviations in visible text?
 
 If any answer fails, revise the structured output before responding.
 

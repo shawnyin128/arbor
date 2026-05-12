@@ -13,6 +13,10 @@ Use `develop` when Arbor has an authorized implementation or managed-artifact un
 
 It does not approve plans, independently validate like `evaluate`, decide convergence, commit, push, tag, or release. It also does not decide whether a checkpoint should bypass evaluation; `release` records the checkpoint and routes onward.
 
+`develop` is a mandatory user-visible checkpoint by default. The user must be able to see what changed, how the work maps to the plan, which implementation defaults were chosen, and how the developer self-tested before the workflow continues into independent evaluation.
+
+The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `develop` may continue automatically only when the implementation stayed in scope, all planned developer checks passed, no material hidden decision needs review, and no unresolved risk or deviation is reported.
+
 ## Checklist
 
 Follow this normal sequence for develop runs. Stop early with the correct terminal state when source, execution basis, scope, or upstream context is missing.
@@ -25,7 +29,8 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
 5. **Implement freely within scope**: use repo conventions and senior engineering judgment. Record material deviations.
 6. **Self-test against the plan**: design and run developer checks that cover the artifact-appropriate verification scope from the brainstorm review document. Record any uncovered planned checks. When using `verification_checks`, make each item replayable: name the inspected artifact, the check performed, the expected result, the actual result, and the result. For `ready_for_evaluate`, only `passed` verification checks count as completed evidence; skipped, failed, blocked, or not-run checks must be reflected in `uncovered_planned_tests`, `not_run`, or a non-ready terminal state.
 7. **Append handoff**: append a Developer Round to the same existing review document named by `source.review_doc_path`. Do not create the Context/Test Plan section. Include a detailed self-test table so `evaluate` can see what was tested, what passed or failed, what was skipped, and which planned checks each row covers.
-8. **Return structured output first**: emit `develop.v1` before prose.
+8. **Set checkpoint policy**: default to `must_stop`; use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no material decisions, deviations, skipped checks, or risks need user review.
+9. **Return structured output first**: emit `develop.v1` before prose.
 
 ## Terminal States
 
@@ -260,7 +265,25 @@ Return this structure first:
   "ui": {
     "summary": "",
     "review_focus": [],
-    "warnings": []
+    "warnings": [],
+    "checkpoint": {
+      "visibility": "user_visible",
+      "continue_policy": "must_stop",
+      "reason": "The implementation summary, hidden decisions, and self-test evidence should be visible before independent evaluation.",
+      "resume_after": "user_acknowledgement"
+    },
+    "workflow_automation": {
+      "policy": "develop_evaluate_converge",
+      "enabled": false,
+      "eligible": false,
+      "stop_conditions": [
+        "material hidden/default decision",
+        "scope deviation",
+        "failed, skipped, blocked, or missing planned check",
+        "unresolved risk",
+        "missing authorization"
+      ]
+    }
   },
   "user_response": ""
 }
@@ -286,8 +309,14 @@ Use these enums:
 - `route.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
 - `route.next_skill_context.release_mode`: `checkpoint_develop` when `ready_for_evaluate` routes to `release`
 - `route.next_skill_context.next_after_release`: `evaluate` when `ready_for_evaluate` routes to `release`
+- `ui.checkpoint.visibility`: `user_visible`
+- `ui.checkpoint.continue_policy`: `must_stop` or `auto_continue_allowed`
+- `ui.checkpoint.resume_after`: `user_acknowledgement`, `auto_policy`, `brainstorm_ready`, `selection_ready`, or `blocker_resolved`
+- `ui.workflow_automation.policy`: `develop_evaluate_converge` or `none`
 
 When adding a terminal state, update the status matrix, output enums, simulation cases, baseline JSONL, and `scripts/check_develop_baselines.py` in the same change.
+
+For all terminal states, default to `ui.checkpoint.continue_policy=must_stop`. Use `auto_continue_allowed` only when all of these are true: the user explicitly enabled `develop_evaluate_converge` automation for the current workflow, implementation stayed inside scope, no material hidden/default decision needs review, all planned developer checks passed, and no unresolved risk or deviation is reported. Use `must_stop` for missing authorization, missing selection, missing brainstorm context, implementation failure, self-test failure, scope changes, or any blocker that needs a human decision.
 
 For `ready_for_evaluate`, `planned_test_coverage` must be non-empty, concrete check evidence must be present, and `uncovered_planned_tests` must be empty. Concrete result evidence comes from passed self-test table rows or passed `verification_checks` for content checks, structure checks, dry runs, schema checks, compile/lint/type checks, or other checks appropriate to the artifact. Raw command, unit-test, and scenario fields identify targets; they do not prove results by themselves. For `self_test_failed`, record the planned checks that were attempted and the planned checks still uncovered or failing.
 
@@ -314,8 +343,9 @@ Before returning:
 11. Did the output statuses match the status matrix?
 12. Did blocked or failed runs expose a machine-readable `handoff_kind`, `blocker_kind`, and replay target where useful?
 13. Did I route to `release` only from `ready_for_evaluate`, with `route.next_skill_context.release_mode=checkpoint_develop` and `next_after_release=evaluate`?
-14. Did `user_response` expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
-15. Did `user_response` explain the development result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
+14. Did I include a user-visible checkpoint with the correct continue policy before independent evaluation?
+15. Did `user_response` expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
+16. Did `user_response` explain the development result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

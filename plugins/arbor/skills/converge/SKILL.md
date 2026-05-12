@@ -13,6 +13,10 @@ Use `converge` after `evaluate` has appended an Evaluator Round for an Arbor-man
 
 The normal terminal output is a structured `converge.v1` decision plus a Convergence Round appended to the same review document.
 
+`converge` is a mandatory user-visible checkpoint by default. Do not silently continue into release, the next feature, or another correction loop in the same final response. The user must be able to see whether the developer/evaluator loop agrees, whether the result still matches the brainstorm goal, and why the workflow is stopping, looping, or finalizing.
+
+The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `converge` may continue automatically only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, or external release action required.
+
 ## Checklist
 
 1. **Confirm source**: accept only completed evaluator states or a valid convergence packet. If the request is not a convergence decision, return `route_correction`.
@@ -47,6 +51,7 @@ The normal terminal output is a structured `converge.v1` decision plus a Converg
 6. Do not update a different feature than the one selected by registry, review document, and evaluator signal.
 7. Do not infer convergence from prose alone; require explicit evaluator verdict, findings, and registry signal.
 8. Append convergence evidence to the same review document.
+9. Always emit a user-visible checkpoint before release finalization, next-feature selection, or another automatic loop.
 
 ## Route Rules
 
@@ -170,7 +175,26 @@ Return this structure first:
   "ui": {
     "summary": "",
     "review_focus": [],
-    "warnings": []
+    "warnings": [],
+    "checkpoint": {
+      "visibility": "user_visible",
+      "continue_policy": "must_stop",
+      "reason": "The convergence decision and any loop/finalization route must be visible before the workflow continues.",
+      "resume_after": "user_acknowledgement"
+    },
+    "workflow_automation": {
+      "policy": "develop_evaluate_converge",
+      "enabled": false,
+      "eligible": false,
+      "stop_conditions": [
+        "round limit reached",
+        "product or design decision required",
+        "scope change",
+        "missing evidence",
+        "blocked convergence",
+        "external release action required"
+      ]
+    }
   },
   "user_response": ""
 }
@@ -188,10 +212,16 @@ Use these enums:
 - `workflow_continuation.next_skill`: `brainstorm`, `develop`, `evaluate`, or `none`
 - `route.terminal_state`: `converged`, `needs_develop`, `needs_brainstorm`, `needs_evidence`, `needs_user_decision`, `blocked`, `route_correction`
 - `route.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
+- `ui.checkpoint.visibility`: `user_visible`
+- `ui.checkpoint.continue_policy`: `must_stop` or `auto_continue_allowed`
+- `ui.checkpoint.resume_after`: `user_acknowledgement`, `auto_policy`, `user_decision`, `evidence_loaded`, or `blocker_resolved`
+- `ui.workflow_automation.policy`: `develop_evaluate_converge` or `none`
 
 For `converged`, `brainstorm_context_loaded`, `latest_developer_round_loaded`, `latest_evaluator_round_loaded`, `develop_evaluate_agree`, `brainstorm_goals_satisfied`, and `feature_identity_consistent` must all be true; `round_limit_reached` must be false; loaded acceptance criteria and brainstorm goals must be present; the evaluator signal must report `current_status=in_evaluate` and `recommended_next_status=done`; the registry update must move only the selected feature from `in_evaluate` to `done`; and `route.next_skill` must be `release`. If the evaluator accepted but brainstorm acceptance criteria or goals are missing, return `needs_evidence` and route to `brainstorm` instead of marking the feature done.
 
 Keep `route` focused on the current feature's convergence result. `converge` must not advertise next-feature continuation; `workflow_continuation.status` stays `none`, with no next feature id and `next_skill=none`. Release owns next-feature continuation after finalization.
+
+For every terminal state, default to `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`. A clear route may still be recorded for the next workflow step, but it is normally a resume target after the visible convergence checkpoint, not permission to continue silently in the same turn. Use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and the decision remains inside the current feature loop without any stop condition.
 
 ## Self-Check
 
@@ -206,4 +236,5 @@ Before returning:
 7. Did I update only the selected feature status?
 8. Did I append a Convergence Round to the same review document?
 9. If the feature converged, did I route to internal release and defer next-feature selection?
-10. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?
+10. Did I include a user-visible checkpoint that prevents silent continuation into release, next-feature selection, or a correction loop?
+11. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?

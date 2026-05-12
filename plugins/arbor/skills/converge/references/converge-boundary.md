@@ -53,6 +53,38 @@ Do not include a "What Will Be Preserved" section. Persistence and checkpoint de
 
 `Agreement Check` and `Remaining Issues` must be tables with user-readable cells. Keep internal ids, field names, terminal-state strings, route assignments, and finding ids out of primary visible text.
 
+## Checkpoint And Automation Policy
+
+`converge` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint` and `ui.workflow_automation`:
+
+```json
+{
+  "ui": {
+    "checkpoint": {
+      "visibility": "user_visible",
+      "continue_policy": "must_stop",
+      "reason": "The convergence decision and any loop/finalization route must be visible before the workflow continues.",
+      "resume_after": "user_acknowledgement"
+    },
+    "workflow_automation": {
+      "policy": "develop_evaluate_converge",
+      "enabled": false,
+      "eligible": false,
+      "stop_conditions": [
+        "round limit reached",
+        "product or design decision required",
+        "scope change",
+        "missing evidence",
+        "blocked convergence",
+        "external release action required"
+      ]
+    }
+  }
+}
+```
+
+The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `converge` may set `continue_policy=auto_continue_allowed` only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, blocked convergence, or external release action required.
+
 ## Route Decisions
 
 ### Converged

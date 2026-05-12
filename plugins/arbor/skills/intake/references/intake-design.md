@@ -2,9 +2,24 @@
 
 ## Purpose
 
-`intake` is the gatekeeper for Arbor-managed development workflow. Its job is not to handle every user request. Its job is to decide whether a request should enter Arbor's workflow, whether it should be captured, how it should attach to current context, and which internal skill should handle the next step.
+`intake` is the automatic gatekeeper for Arbor-managed development workflow. Its job is not to handle every user request. Its job is to decide whether a request should enter Arbor's workflow, whether it should be captured, how it should attach to current context, and which internal skill should handle the next step.
+
+Codex should be able to select `intake` automatically when a user request may need Arbor workflow control or when the request needs a direct-vs-managed boundary decision. That automatic selection is separate from user visibility: users should not need explicit dollar-skill invocation, and intake should not become the visible response.
 
 The skill must stay lightweight. It should not solve the task, design the full solution, write code, run tests, or invent new workflow stages.
+
+## Automatic Selection vs User Visibility
+
+`intake` has two separate contracts:
+
+- **Runtime selection**: Codex should choose intake automatically for possible Arbor-managed requests or ambiguous boundary requests so it can classify, persist, and route before another workflow skill runs.
+- **User visibility**: intake should keep normal output hidden and let the downstream skill or normal assistant provide the visible response.
+
+Do not describe intake as non-selectable or manual-only. The intended user experience is that users do not need to call `$arbor:intake`, not that the runtime should avoid selecting intake.
+
+Automatic selection should cover direct-vs-managed ambiguity, not only obvious managed work. Examples include broad read-only audits, codebase or paper-backed analysis, proposal and reviewer feedback used for planning, mixed explanation-plus-optimization requests, context patches, and documentation edits whose purpose may or may not serve development workflow.
+
+Keep the trigger description compact. Overly broad prose can make the model classify more cases, but it can also weaken the exact output contract. The skill should say when to select intake, then quickly hand control to the stable structured schema.
 
 ## Skill File Organization
 
@@ -62,7 +77,7 @@ If no declared skill fits, `intake` must return a route gap instead of inventing
 
 `intake` output is an internal contract between the skill layer, runtime routing, replay, and optional debug UI. It is not the primary user-visible output. The downstream skill or normal assistant owns the response the user sees.
 
-The skill may include an empty or minimal `user_response` for testing, but normal runtime should not stop at `intake`. Do not hide important decisions only in prose.
+The skill may include an empty or minimal `user_response` for testing, but normal runtime should not stop at `intake`. Do not hide important decisions only in prose. This hidden-output rule does not weaken automatic runtime selection.
 
 When running in simulation or structured mode, `intake` should produce:
 

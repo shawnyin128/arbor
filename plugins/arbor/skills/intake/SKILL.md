@@ -1,15 +1,19 @@
 ---
 name: intake
-description: Internally classify user input for Arbor-managed development workflow, decide whether the request belongs in Arbor, split compound intents, choose persistence behavior, attach context patches, and silently route only to declared workflow skills.
+description: Automatically triage possible Arbor workflow or boundary-ambiguous development requests before any downstream skill. Use for future ideas, bugs, optimizations, planning, audits, codebase/paper/proposal/reviewer-backed decisions, tests, evaluation, release follow-ups, context patches, and managed docs. Decide Arbor vs direct, split intents, choose persistence, and route only to declared workflow skills while keeping intake output hidden from normal users.
 ---
 
 # Intake
 
 ## Purpose
 
-Use `intake` to decide whether a user request should enter Arbor's development workflow. `intake` is a silent internal gatekeeper, not a universal router, not a solver, and not a user-facing stopping point.
+Use `intake` as the automatic gate for user requests that may belong to Arbor's managed development workflow or need a direct-vs-managed boundary decision. Codex should select this skill automatically for possible Arbor workflow requests; normal users should not need explicit dollar-skill invocation.
+
+`intake` is a classifier and router, not a universal router, not a solver, and not a user-facing stopping point. It may be selected by the runtime, but its normal output remains hidden from the user.
 
 The skill must produce stable structured output for runtime handoff, replay, and debug review. The downstream skill or normal assistant owns visible user output. `intake` owns classification, boundary decisions, persistence decisions, and routing.
+
+All enum-like fields must use the exact allowed enum values from the structured output contract. Do not output booleans, `none` as a substitute for `no`, or free-form phrases in `boundary.arbor_managed`, `persistence.todo`, `persistence.active_state`, `persistence.artifact_write`, or `routing.next_skill`.
 
 ## Checklist
 
@@ -35,6 +39,22 @@ Route only to these skills:
 - `none`
 
 If no declared skill fits, return a route gap instead of inventing a skill.
+
+## Automatic Selection
+
+Codex should choose `intake` automatically when a user request might need Arbor workflow control, including possible backlog capture, planning, implementation, evaluation, convergence, release, active workflow continuation, or workflow-serving documentation.
+
+Also choose `intake` for ambiguous boundary cases that need a direct-vs-managed decision before responding, such as:
+
+- broad read-only audits or impact reviews;
+- codebase, paper, proposal, report, or reviewer-feedback analysis that may affect research direction, experiments, implementation, or evaluation;
+- mixed requests where one part is direct explanation and another part asks for optimization, design, or future work;
+- short context patches such as "continue," naming constraints, implementation constraints, or correction feedback;
+- simple documentation or file-edit requests that might be direct work or managed workflow artifacts depending on purpose.
+
+Automatic selection does not mean intake becomes visible to the user. It means intake produces the hidden routing decision that lets the downstream skill or normal assistant provide the visible response.
+
+Normal users should not need to call `$arbor:intake`. Explicit invocation is reserved for debugging, review, simulation, or tests.
 
 ## Process Flow
 
@@ -66,7 +86,7 @@ The terminal state is a structured intake decision that must immediately hand of
 
 ## Visibility
 
-`intake` is hidden by default. It should not be manually invoked in normal user workflows and should not render a primary user card.
+`intake` is hidden by default. It should not render a primary user card, and normal users should not need to invoke it explicitly.
 
 Use its structured output for:
 
@@ -250,6 +270,17 @@ Return this structure first:
 
 Keep enum-like fields stable. Do not require the UI to infer route, persistence, risk, or user-decision state from prose.
 
+These fields must be exact enums, never booleans or explanatory phrases:
+
+- `boundary.arbor_managed`
+- `persistence.todo`
+- `persistence.active_state`
+- `persistence.artifact_write`
+- `routing.next_skill`
+- `ui.visibility`
+- `ui.display_mode`
+- `ui.resolution_kind`
+
 Use these enums:
 
 - `boundary.arbor_managed`: `yes`, `no`, `mixed`, `context_dependent`, `uncertain`
@@ -277,6 +308,7 @@ Before returning, check:
 6. Did I preserve raw user input separately from normalized classification?
 7. Did I include UI fields for warnings, review focus, and user decisions?
 8. Did I keep intake hidden and avoid treating it as the visible user response?
+9. Did I preserve the distinction between automatic runtime selection and hidden user-facing output?
 
 If any answer fails, revise the structured output before responding.
 

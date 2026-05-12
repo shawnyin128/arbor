@@ -67,6 +67,29 @@ Standalone `stage` has no completed release terminal. `release` may prepare an e
 
 Do not show `checkpoint_handoff`, `feature_registry_signal`, dirty-scope analysis, selected-file reasoning, or authorization internals as primary UI. These remain machine-readable for the workflow and available in review/debug views.
 
+## Checkpoint Policy
+
+`release` participates in checkpoint policy but remains status-only. Its output must include `ui.checkpoint`:
+
+```json
+{
+  "ui": {
+    "visibility": "status",
+    "display_mode": "release_status",
+    "checkpoint": {
+      "visibility": "status",
+      "continue_policy": "auto_continue_allowed",
+      "reason": "The internal checkpoint was recorded and no user-visible external action is pending.",
+      "resume_after": "auto_policy"
+    }
+  }
+}
+```
+
+Use `continue_policy=auto_continue_allowed` only for safe internal `checkpoint_develop` or `checkpoint_evaluate` handoffs with no external action, blocker, dirty-scope conflict, or confirmation need. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation.
+
+An explicit `develop_evaluate_converge` automation policy can allow release to carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. It does not authorize commit, push, PR, tag, publish, next-feature release, or any other external action.
+
 ## Commit Convention
 
 Use:
