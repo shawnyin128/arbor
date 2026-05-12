@@ -17,6 +17,8 @@ It does not plan, implement, evaluate, or decide convergence.
 
 `release` participates in the checkpoint policy but should stay status-only. In checkpoint mode after `develop` or `evaluate`, it may allow automatic continuation only when no external action, blocker, dirty-scope conflict, or confirmation need exists. In finalization mode after `converge`, it must surface status and stop before any externally visible action such as commit, push, PR, tag, or publish unless the user explicitly authorized that exact action.
 
+Checkpointed release output is not final delivery. In checkpoint mode, `release` preserves the current handoff and routes the same feature onward; it must not imply that evaluation, convergence, or final release has already happened.
+
 When the user explicitly enables `develop_evaluate_converge` automation, `release` may carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. This policy does not authorize commit, push, PR, tag, publish, next-feature release, or any other external action.
 
 ## Checklist
@@ -31,7 +33,7 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 8. **Append release evidence**: append a Release Round to the same review document when release reaches a meaningful terminal state.
 9. **Select continuation**: after a checkpoint state, route to the next stage for the same feature; after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json` or report that none remains.
 10. **Update registry when justified**: update release metadata/status only for the selected feature.
-11. **Return structured output first**: emit `release.v1` before prose.
+11. **Return rendered checkpoint and runtime packet**: produce `release.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` status checkpoint, not raw JSON.
 
 ## Terminal States
 
@@ -83,7 +85,7 @@ For detailed boundary rationale, read `references/release-boundary.md`.
 
 ## Structured Output Contract
 
-Return this structure first:
+The structured `release.v1` object is an internal workflow/runtime packet. Produce this structure for runtime handoff. Normal user-facing output must render the compact status from `user_response` and `ui`; do not print the raw `release.v1` JSON unless the user explicitly asks for debug or machine output:
 
 ```json
 {

@@ -48,9 +48,10 @@ Also choose `intake` for ambiguous boundary cases that need a direct-vs-managed 
 
 - broad read-only audits or impact reviews;
 - codebase, paper, proposal, report, or reviewer-feedback analysis that may affect research direction, experiments, implementation, or evaluation;
+- code review or review-current-changes requests when they attach to an active Arbor develop handoff, current Arbor feature, or review packet;
 - mixed requests where one part is direct explanation and another part asks for optimization, design, or future work;
 - short context patches such as "continue," naming constraints, implementation constraints, or correction feedback;
-- conversational planning continuations such as "based on my requirements, think through what to do" or "design a plan" when they attach to active engineering context;
+- conversational planning continuations such as "based on my requirements, think through what to do," "do the first item," "think through the design before touching files," or "design a plan" when they attach to active engineering context;
 - simple documentation or file-edit requests that might be direct work or managed workflow artifacts depending on purpose.
 
 Automatic selection does not mean intake becomes visible to the user. It means intake produces the hidden routing decision that lets the downstream skill or normal assistant provide the visible response.
@@ -83,7 +84,8 @@ The terminal state is a structured intake decision that must immediately hand of
 8. Do not route every technical question into Arbor.
 9. Do not route every file edit into Arbor.
 10. Do not use `evaluate` for generic assessment.
-11. Do not produce primary user-facing prose; downstream output is the user-facing response.
+11. Do not route generic code review to `evaluate` unless it is attached to an Arbor develop handoff, current Arbor feature, or review packet.
+12. Do not produce primary user-facing prose; downstream output is the user-facing response.
 
 ## Visibility
 
@@ -134,6 +136,7 @@ Enter Arbor when the request needs development workflow management:
 - broad or risky engineering work that needs scope control;
 - codebase analysis that extracts implementation ideas, architecture patterns, impact maps, or experiment plans;
 - active workflow continuation, developer feedback replay, test replay, or release preflight;
+- code review of current changes when the active context is an Arbor develop handoff, current Arbor feature, or review packet;
 - development-serving artifacts such as feature specs, review reports, test plans, release notes, AGENTS project maps, or workflow rules;
 - long tasks that need active state or checkpointing.
 
@@ -169,6 +172,7 @@ Fragmentary, imperative, or constraint-like input should attach to the active co
 - "We do not need scaling."
 - "Use our own quantizer."
 - "Based on my requirements, think through what to do and design a plan."
+- "Do the first item. Think through the design before touching files."
 
 Recommended context priority:
 
@@ -211,10 +215,11 @@ Use only for independent validation of implemented features or code changes:
 - coverage;
 - scenario validation;
 - adversarial checks;
+- code review of current changes when attached to an Arbor develop handoff, active Arbor feature, or review packet;
 - replaying developer feedback;
 - appending evaluator review rounds.
 
-Do not use `evaluate` for generic assessment that is not independent validation of implemented features or code changes.
+Do not use `evaluate` for generic assessment or standalone code review that is not independent validation of an Arbor-managed implemented feature, code change, or develop handoff.
 
 ### `converge`
 

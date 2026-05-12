@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: Independently validate an Arbor develop handoff by replaying developer evidence, adding adversarial unit/scenario checks, appending evaluator review evidence, and emitting structured output for release checkpointing before converge.
+description: Independently validate an Arbor develop handoff or active Arbor code-review continuation by replaying developer evidence, adding adversarial unit/scenario checks, appending evaluator review evidence, and emitting structured output for release checkpointing before converge.
 ---
 
 # Evaluate
@@ -19,6 +19,8 @@ The terminal state is a structured `evaluate.v1` output plus, when evaluation re
 
 `evaluate` is a mandatory user-visible checkpoint by default. The user must be able to see the independent validation result, findings, adversarial checks, unit tests, scenario tests, evaluator judgments, and residual risks before the workflow continues into convergence.
 
+An `accepted` evaluation is not workflow completion. Do not present evaluation-only work as done, converged, released, or finished. The visible output must make convergence explicit as pending, either by stopping at the checkpoint or by continuing only under an eligible `develop_evaluate_converge` automation policy.
+
 The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `evaluate` may continue automatically only when evaluation evidence is appendable, no blocker requires a user decision, and the next route remains inside the develop/evaluate/converge loop.
 
 ## Checklist
@@ -30,10 +32,11 @@ You MUST complete these steps in order:
 3. **Load review context**: the review document named by the develop handoff must contain brainstorm Context/Test Plan and a Developer Round.
 4. **Inspect implementation evidence**: review changed files/artifacts, developer self-tests, planned test coverage, uncovered planned tests, known risks, and replay targets.
 5. **Plan adversarial evaluation**: map brainstorm acceptance criteria, required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus to concrete checks.
-6. **Run evaluation**: replay developer tests when useful, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, and record blocked checks.
+6. **Run evaluation**: replay developer tests when useful, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, and record blocked checks.
 7. **Find bugs, not confirmation**: prioritize behavioral regressions, missing tests, contract drift, scope creep, and untested edge cases.
 8. **Append evaluator evidence**: append an Evaluator Round to the same review document. Do not overwrite brainstorm or developer rounds.
-9. **Return structured output first**: emit `evaluate.v1` before prose.
+9. **Guard continuation semantics**: if evaluation reaches a completed evaluator state, make convergence explicit and do not use final-completion language.
+10. **Return rendered checkpoint and runtime packet**: produce `evaluate.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Process Flow
 
@@ -72,6 +75,7 @@ Only completed evaluation states (`accepted`, `changes_requested`, `needs_brains
 7. Non-blocking recommendations do not become acceptance unless the evidence supports it.
 8. Do not decide final convergence; `converge` owns that decision.
 9. Do not mark a feature `done` or update final feature status. `evaluate` emits a feature-registry signal for `converge`.
+10. Do not accept by replay alone. Accepted evaluations require independent evaluator evidence across multiple useful dimensions.
 
 ## Anti-Patterns
 
@@ -98,6 +102,10 @@ No. `evaluate` recommends a terminal state and provides evidence. `converge` dec
 ### "Evaluation Accepted, So Mark Feature Done"
 
 No. `.arbor/workflow/features.json` is the queue/status index, but `evaluate` should only report the recommended next status. `converge` owns final updates such as `done`, `changes_requested`, `blocked`, or returning to planning.
+
+### "Accepted Means Complete"
+
+No. `accepted` only means independent evaluation did not find a blocking issue. Convergence still must compare evaluator evidence against the brainstorm goal and update final workflow state.
 
 ## The Process
 
@@ -126,6 +134,16 @@ No. `.arbor/workflow/features.json` is the queue/status index, but `evaluate` sh
 - For documentation or managed artifacts, use content, structure, and workflow scenario checks instead of pretending code tests are required.
 - If a check cannot run, record the command, blocker, and residual risk.
 
+### Strict Acceptance Gate
+
+For `accepted`, developer replay is required but never sufficient. The evaluator must add at least two independent evaluator check categories that fit the artifact, such as unit/content checks, workflow scenario checks, edge/negative checks, mutation checks, static/schema/contract probes, compile/lint/type checks, or coverage checks.
+
+When the planned scope includes unit-level behavior, an accepted evaluation needs an independent unit-level or content-level check. When the planned scope includes workflow behavior, it needs an independent scenario check. When edge or negative behavior is planned, it needs an edge/negative check or a mutation/static/contract probe that would fail under a broken version of the contract.
+
+For workflow, skill, router, plugin, or prompt-routing changes, include at least one realistic workflow or user scenario replay. If a live `codex exec`, Claude Code, browser, connector, or external model replay is too costly or unavailable, use the strongest deterministic substitute and record the live gap in `Risks And Gaps`; do not claim live trigger behavior was verified unless it actually ran.
+
+Every accepted evaluation should include a negative control, mutation probe, static contract probe, or equivalent adversarial check that is expected to catch a purposeful broken input. If no meaningful adversarial probe is possible, record why and treat that as residual risk before deciding whether acceptance is justified.
+
 ### Write Findings
 
 - Findings come first in the evaluator round.
@@ -148,6 +166,8 @@ Prefer test-matrix examples like "Copied a completed handoff and changed its sou
 ### User-Facing Evaluation Packet
 
 `user_response` is the visible evaluation summary. It should reduce review cost by leading with the evaluation result and findings, then showing the evidence behind that result.
+
+The structured `evaluate.v1` object is an internal workflow/runtime packet. In a normal user-facing final response, render the checkpoint from `user_response` and `ui`; do not print the raw `evaluate.v1` JSON unless the user explicitly asks for debug or machine output.
 
 Use this shape by default:
 
@@ -223,6 +243,8 @@ Use repo conventions for actual commands. Good evaluation checks can include:
 - scenario tests for user/workflow behavior;
 - edge and negative cases from the brainstorm review plan;
 - mutation/adversarial probes for contract-critical behavior;
+- negative controls that prove the test would fail against a broken contract;
+- realistic workflow or user-scenario replays for skill, router, plugin, prompt-routing, or UI-facing changes;
 - lint/type/compile/schema checks when relevant;
 - coverage checks when requested or when blast radius is broad.
 
@@ -264,7 +286,7 @@ Do not rewrite prior rounds. Do not store evaluator evidence inside skill `refer
 
 ## Structured Output Contract
 
-Return this structure first:
+Produce this structure for internal workflow handoff:
 
 ```json
 {
@@ -386,11 +408,15 @@ Use these enums:
 
 For every terminal state, default to `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`. `evaluate` may record `release -> converge` as the next workflow path, but that route is normally a resume target after the visible evaluation checkpoint, not permission to continue silently in the same turn. Use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no stop condition applies.
 
+For completed evaluation states, the visible `user_response` must say that convergence remains next. It must not imply the feature is done, released, or finally accepted.
+
 When adding a terminal state, update the status matrix, output enums, simulation cases, baseline JSONL, and `scripts/check_evaluate_baselines.py` in the same change.
 
-For completed evaluation states, `source.from_skill` must be `develop` and `source.develop_terminal_state` must be `ready_for_evaluate`. Do not accept other evaluator-ready packet types unless they are explicitly modeled with positive and negative fixtures.
+For completed evaluation states, accept either `source.from_skill=develop` with `source.develop_terminal_state=ready_for_evaluate`, or an explicitly modeled active review continuation from `intake` with `source.develop_terminal_state=active_review_continuation`, an appendable review document, changed files or artifact changes, and replayable review targets. Do not accept other evaluator-ready packet types unless they are explicitly modeled with positive and negative fixtures.
 
 For completed evaluation states, `review_context.acceptance_criteria` must be loaded, and at least one planned test or evaluator-focus dimension must be present. `planned_scope_coverage` must map evaluation work back to that loaded scope.
+
+For `accepted`, `developer_replay` must be non-empty, at least two independent evaluator check categories must be present, and at least one mutation/static/contract probe or negative-control equivalent must be recorded. The accepted state must not rely only on developer replay, broad lint, or prose inspection.
 
 `planned_scope_coverage` entries must name the specific loaded planned item they cover using a stable mapping such as `acceptance:<criterion>`, `unit:<planned test>`, `scenario:<planned scenario>`, `edge:<edge case>`, `negative:<negative case>`, `focus:<evaluator focus>`, `replay:<target>`, or `developer_replay:<target>`. The text after the prefix must match the loaded review scope or replay target. Generic or unrelated entries such as `covered`, `acceptance:covered`, `unit:checked`, or `acceptance:unrelated payment behavior` are not auditable.
 
@@ -413,8 +439,11 @@ Before returning:
 11. Did I emit a feature-registry signal without marking the feature done?
 12. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
 13. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
-14. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
-15. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+14. For accepted evaluations, did I add at least two independent evaluator check categories plus a negative control, mutation probe, static contract probe, or equivalent adversarial check?
+15. For workflow, skill, router, plugin, or prompt-routing changes, did I replay a realistic workflow/user scenario or record the live replay gap?
+16. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+17. Did `user_response` make clear that convergence remains pending instead of implying final completion?
+18. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

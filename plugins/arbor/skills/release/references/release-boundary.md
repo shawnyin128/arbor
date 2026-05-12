@@ -65,6 +65,8 @@ Standalone `stage` has no completed release terminal. `release` may prepare an e
 - confirmation mode: the exact action requiring authorization;
 - blocked mode: the blocker and next safe action.
 
+The structured `release.v1` object is an internal workflow/runtime packet. Normal user-facing output should render the compact status from `user_response` and `ui`, not print the raw JSON unless explicit debug output is requested.
+
 Do not show `checkpoint_handoff`, `feature_registry_signal`, dirty-scope analysis, selected-file reasoning, or authorization internals as primary UI. These remain machine-readable for the workflow and available in review/debug views.
 
 ## Checkpoint Policy
@@ -85,6 +87,8 @@ Do not show `checkpoint_handoff`, `feature_registry_signal`, dirty-scope analysi
   }
 }
 ```
+
+Checkpointed release output is not final delivery. In checkpoint mode, `release` preserves the current handoff and routes the same feature onward; it must not imply that evaluation, convergence, or final release has already happened.
 
 Use `continue_policy=auto_continue_allowed` only for safe internal `checkpoint_develop` or `checkpoint_evaluate` handoffs with no external action, blocker, dirty-scope conflict, or confirmation need. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation.
 

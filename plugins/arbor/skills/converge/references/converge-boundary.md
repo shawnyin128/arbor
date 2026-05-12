@@ -38,6 +38,8 @@ Both must be true to return `converged`.
 
 `user_response` is the visible decision packet. It should not repeat the full evaluator test report. It should explain the convergence decision and the next workflow owner.
 
+The structured `converge.v1` object is an internal workflow/runtime packet. Normal user-facing output should render `user_response` and `ui`, not print the raw JSON unless explicit debug output is requested.
+
 Use these sections:
 
 | Section | Purpose |
@@ -82,6 +84,8 @@ Do not include a "What Will Be Preserved" section. Persistence and checkpoint de
   }
 }
 ```
+
+A `converged` decision is not release completion. The visible output must say that release finalization remains next and must not imply commit, push, publish, or full release has happened.
 
 The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `converge` may set `continue_policy=auto_continue_allowed` only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, blocked convergence, or external release action required.
 

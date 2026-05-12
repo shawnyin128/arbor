@@ -15,6 +15,8 @@ The normal terminal output is a structured `converge.v1` decision plus a Converg
 
 `converge` is a mandatory user-visible checkpoint by default. Do not silently continue into release, the next feature, or another correction loop in the same final response. The user must be able to see whether the developer/evaluator loop agrees, whether the result still matches the brainstorm goal, and why the workflow is stopping, looping, or finalizing.
 
+A `converged` decision is not release completion. Do not present convergence-only work as committed, pushed, published, or fully released. The visible output must make release finalization explicit as the next step.
+
 The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `converge` may continue automatically only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, or external release action required.
 
 ## Checklist
@@ -29,7 +31,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 8. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature.
 9. **Append convergence evidence**: append a Convergence Round to the same review document without rewriting prior rounds.
 10. **Defer continuation**: after `converged`, route to internal `release`; release selects the next unfinished feature after finalization.
-11. **Return structured output first**: emit `converge.v1` before prose.
+11. **Return rendered checkpoint and runtime packet**: produce `converge.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Terminal States
 
@@ -52,6 +54,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 7. Do not infer convergence from prose alone; require explicit evaluator verdict, findings, and registry signal.
 8. Append convergence evidence to the same review document.
 9. Always emit a user-visible checkpoint before release finalization, next-feature selection, or another automatic loop.
+10. Never present convergence-only output as release completion; `release` owns finalization and next-feature selection.
 
 ## Route Rules
 
@@ -73,6 +76,8 @@ For detailed boundary rationale, read `references/converge-boundary.md`.
 ## User-Facing Convergence Packet
 
 `user_response` is the visible convergence decision. Keep it decision-oriented and shorter than an evaluation report. It should answer whether the feature converged, why, whether developer and evaluator evidence agree, whether the result still matches the brainstorm goal, what blocking issue remains, and where the workflow goes next.
+
+The structured `converge.v1` object is an internal workflow/runtime packet. In a normal user-facing final response, render the checkpoint from `user_response` and `ui`; do not print the raw `converge.v1` JSON unless the user explicitly asks for debug or machine output.
 
 Use this shape by default:
 
@@ -106,7 +111,7 @@ Do not include a "What Will Be Preserved" section in the visible response. Persi
 
 ## Structured Output Contract
 
-Return this structure first:
+Produce this structure for internal workflow handoff:
 
 ```json
 {
@@ -223,6 +228,8 @@ Keep `route` focused on the current feature's convergence result. `converge` mus
 
 For every terminal state, default to `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`. A clear route may still be recorded for the next workflow step, but it is normally a resume target after the visible convergence checkpoint, not permission to continue silently in the same turn. Use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and the decision remains inside the current feature loop without any stop condition.
 
+For `converged`, the visible `user_response` must say that release finalization remains next. It must not imply commit, push, publish, or full release has happened.
+
 ## Self-Check
 
 Before returning:
@@ -237,4 +244,5 @@ Before returning:
 8. Did I append a Convergence Round to the same review document?
 9. If the feature converged, did I route to internal release and defer next-feature selection?
 10. Did I include a user-visible checkpoint that prevents silent continuation into release, next-feature selection, or a correction loop?
-11. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?
+11. Did `user_response` make clear that release finalization remains pending after convergence?
+12. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?

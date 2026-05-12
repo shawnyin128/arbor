@@ -15,6 +15,8 @@ It does not approve plans, independently validate like `evaluate`, decide conver
 
 `develop` is a mandatory user-visible checkpoint by default. The user must be able to see what changed, how the work maps to the plan, which implementation defaults were chosen, and how the developer self-tested before the workflow continues into independent evaluation.
 
+A `ready_for_evaluate` developer handoff is not workflow completion. Do not present develop-only work as done, accepted, converged, release-ready, or finished. The visible output must make independent evaluation explicit as pending, either by stopping at the checkpoint or by continuing only under an eligible `develop_evaluate_converge` automation policy.
+
 The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `develop` may continue automatically only when the implementation stayed in scope, all planned developer checks passed, no material hidden decision needs review, and no unresolved risk or deviation is reported.
 
 ## Checklist
@@ -30,7 +32,8 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
 6. **Self-test against the plan**: design and run developer checks that cover the artifact-appropriate verification scope from the brainstorm review document. Record any uncovered planned checks. When using `verification_checks`, make each item replayable: name the inspected artifact, the check performed, the expected result, the actual result, and the result. For `ready_for_evaluate`, only `passed` verification checks count as completed evidence; skipped, failed, blocked, or not-run checks must be reflected in `uncovered_planned_tests`, `not_run`, or a non-ready terminal state.
 7. **Append handoff**: append a Developer Round to the same existing review document named by `source.review_doc_path`. Do not create the Context/Test Plan section. Include a detailed self-test table so `evaluate` can see what was tested, what passed or failed, what was skipped, and which planned checks each row covers.
 8. **Set checkpoint policy**: default to `must_stop`; use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no material decisions, deviations, skipped checks, or risks need user review.
-9. **Return structured output first**: emit `develop.v1` before prose.
+9. **Guard continuation semantics**: if implementation reaches `ready_for_evaluate`, make the next independent evaluation step explicit and do not use final-completion language.
+10. **Return rendered checkpoint and runtime packet**: produce `develop.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Terminal States
 
@@ -47,6 +50,8 @@ Only `ready_for_evaluate` may route to `release`, and the release handoff must i
 ## User-Facing Development Packet
 
 `user_response` is the visible development summary. It must lower the user's review cost; do not make the user read internal schema fields to understand what happened.
+
+The structured `develop.v1` object is an internal workflow/runtime packet. In a normal user-facing final response, render the checkpoint from `user_response` and `ui`; do not print the raw `develop.v1` JSON unless the user explicitly asks for debug or machine output.
 
 Write it in plain natural language with these sections:
 
@@ -119,6 +124,10 @@ No. `brainstorm` gets user approval. `develop` only records execution authorizat
 
 No. Self-tests are developer evidence. Independent validation belongs to `evaluate`.
 
+### "Ready For Evaluate Means Complete"
+
+No. `ready_for_evaluate` only means the developer side has produced an implementation, self-test evidence, and a review handoff. Evaluation and convergence are still pending.
+
 ### "Just Start Coding And Explain Later"
 
 No. First identify source, scope, and authorization. If those are missing, stop with the correct terminal state.
@@ -173,7 +182,7 @@ Do not invent approval evidence. If a required approval cannot be pointed to, re
 
 ## Structured Output Contract
 
-Return this structure first:
+Produce this structure for internal workflow handoff:
 
 ```json
 {
@@ -318,6 +327,8 @@ When adding a terminal state, update the status matrix, output enums, simulation
 
 For all terminal states, default to `ui.checkpoint.continue_policy=must_stop`. Use `auto_continue_allowed` only when all of these are true: the user explicitly enabled `develop_evaluate_converge` automation for the current workflow, implementation stayed inside scope, no material hidden/default decision needs review, all planned developer checks passed, and no unresolved risk or deviation is reported. Use `must_stop` for missing authorization, missing selection, missing brainstorm context, implementation failure, self-test failure, scope changes, or any blocker that needs a human decision.
 
+For `ready_for_evaluate`, the visible `user_response` must say that independent evaluation remains next. It must not imply the feature is accepted, converged, release-ready, or complete.
+
 For `ready_for_evaluate`, `planned_test_coverage` must be non-empty, concrete check evidence must be present, and `uncovered_planned_tests` must be empty. Concrete result evidence comes from passed self-test table rows or passed `verification_checks` for content checks, structure checks, dry runs, schema checks, compile/lint/type checks, or other checks appropriate to the artifact. Raw command, unit-test, and scenario fields identify targets; they do not prove results by themselves. For `self_test_failed`, record the planned checks that were attempted and the planned checks still uncovered or failing.
 
 When appending the Developer Round, write the self-test table into the review document with these columns: category, check, evidence, expected, actual, result, and covers. `covers` maps the row back to brainstorm planned verification scope or acceptance criteria. This table is mandatory for appended success and failure handoffs; it is the primary surface `evaluate` reads before running independent tests.
@@ -345,7 +356,8 @@ Before returning:
 13. Did I route to `release` only from `ready_for_evaluate`, with `route.next_skill_context.release_mode=checkpoint_develop` and `next_after_release=evaluate`?
 14. Did I include a user-visible checkpoint with the correct continue policy before independent evaluation?
 15. Did `user_response` expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
-16. Did `user_response` explain the development result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
+16. Did `user_response` make clear that independent evaluation remains pending instead of implying final completion?
+17. Did `user_response` explain the development result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

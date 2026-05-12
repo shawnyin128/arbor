@@ -17,7 +17,7 @@ The skill must stay lightweight. It should not solve the task, design the full s
 
 Do not describe intake as non-selectable or manual-only. The intended user experience is that users do not need to call `$arbor:intake`, not that the runtime should avoid selecting intake.
 
-Automatic selection should cover direct-vs-managed ambiguity, not only obvious managed work. Examples include broad read-only audits, codebase or paper-backed analysis, proposal and reviewer feedback used for planning, mixed explanation-plus-optimization requests, context patches, and documentation edits whose purpose may or may not serve development workflow.
+Automatic selection should cover direct-vs-managed ambiguity, not only obvious managed work. Examples include broad read-only audits, codebase or paper-backed analysis, proposal and reviewer feedback used for planning, code review requests attached to active Arbor develop handoffs, mixed explanation-plus-optimization requests, context patches, and documentation edits whose purpose may or may not serve development workflow.
 
 Keep the trigger description compact. Overly broad prose can make the model classify more cases, but it can also weaken the exact output contract. The skill should say when to select intake, then quickly hand control to the stable structured schema.
 
@@ -70,6 +70,7 @@ If no declared skill fits, `intake` must return a route gap instead of inventing
 - require complete requirements before capturing a future idea;
 - treat all repo file edits as Arbor-managed;
 - treat generic assessment as `evaluate`;
+- treat generic standalone code review as `evaluate`;
 - treat all design thinking as `brainstorm`;
 - route writing, review-style reasoning, or explanation prompts by keyword instead of checking whether they drive implementation, experiment planning, research direction, evaluation strategy, or development artifacts.
 
@@ -181,6 +182,7 @@ A request should enter Arbor when it needs development workflow management:
 - codebase analysis that extracts implementation ideas, architecture patterns, impact maps, or experiment plans;
 - user-provided proposals, reports, reviewer comments, papers, specs, or docs that are being used to decide research direction, experiments, baselines, implementation, feature scope, or future workflow;
 - active workflow continuation, developer feedback replay, test replay, or release preflight;
+- code review of current changes when the active context is an Arbor develop handoff, current Arbor feature, or review packet;
 - development-serving artifacts such as feature specs, review reports, test plans, release notes, AGENTS project maps, or workflow rules;
 - long tasks that need active state or checkpointing.
 
@@ -232,6 +234,7 @@ Short, fragmentary, or constraint-like inputs should first try to attach to curr
 - "We do not need scaling."
 - "Use our own quantizer."
 - "Based on my requirements, think through what to do and design a plan."
+- "Do the first item. Think through the design before touching files."
 
 Only create a new item if the input cannot reasonably attach to current context and contains an independent work item.
 
@@ -246,7 +249,7 @@ If current conversation and workflow artifacts conflict, `intake` should surface
 
 ### Affirmative Planning Continuations
 
-Short acknowledgements can carry real planning intent when they attach to an active engineering context. Examples include "based on my requirements," "think through what to do," "design a plan," "split the work," "decide the checks," or "how should we approach this."
+Short acknowledgements can carry real planning intent when they attach to an active engineering context. Examples include "based on my requirements," "do the first item," "think through what to do," "think through the design before touching files," "design a plan," "split the work," "decide the checks," or "how should we approach this."
 
 Use this rule only when the continuation has both:
 
@@ -256,6 +259,12 @@ Use this rule only when the continuation has both:
 If the active context is code cleanup, implementation planning, experiment design, release preparation, workflow policy, or another Arbor-managed engineering task, classify the input as an active planning continuation and route to `brainstorm`. The first brainstorm action should load the relevant active context and evidence before producing a settled plan.
 
 If there is no active engineering context, or the context is non-engineering work such as travel planning, email drafting, or prose-only writing support, do not route merely because the user used planning language. Keep the request direct or context-dependent according to the real topic.
+
+### Active Code Review Continuations
+
+Short requests such as "code review", "review the current change", "review this patch", or equivalent non-English phrasing should route to `evaluate` only when they attach to an active Arbor develop handoff, current Arbor feature, or review packet. In that context, the user is asking for independent validation of implemented work, not generic review prose.
+
+If there is no Arbor develop handoff or active feature context, keep the request outside Arbor or mark it context-dependent. Do not route by the words "code review" alone.
 
 ## Documentation Boundaries
 

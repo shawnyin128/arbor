@@ -60,7 +60,7 @@ Do not use `evaluate` for:
 
 If this contract is missing, return `needs_develop_handoff`. Do not invent developer evidence.
 
-For completed evaluation states, require `source.from_skill=develop` and `source.develop_terminal_state=ready_for_evaluate`. Future equivalent evaluator-ready packet types must be explicitly modeled with positive and negative fixtures before they can bypass the normal develop handoff.
+For completed evaluation states, require either `source.from_skill=develop` with `source.develop_terminal_state=ready_for_evaluate`, or an explicitly modeled active review continuation from `intake` with `source.develop_terminal_state=active_review_continuation`, an appendable review document, changed files or artifact changes, and replayable review targets. Future equivalent evaluator-ready packet types must be explicitly modeled with positive and negative fixtures before they can bypass the normal develop handoff.
 
 ## Feature Registry Contract
 
@@ -116,11 +116,22 @@ Minimum evaluation surface:
 - map checks to brainstorm acceptance criteria;
 - cover required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus;
 - add at least one independent check for completed evaluation unless the change is documentation-only and the review plan justifies content/scenario checks instead;
+- for accepted evaluations, add at least two independent evaluator check categories;
+- for accepted evaluations, include a negative control, mutation/static/contract probe, or equivalent adversarial check;
+- for workflow, skill, router, plugin, or prompt-routing changes, replay a realistic workflow or user scenario, or record why live replay is unavailable;
 - record blocked/skipped checks and residual risk.
 
 Use repo conventions for commands. Do not add permanent implementation changes. Temporary probes should be cleaned up or clearly recorded.
 
 Evaluator evidence lists such as `developer_replay`, `additional_unit_tests`, `additional_scenario_tests`, `edge_negative_tests`, and `mutation_or_static_probes` must contain replayable commands, checks, scenarios, or inspection targets plus an observed result. Do not use vague entries such as `checked output`, `checked parser output`, `manually reviewed UI`, `looks good`, or `good enough`.
+
+### Strict Acceptance Gate
+
+For `accepted`, developer replay is required but not sufficient. Acceptance requires at least two independent evaluator check categories that fit the artifact, and at least one mutation/static/contract probe or negative-control equivalent that would catch a purposeful broken input or contract drift.
+
+If planned scope includes unit-level behavior, acceptance needs an independent unit-level or content-level check. If planned scope includes workflow behavior, acceptance needs an independent scenario check. If planned scope includes edge or negative behavior, acceptance needs an edge/negative check or a mutation/static/contract probe.
+
+For workflow, skill, router, plugin, prompt-routing, or UI-facing changes, acceptance should include a realistic workflow or user scenario replay. If a live `codex exec`, Claude Code, browser, connector, or external model replay is too costly or unavailable, use the strongest deterministic substitute and record the live gap in the visible risks.
 
 ## Findings
 
@@ -222,7 +233,7 @@ Only `accepted`, `changes_requested`, and `needs_brainstorm` may route to `relea
 
 ## Output Shape
 
-`evaluate` should emit structured output first:
+The structured `evaluate.v1` object is an internal workflow/runtime packet. `evaluate` should produce structured output for runtime handoff. Normal user-facing output should render `user_response` and `ui`, not print the raw `evaluate.v1` JSON unless explicit debug output is requested:
 
 ```json
 {
@@ -326,6 +337,8 @@ Only `accepted`, `changes_requested`, and `needs_brainstorm` may route to `relea
 ## Checkpoint And Automation Policy
 
 `evaluate` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop` so the user can review findings, unit tests, scenario tests, evaluator judgments, and residual risks before convergence.
+
+An `accepted` evaluation is not workflow completion. The visible output must say that convergence remains next and must not imply the feature is done, released, or finally accepted.
 
 The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `evaluate` may set `continue_policy=auto_continue_allowed` only when evaluation evidence is appendable, no blocker requires a user decision, and the route remains inside the develop/evaluate/converge loop.
 

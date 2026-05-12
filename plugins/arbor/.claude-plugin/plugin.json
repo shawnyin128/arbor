@@ -1,7 +1,7 @@
 {
   "name": "arbor",
   "version": "0.4.1",
-  "description": "Maintain project-local Arbor memory and run structured Arbor workflow skills from intake through release finalization.",
+  "description": "Maintain project-local Arbor memory and automatically gate possible Arbor-managed workflow requests from intake through release finalization; normal checkpoints render user_response/ui while raw workflow JSON and route labels stay hidden unless debug output is requested.",
   "author": {
     "name": "Shawn",
     "url": "https://github.com/shawnyin128"

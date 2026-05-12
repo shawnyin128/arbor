@@ -280,7 +280,7 @@ When approaches are useful, include:
 
 ## Required Output Shape
 
-`brainstorm` should emit structured output for runtime and put the user-facing inline review packet in `user_response`.
+`brainstorm` should produce structured output for runtime and put the user-facing inline review packet in `user_response`. The raw `brainstorm.v1` object is an internal workflow packet; normal user-facing output should render `user_response` and `ui`, not print the raw JSON unless explicit debug output is requested.
 
 ```json
 {
@@ -381,6 +381,8 @@ The visible `user_response` should lower user review cost. It should answer five
 3. How will each small step be verified?
 4. What defaults or assumptions did the agent make that the user did not state?
 5. What will the user get when the idea is finished?
+
+Use these section headings exactly for every normal user-visible brainstorm checkpoint. Do not rename them to alternatives such as "Planning Checkpoint", "Goal", "Recommended Plan", or "Acceptance Criteria"; those concepts belong inside the fixed sections so live rendered output stays predictable.
 
 Use this natural-language shape by default:
 

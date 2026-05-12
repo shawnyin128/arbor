@@ -29,7 +29,7 @@ Follow this normal sequence for brainstorm runs. Stop early with the correct ter
 8. **Create feature registry**: for ready broad or implementation work, create or update `.arbor/workflow/features.json` with all split features, their statuses, active feature, and review document paths.
 9. **Create review context**: for the selected ready feature, create `docs/review/<feature>-review.md` with the Context/Test Plan section unless the request is read-only.
 10. **Self-review**: check for missing evidence, hidden assumptions, oversized features, weak test scope, missing registry state, and accidental implementation.
-11. **Return structured output and review packet**: emit the JSON-shaped plan for runtime, and put the user-facing natural-language review packet in `user_response`.
+11. **Return rendered checkpoint and runtime packet**: produce the JSON-shaped plan for runtime, and put the user-facing natural-language review packet in `user_response`. Normal user-visible output must render that packet, not print raw JSON.
 
 ## Process Flow
 
@@ -174,7 +174,7 @@ For detailed boundary rationale, read `references/brainstorm-boundary.md`.
 
 ## Structured Output Contract
 
-Return this structure first:
+Produce this structure for internal workflow handoff:
 
 ```json
 {
@@ -264,9 +264,13 @@ Return this structure first:
 
 `user_response` is the inline output the user reads. Write it in plain natural language, not as a dump of machine fields. Do not expose names such as `feature_registry`, `review_doc`, `terminal_state`, `evaluator_focus`, `source_intake`, or `route`.
 
+The structured `brainstorm.v1` object is an internal workflow/runtime packet. In a normal user-facing final response, render the checkpoint from `user_response` and `ui`; do not print the raw `brainstorm.v1` JSON unless the user explicitly asks for debug or machine output.
+
 The tables in `user_response` must be human-readable. Do not copy structured labels such as feature names, summaries, test labels, or review-context phrases directly into visible table cells when they are internal shorthand. Rewrite them into plain action/result language. For example, say "define which requests should enter Arbor" instead of "intake routing contract", and say "confirm comparison rules stay consistent" instead of "baseline field assertions".
 
 Do not expose internal shorthand in visible text. Avoid status codes like `ready_for_develop`, assignments like `next_skill=develop`, feature ids like `F1`, fixture labels like `Case 2`, and unexplained abbreviations like `RFD` or `dev/eval`. Translate them into user-level language such as "the plan is approved and can move into implementation", "the first step", or "the implementation and review loop".
+
+Use the following section headings exactly for every normal user-visible brainstorm checkpoint. Do not rename them to alternatives such as "Planning Checkpoint", "Goal", "Recommended Plan", or "Acceptance Criteria"; those concepts belong inside the fixed sections so live rendered output stays predictable.
 
 Default format:
 

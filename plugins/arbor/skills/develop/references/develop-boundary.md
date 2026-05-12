@@ -380,7 +380,7 @@ Review documents are durable development evidence. They do not belong in skill `
 
 ## Output Shape
 
-`develop` should emit structured output first:
+The structured `develop.v1` object is an internal workflow/runtime packet. `develop` should produce structured output for runtime handoff. Normal user-facing output should render `user_response` and `ui`, not print the raw `develop.v1` JSON unless explicit debug output is requested:
 
 ```json
 {
@@ -498,6 +498,8 @@ Review documents are durable development evidence. They do not belong in skill `
 ## Checkpoint And Automation Policy
 
 `develop` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`.
+
+A `ready_for_evaluate` handoff is not workflow completion. The visible output must say that independent evaluation remains next and must not imply the feature is accepted, converged, release-ready, or complete.
 
 The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `develop` may set `continue_policy=auto_continue_allowed` only when implementation stayed in scope, all planned developer checks passed, no material hidden/default decision needs review, and no unresolved risk or deviation remains.
 
