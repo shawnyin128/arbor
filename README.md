@@ -359,6 +359,29 @@ The installed plugin bundles a single `SessionStart` hook (`hooks/hooks.json` + 
 
 Memory hygiene and goal-constraint drift are not auto-fired on Claude Code (Claude Code has no native event that delivers a context packet at the right time). Invoke them through the user-driven workflows above; the underlying scripts are the same on both runtimes.
 
+## Adapter Validation
+
+Run the local adapter smoke check after changing plugin manifests, Claude hook
+files, or runtime-facing Arbor initialization behavior:
+
+```bash
+python3 plugins/arbor/skills/arbor/scripts/check_plugin_adapters.py
+```
+
+The check validates Codex and Claude manifest identity fields, the Claude
+marketplace entry, the Claude `SessionStart` hook shape, the absence of
+out-of-scope plugin-level `agents/` and `PreCompact` adapters, and a synthetic
+Claude startup event with budget-aware context truncation.
+
+For a real Claude Code session smoke test, load the local plugin with:
+
+```bash
+claude --plugin-dir ./plugins/arbor
+```
+
+Then run `/reload-plugins` and check that `/arbor:arbor` and the other
+`/arbor:*` skills are available.
+
 ## Legacy Memory Path
 
 Arbor v0.1 used `.codex/memory.md` for short-term memory. Current Arbor uses `.arbor/memory.md` so the same memory file can be shared by future runtime adapters.
@@ -370,7 +393,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-0.4.0
+0.4.1
 ```
 
 Version files:

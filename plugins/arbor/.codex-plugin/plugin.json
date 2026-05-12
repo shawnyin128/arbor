@@ -1,6 +1,6 @@
 {
   "name": "arbor",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Maintain project-local Arbor memory and run structured Arbor workflow skills from intake through release finalization.",
   "author": {
     "name": "Shawn",
