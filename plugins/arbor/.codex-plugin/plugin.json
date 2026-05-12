@@ -3,8 +3,11 @@
   "version": "0.4.0",
   "description": "Maintain project-local Arbor memory and run structured Arbor workflow skills from intake through release finalization.",
   "author": {
-    "name": "Shawn"
+    "name": "Shawn",
+    "url": "https://github.com/shawnyin128"
   },
+  "homepage": "https://github.com/shawnyin128/arbor",
+  "repository": "https://github.com/shawnyin128/arbor",
   "license": "MIT",
   "keywords": [
     "codex",
@@ -28,12 +31,7 @@
     "defaultPrompt": [
       "Initialize Arbor in this project",
       "Resume this repo with Arbor context",
-      "Refresh project memory before commit",
-      "Classify this request with intake",
-      "Plan this Arbor-managed request with brainstorm",
-      "Develop this authorized Arbor feature",
-      "Evaluate this Arbor develop handoff",
-      "Converge this Arbor feature loop and route release finalization"
+      "Plan and run an Arbor-managed feature"
     ],
     "brandColor": "#2F6F4E",
     "screenshots": []

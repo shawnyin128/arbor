@@ -3,8 +3,11 @@
   "version": "0.4.0",
   "description": "Maintain project-local Arbor memory and run structured Arbor workflow skills from intake through release finalization.",
   "author": {
-    "name": "Shawn"
+    "name": "Shawn",
+    "url": "https://github.com/shawnyin128"
   },
+  "homepage": "https://github.com/shawnyin128/arbor",
+  "repository": "https://github.com/shawnyin128/arbor",
   "license": "MIT",
   "keywords": [
     "claude-code",

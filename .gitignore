@@ -21,10 +21,10 @@ AGENTS.md
 
 # Internal skill validation artifacts. Runtime skill references can be published,
 # but fixture corpora and baseline harnesses are development-only.
-skills/*/references/*-self-test-results.jsonl
-skills/*/references/*-simulation-cases.md
-skills/*/references/*-feature-registry.json
-skills/*/scripts/check_*_baselines.py
+plugins/arbor/skills/*/references/*-self-test-results.jsonl
+plugins/arbor/skills/*/references/*-simulation-cases.md
+plugins/arbor/skills/*/references/*-feature-registry.json
+plugins/arbor/skills/*/scripts/check_*_baselines.py
 
 # Local adapter/worktree experiments; do not publish.
 /.claude/

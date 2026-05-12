@@ -355,7 +355,7 @@ The hooks are registered by the skill during project initialization; Arbor does 
 
 ### Claude Code
 
-The plugin bundles a single `SessionStart` hook (`hooks/hooks.json` + `hooks/session-start`) that fires on the `startup` and `resume` sources. Its Python adapter calls the shared `run_session_startup_hook.py`, applies a budget-aware truncation policy so the rendered packet stays under Claude Code's `additionalContext` cap, and prints the packet to stdout for automatic injection into the conversation.
+The installed plugin bundles a single `SessionStart` hook (`hooks/hooks.json` + `hooks/session-start`) that fires on the `startup` and `resume` sources. Its Python adapter calls the shared `run_session_startup_hook.py`, applies a budget-aware truncation policy so the rendered packet stays under Claude Code's `additionalContext` cap, and prints the packet to stdout for automatic injection into the conversation.
 
 Memory hygiene and goal-constraint drift are not auto-fired on Claude Code (Claude Code has no native event that delivers a context packet at the right time). Invoke them through the user-driven workflows above; the underlying scripts are the same on both runtimes.
 
@@ -376,12 +376,13 @@ Current version:
 Version files:
 
 ```text
-.codex-plugin/plugin.json
-.claude-plugin/plugin.json
+plugins/arbor/.codex-plugin/plugin.json
+plugins/arbor/.claude-plugin/plugin.json
 ```
 
-Marketplace file:
+Marketplace files:
 
 ```text
+.agents/plugins/marketplace.json
 .claude-plugin/marketplace.json
 ```
