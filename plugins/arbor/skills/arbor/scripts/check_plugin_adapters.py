@@ -404,7 +404,9 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
     ):
         check(errors, term in text, f"real workflow chain review missing term `{term}`")
     for term in (
+        "artifacts.unlink()",
         "shutil.rmtree(artifacts)",
+        "artifact root exists and is not a directory",
         "no selected case/runtime pair executed",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")

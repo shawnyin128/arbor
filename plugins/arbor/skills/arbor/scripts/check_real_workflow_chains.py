@@ -844,12 +844,18 @@ def selected_runtimes(runtime: str) -> tuple[str, ...]:
     return (runtime,)
 
 
+def reset_artifact_dir(artifacts: Path) -> None:
+    if artifacts.is_symlink() or artifacts.is_file():
+        artifacts.unlink()
+    elif artifacts.exists():
+        shutil.rmtree(artifacts)
+    artifacts.mkdir(parents=True, exist_ok=True)
+
+
 def make_case_context(case_id: str, runtime: str, artifact_root: Path, plugin_root: Path) -> CaseContext:
     workdir = Path(tempfile.mkdtemp(prefix=f"arbor-{case_id.lower()}-{runtime}-", dir="/private/tmp"))
     artifacts = artifact_root / f"{case_id}-{runtime}"
-    if artifacts.exists():
-        shutil.rmtree(artifacts)
-    artifacts.mkdir(parents=True, exist_ok=True)
+    reset_artifact_dir(artifacts)
     write(artifacts / "workdir.txt", str(workdir) + "\n")
     return CaseContext(case_id, runtime, workdir, artifacts, plugin_root)
 
@@ -918,6 +924,9 @@ def main() -> int:
     all_cases = make_cases()
     cases = selected_cases(all_cases, args.cases)
     runtimes = selected_runtimes(args.runtime)
+    if args.artifact_root.exists() and not args.artifact_root.is_dir():
+        print(f"real workflow chain checks failed: artifact root exists and is not a directory: {args.artifact_root}")
+        return 1
     args.artifact_root.mkdir(parents=True, exist_ok=True)
 
     reports: list[CaseReport] = []
