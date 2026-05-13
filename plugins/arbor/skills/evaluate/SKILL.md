@@ -35,8 +35,9 @@ You MUST complete these steps in order:
 6. **Run evaluation**: replay developer tests when useful, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, and record blocked checks.
 7. **Find bugs, not confirmation**: prioritize behavioral regressions, missing tests, contract drift, scope creep, and untested edge cases.
 8. **Append evaluator evidence**: append an Evaluator Round to the same review document. Do not overwrite brainstorm or developer rounds.
-9. **Guard continuation semantics**: if evaluation reaches a completed evaluator state, make convergence explicit and do not use final-completion language.
-10. **Return rendered checkpoint and runtime packet**: produce `evaluate.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
+9. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the evaluated feature/artifact, changed evidence paths, evaluator result, unresolved findings or risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
+10. **Guard continuation semantics**: if evaluation reaches a completed evaluator state, make convergence explicit and do not use final-completion language.
+11. **Return rendered checkpoint and runtime packet**: produce `evaluate.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Process Flow
 
@@ -94,6 +95,10 @@ No. This skill is only for independent validation of implemented Arbor work. Gen
 ### "Append Anywhere Convenient"
 
 No. `review_append.path` must match `source.review_doc_path`. The Evaluator Round belongs in the same review document as brainstorm Context/Test Plan and Developer Round.
+
+### "Review Evidence Replaces Session Memory"
+
+No. Evaluator rounds are durable evidence, but uncommitted Arbor workflow state still needs a compact `.arbor/memory.md` in-flight entry until it is committed or moved to durable docs.
 
 ### "Converge Is Obvious, So Skip It"
 
@@ -434,16 +439,17 @@ Before returning:
 6. Did I add independent adversarial unit/scenario/edge/negative checks where relevant?
 7. Did I map evaluation checks to the planned test scope?
 8. Did I append an Evaluator Round to `source.review_doc_path` without overwriting prior rounds?
-9. Did I route only completed evaluation states to `release`, with `route.next_skill_context.release_mode=checkpoint_evaluate` and `next_after_release=converge`?
-10. Did I include a user-visible checkpoint that prevents silent continuation into convergence?
-11. Did I emit a feature-registry signal without marking the feature done?
-12. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
-13. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
-14. For accepted evaluations, did I add at least two independent evaluator check categories plus a negative control, mutation probe, static contract probe, or equivalent adversarial check?
-15. For workflow, skill, router, plugin, or prompt-routing changes, did I replay a realistic workflow/user scenario or record the live replay gap?
-16. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
-17. Did `user_response` make clear that convergence remains pending instead of implying final completion?
-18. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+9. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
+10. Did I route only completed evaluation states to `release`, with `route.next_skill_context.release_mode=checkpoint_evaluate` and `next_after_release=converge`?
+11. Did I include a user-visible checkpoint that prevents silent continuation into convergence?
+12. Did I emit a feature-registry signal without marking the feature done?
+13. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
+14. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
+15. For accepted evaluations, did I add at least two independent evaluator check categories plus a negative control, mutation probe, static contract probe, or equivalent adversarial check?
+16. For workflow, skill, router, plugin, or prompt-routing changes, did I replay a realistic workflow/user scenario or record the live replay gap?
+17. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+18. Did `user_response` make clear that convergence remains pending instead of implying final completion?
+19. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

@@ -70,6 +70,7 @@ def render_memory_hygiene_packet(sections: list[ContextSection]) -> str:
         "",
         "- Decide whether `.arbor/memory.md` is stale using this packet plus current conversation context.",
         "- If an update is needed, edit only the project-local `.arbor/memory.md`.",
+        "- If git status shows uncommitted Arbor-managed workflow work and `.arbor/memory.md` is missing or empty, create or refresh it before the assistant stops.",
         "- Keep only short-term, undecided pre-triage observations about uncommitted work.",
         "- Remove resolved, committed, or durable items that belong in docs, review files, or `AGENTS.md`.",
         "- Do not update `AGENTS.md` from this hook.",

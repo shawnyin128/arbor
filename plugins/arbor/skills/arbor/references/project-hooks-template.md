@@ -19,6 +19,10 @@ The hook file is a visible project artifact, not user-global state. A later Arbo
    - Emits a memory hygiene packet with current memory, git status, unstaged diff stat, staged diff stat, and optional selected diff.
    - Rejects side-effecting selected diff options such as `--output`.
    - The running agent decides whether to edit project-local `.arbor/memory.md` using the packet plus conversation context.
+   - Trigger policy: high recall when Arbor-managed work is dirty or about to cross a checkpoint, handoff, release gate, commit, or session boundary.
+   - Positive cases include brainstorm/develop/evaluate/converge/release artifact changes, failed checks, scope changes, local cache sync, ignored review or fixture edits, and any pause/stop with dirty Arbor work.
+   - Negative cases include clean git status, direct one-off explanations, read-only inspection with no unresolved Arbor state, committed-and-pruned work, AGENTS-only stable guide updates, explicit no-write turns, and unrelated dirty files outside Arbor scope.
+   - The registered policy includes a machine-checkable `case_corpus`; adapter validation checks trigger/suppress counts, unique ids, required fields, and required scenario classes.
 
 3. `arbor.goal_constraint_drift`
    - Event: `project.guide_drift`

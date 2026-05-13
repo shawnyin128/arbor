@@ -30,8 +30,9 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 7. **Apply loop policy**: route automatically while under the round limit; escalate when the limit is reached or a user/product decision is required.
 8. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature.
 9. **Append convergence evidence**: append a Convergence Round to the same review document without rewriting prior rounds.
-10. **Defer continuation**: after `converged`, route to internal `release`; release selects the next unfinished feature after finalization.
-11. **Return rendered checkpoint and runtime packet**: produce `converge.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
+10. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the converged or looping feature, changed registry/review paths, decision, unresolved blockers, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
+11. **Defer continuation**: after `converged`, route to internal `release`; release selects the next unfinished feature after finalization.
+12. **Return rendered checkpoint and runtime packet**: produce `converge.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Terminal States
 
@@ -242,7 +243,8 @@ Before returning:
 6. Did I escalate when round limit, evidence conflict, or product decision required it?
 7. Did I update only the selected feature status?
 8. Did I append a Convergence Round to the same review document?
-9. If the feature converged, did I route to internal release and defer next-feature selection?
-10. Did I include a user-visible checkpoint that prevents silent continuation into release, next-feature selection, or a correction loop?
-11. Did `user_response` make clear that release finalization remains pending after convergence?
-12. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?
+9. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
+10. If the feature converged, did I route to internal release and defer next-feature selection?
+11. Did I include a user-visible checkpoint that prevents silent continuation into release, next-feature selection, or a correction loop?
+12. Did `user_response` make clear that release finalization remains pending after convergence?
+13. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?

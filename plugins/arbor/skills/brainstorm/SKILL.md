@@ -61,8 +61,9 @@ Confirm route
 9. Maintain `features.json` as the feature queue/status index; do not make downstream skills infer progress by scanning review files.
 10. Require user approval before `develop` unless the user already clearly approved a narrow low-risk plan.
 11. For ready implementation work, create the review Context/Test Plan artifact that `develop` and `evaluate` will append to.
-12. Never edit implementation files, run tests, commit, push, or declare validation success inside `brainstorm`.
-13. Always emit a user-visible checkpoint that stops automatic continuation before implementation.
+12. Before stopping with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the current in-flight plan/checkpoint until the work is committed or moved to durable docs.
+13. Never edit implementation files, run tests, commit, push, or declare validation success inside `brainstorm`.
+14. Always emit a user-visible checkpoint that stops automatic continuation before implementation.
 
 ## Anti-Patterns
 

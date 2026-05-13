@@ -121,6 +121,8 @@ What it does well:
 - refreshing short-term memory when current-session or uncommitted work makes `.arbor/memory.md` stale (auto via `arbor.in_session_memory_hygiene` hook intent on Codex; user-invoked on Claude Code);
 - preparing `AGENTS.md` updates when the project guide or map needs to point the agent at changed durable context (auto via `arbor.goal_constraint_drift` hook intent on Codex; user-invoked on Claude Code).
 
+The memory hygiene hook is intentionally high-recall around dirty Arbor workflow state. It should fire before stops, skill handoffs, release gates, commits, cache syncs, failed checks, or user review checkpoints when Arbor-managed changes are uncommitted, and it should stay quiet for clean direct answers, read-only inspections, explicit no-write turns, or unrelated dirty files outside Arbor scope.
+
 How long-term memory works:
 
 Important: `AGENTS.md` is not Arbor's long-term memory database.
@@ -129,6 +131,8 @@ Important: `AGENTS.md` is not Arbor's long-term memory database.
 - `git log` is the completed-work history. Good commits make finished features, fixes, and verification discoverable.
 - project docs hold deeper design, review, and domain context that should not be compressed into `AGENTS.md`.
 - `.arbor/memory.md` is only for short-term unresolved state before it is committed, resolved, or moved to durable docs.
+
+Any Arbor-managed workflow that leaves uncommitted project changes must keep `.arbor/memory.md` current before the assistant stops or hands off. Review documents and `.arbor/workflow/features.json` hold workflow evidence, but they do not replace the short-term resume pointer. After a successful commit or publish resolves the work, prune resolved memory entries so git history becomes the source of truth.
 
 Use it when:
 
@@ -366,12 +370,14 @@ files, or runtime-facing Arbor initialization behavior:
 
 ```bash
 python3 plugins/arbor/skills/arbor/scripts/check_plugin_adapters.py
+python3 plugins/arbor/skills/arbor/scripts/check_skill_packages.py
 ```
 
 The check validates Codex and Claude manifest identity fields, the Claude
 marketplace entry, the Claude `SessionStart` hook shape, the absence of
-out-of-scope plugin-level `agents/` and `PreCompact` adapters, and a synthetic
-Claude startup event with budget-aware context truncation.
+out-of-scope plugin-level `agents/` and `PreCompact` adapters, a synthetic
+Claude startup event with budget-aware context truncation, and every Arbor skill
+package without relying on `quick_validate.py` being on the shell `PATH`.
 
 For a real Claude Code session smoke test, load the local plugin with:
 

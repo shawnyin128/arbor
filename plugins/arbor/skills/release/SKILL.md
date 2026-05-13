@@ -33,7 +33,8 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 8. **Append release evidence**: append a Release Round to the same review document when release reaches a meaningful terminal state.
 9. **Select continuation**: after a checkpoint state, route to the next stage for the same feature; after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json` or report that none remains.
 10. **Update registry when justified**: update release metadata/status only for the selected feature.
-11. **Return rendered checkpoint and runtime packet**: produce `release.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` status checkpoint, not raw JSON.
+11. **Update session memory**: before stopping with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records unresolved in-flight state. After a successful commit/push/publish that resolves the current Arbor work, remove or shrink resolved memory entries so committed history becomes the source of truth.
+12. **Return rendered checkpoint and runtime packet**: produce `release.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` status checkpoint, not raw JSON.
 
 ## Terminal States
 
@@ -67,6 +68,7 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 16. When continuation is available, include registry evidence: `registry_path` must match `source.feature_registry_path`, `registry_index` must identify the selected row, the row id must match `next_feature_id`, and the row status must match `next_feature_status`.
 17. Keep user-facing release output status-only; detailed handoff, authorization, and evidence fields are for structured state, review documents, or debug views.
 18. Emit a checkpoint policy that distinguishes safe internal continuation from user-stopping external actions.
+19. Do not leave unresolved uncommitted Arbor workflow state without an up-to-date `.arbor/memory.md`; do not leave resolved memory entries after a successful commit or publish makes git history authoritative.
 
 ## Route Rules
 
@@ -247,4 +249,5 @@ Before returning:
 10. If release reached a checkpoint state, did I route the same feature to the next stage without selecting a new feature?
 11. If release reached a final state, did I select a different unfinished feature from the registry row data or explicitly report that none remains?
 12. Did I keep user-visible release output status-only while preserving detailed evidence in structured fields?
-13. Did I set checkpoint policy so internal checkpoints may continue automatically but external actions and finalization decisions stop for the user?
+13. Did I create or refresh `.arbor/memory.md` when unresolved uncommitted Arbor workflow state remains, or clear resolved entries after a successful commit/publish?
+14. Did I set checkpoint policy so internal checkpoints may continue automatically but external actions and finalization decisions stop for the user?

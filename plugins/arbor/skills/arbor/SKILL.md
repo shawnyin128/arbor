@@ -35,6 +35,19 @@ Use `.arbor/memory.md` for short-term, pre-triage observations only:
 
 Before adding an item, triage whether it is already resolved or captured elsewhere. Remove items once they are resolved, committed, or moved to their durable home. Keep the file under 30 lines when practical.
 
+### In-Flight Memory Guard
+
+Every Arbor-managed workflow that leaves uncommitted project changes must ensure `.arbor/memory.md` exists and records the current in-flight state before the assistant stops or hands off to another skill. This is mandatory even when review documents or feature registry rows were updated: those artifacts hold evidence, while `.arbor/memory.md` keeps the short-term resume pointer for uncommitted work.
+
+Use this guard whenever `git status --short` is non-empty because of Arbor workflow work:
+
+- create `.arbor/memory.md` from `references/memory-template.md` if it is missing;
+- record the active feature, changed artifact paths, current checkpoint, unresolved risks, and next expected skill or user action;
+- keep the entry short and pre-triage; do not duplicate full review evidence;
+- after a successful commit or after the state is moved to durable docs, remove or shrink resolved entries so memory reflects only unresolved uncommitted work.
+
+Do not rely only on runtime hooks. Hooks may emit a hygiene packet, but the active Arbor skill is still responsible for making sure memory is current before ending with uncommitted work.
+
 ## Long-Term Context
 
 Treat long-term context as a layered project record:
@@ -61,6 +74,8 @@ Arbor hook registration is project-level. `.codex/hooks.json` is the Codex proje
 - `arbor.session_startup_context`: load startup context in the required order.
 - `arbor.in_session_memory_hygiene`: emit memory hygiene context so the agent can refresh `.arbor/memory.md` when uncommitted work or conversation state makes it stale.
 - `arbor.goal_constraint_drift`: emit AGENTS drift context so the agent can update stable `AGENTS.md` goal, constraint, or map sections when needed.
+
+The memory hygiene hook should be treated as high-recall around dirty Arbor workflow state. Prefer triggering it before stops, handoffs, release gates, commits, cache syncs, failed checks, or user review checkpoints when Arbor-managed changes are uncommitted. Suppress it for clean direct answers, read-only inspections with no unresolved Arbor state, explicit no-write turns, and unrelated dirty files outside Arbor scope.
 
 Do not store Arbor hook state in user-global memory. Re-register hooks when needed; registration is idempotent and should preserve unrelated project hooks.
 

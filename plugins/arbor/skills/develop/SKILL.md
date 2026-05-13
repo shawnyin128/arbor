@@ -31,9 +31,10 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
 5. **Implement freely within scope**: use repo conventions and senior engineering judgment. Record material deviations.
 6. **Self-test against the plan**: design and run developer checks that cover the artifact-appropriate verification scope from the brainstorm review document. Record any uncovered planned checks. When using `verification_checks`, make each item replayable: name the inspected artifact, the check performed, the expected result, the actual result, and the result. For `ready_for_evaluate`, only `passed` verification checks count as completed evidence; skipped, failed, blocked, or not-run checks must be reflected in `uncovered_planned_tests`, `not_run`, or a non-ready terminal state.
 7. **Append handoff**: append a Developer Round to the same existing review document named by `source.review_doc_path`. Do not create the Context/Test Plan section. Include a detailed self-test table so `evaluate` can see what was tested, what passed or failed, what was skipped, and which planned checks each row covers.
-8. **Set checkpoint policy**: default to `must_stop`; use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no material decisions, deviations, skipped checks, or risks need user review.
-9. **Guard continuation semantics**: if implementation reaches `ready_for_evaluate`, make the next independent evaluation step explicit and do not use final-completion language.
-10. **Return rendered checkpoint and runtime packet**: produce `develop.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
+8. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the selected feature/artifact, changed paths, current developer checkpoint, unresolved risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
+9. **Set checkpoint policy**: default to `must_stop`; use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no material decisions, deviations, skipped checks, or risks need user review.
+10. **Guard continuation semantics**: if implementation reaches `ready_for_evaluate`, make the next independent evaluation step explicit and do not use final-completion language.
+11. **Return rendered checkpoint and runtime packet**: produce `develop.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Terminal States
 
@@ -155,6 +156,10 @@ No. Do not add unapproved case-specific defensive programming for one observed i
 ### "Review Docs Are The Feature Queue"
 
 No. Review docs are evidence. `.arbor/workflow/features.json` is the queue/status index. `develop` should update the selected feature status instead of making later skills infer progress by scanning review files.
+
+### "Review Evidence Replaces Session Memory"
+
+No. Review docs and feature registries do not replace `.arbor/memory.md`. If `develop` leaves uncommitted Arbor workflow changes, the short-term memory file must contain a compact in-flight entry so the next session can resume before any commit exists.
 
 ## Evidence Rules
 
@@ -352,7 +357,8 @@ Before returning:
 9. Did the self-test table avoid generic `covers`, and did raw self-test fields stay as identifiers instead of result summaries?
 10. Did I update the selected feature status in `.arbor/workflow/features.json` when the run changed workflow state?
 11. Did the output statuses match the status matrix?
-12. Did blocked or failed runs expose a machine-readable `handoff_kind`, `blocker_kind`, and replay target where useful?
+12. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
+13. Did blocked or failed runs expose a machine-readable `handoff_kind`, `blocker_kind`, and replay target where useful?
 13. Did I route to `release` only from `ready_for_evaluate`, with `route.next_skill_context.release_mode=checkpoint_develop` and `next_after_release=evaluate`?
 14. Did I include a user-visible checkpoint with the correct continue policy before independent evaluation?
 15. Did `user_response` expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
