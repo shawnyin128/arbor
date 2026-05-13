@@ -403,7 +403,7 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "real workflow chain review passed",
     ):
         check(errors, term in text, f"real workflow chain review missing term `{term}`")
-    for case_number in range(1, 27):
+    for case_number in range(1, 28):
         case_id = f"R{case_number:02d}"
         check(errors, f"| {case_id} |" in text, f"real workflow chain review missing case {case_id}")
         check(errors, f'"{case_id}"' in runner_text, f"real workflow chain runner missing case {case_id}")

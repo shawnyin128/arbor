@@ -60,6 +60,7 @@ Arbor regressions should be added here before the fix is accepted.
 | R24 | Previous "full-chain" checks used ignored local fixtures. | Release validation command set. | Release gate | Required real-runtime runner and its scenario definitions are tracked in the repository or explicitly packaged; ignored fixtures are labelled optional and cannot satisfy release. |
 | R25 | Real runtime behavior differed between Codex and Claude. | Paired Codex and Claude runs for routing, startup, evaluate rendering, and release checkpoint. | Same semantic chain on both runtimes | Differences are limited to adapter surfaces; shared skill behavior and rendered user contract match. |
 | R26 | Review loops closed too early. | A failing real case followed by a fix attempt. | `develop -> release -> evaluate -> converge` until accepted | Runner repeats until pass or records a blocking finding; final status cannot be accepted from developer self-test alone. |
+| R27 | Active planning continuation was only protected when the current task was embedded in the same prompt. | Split-context prompt: prior turn establishes active code cleanup requirements, current turn says "Okay. Based on my requirements, let's think through what to do and design a plan." | `intake -> brainstorm` | Rendered brainstorm checkpoint persists `.arbor/workflow/features.json` and review Context/Test Plan; implementation files do not change; the paired non-engineering fixture remains direct in intake baselines. |
 
 ## Runtime Assertions
 
@@ -105,6 +106,7 @@ Every real case must define assertions in four groups.
 A release may say "real workflow chain review passed" only when these cases pass:
 
 - R01, R04, R05, R07, R10, R11, R12, R15, R17, R21, R22, R24 on Codex;
+- R27 on Codex for split-context planning continuation changes;
 - R14 and R25 for shared Codex/Claude changes;
 - R20 for Claude hook changes;
 - the directly affected case for every bug fixed in the release.

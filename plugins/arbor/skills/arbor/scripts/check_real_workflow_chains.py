@@ -523,6 +523,8 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
             "skills/develop/SKILL.md",
             "skills/release/SKILL.md",
             "skills/arbor/references/real-workflow-chain-review.md",
+            "skills/arbor/scripts/check_real_workflow_chains.py",
+            "skills/arbor/scripts/check_plugin_adapters.py",
         ):
             source = PLUGIN_ROOT / rel
             cached = cache / rel
@@ -806,6 +808,20 @@ def make_cases() -> dict[str, CaseSpec]:
             setup_review_context,
             [*common_assertions, assert_any_contains("evaluate", "evaluator", "missing", "cannot", "not")],
         ),
+        CaseSpec(
+            "R27",
+            "split-context planning continuation routes to brainstorm",
+            "Previous context: the active task is code cleanup. The user already named five script entrypoints "
+            "and asked for a safe cleanup plan based on repository evidence.\n"
+            "User: Okay. Based on my requirements, let's think through what to do and design a plan.",
+            setup_planning_context,
+            [
+                *common_assertions,
+                assert_file_exists(".arbor/workflow/features.json"),
+                assert_file_exists("docs/review"),
+                assert_file_equals("src/example.py", "def answer() -> int:\n    return 41\n"),
+            ],
+        ),
     ]
     return {case.case_id: case for case in cases}
 
@@ -886,7 +902,7 @@ def write_report(path: Path, reports: list[CaseReport]) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--runtime", choices=(RUNTIME_CODEX, RUNTIME_CLAUDE, RUNTIME_LOCAL, RUNTIME_ALL), default=RUNTIME_CODEX)
+    parser.add_argument("--runtime", choices=(RUNTIME_CODEX, RUNTIME_CLAUDE, RUNTIME_LOCAL, RUNTIME_ALL), default=RUNTIME_LOCAL)
     parser.add_argument("--cases", default="R14,R20,R24", help="Comma-separated case ids or 'all'.")
     parser.add_argument("--artifact-root", type=Path, default=Path("/private/tmp/arbor-real-workflow-chain-review"))
     parser.add_argument("--plugin-root", type=Path, default=PLUGIN_ROOT)
@@ -919,11 +935,21 @@ def main() -> int:
     report_path = args.report or (args.artifact_root / "report.json")
     write_report(report_path, reports)
     failed = [report for report in reports if report.status == STATUS_FAIL]
+    passed = [report for report in reports if report.status == STATUS_PASS]
+    skipped = [report for report in reports if report.status == STATUS_SKIP]
     if failed:
         print(f"real workflow chain checks failed: {len(failed)} failure(s)")
         print(f"report: {report_path}")
         return 1
-    print(f"real workflow chain checks passed: {len(reports)} case/runtime result(s)")
+    if not passed:
+        print("real workflow chain checks failed: no selected case/runtime pair executed")
+        print(f"summary: passed=0 failed=0 skipped={len(skipped)} total={len(reports)}")
+        print(f"report: {report_path}")
+        return 1
+    print(
+        "real workflow chain checks passed: "
+        f"passed={len(passed)} failed=0 skipped={len(skipped)} total={len(reports)}"
+    )
     print(f"report: {report_path}")
     return 0
 

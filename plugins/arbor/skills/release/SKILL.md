@@ -221,7 +221,7 @@ Use these enums:
 - `ui.checkpoint.continue_policy`: `auto_continue_allowed`, `stop_for_user`, or `must_stop`
 - `ui.checkpoint.resume_after`: `auto_policy`, `user_acknowledgement`, `user_confirmation`, `blocker_resolved`, or `none`
 
-Use `auto_continue_allowed` only for internal checkpoint states whose local checkpoint commit completed with no blocker, dirty-scope conflict, or confirmation need, including internal checkpoint handoffs under an explicit `develop_evaluate_converge` automation policy. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation.
+Use `auto_continue_allowed` only for internal checkpoint states whose local checkpoint commit completed with no blocker, dirty-scope conflict, or confirmation need, including internal checkpoint handoffs under an explicit `develop_evaluate_converge` automation policy. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation. Use `must_stop` for commit, push, PR, tag, publish.
 
 ## User-Visible Status
 
