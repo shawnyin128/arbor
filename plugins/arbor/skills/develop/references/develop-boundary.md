@@ -4,9 +4,9 @@
 
 `develop` executes one Arbor-managed feature or managed artifact change with a clear execution basis. It consumes a scoped plan or handoff from known Arbor skills, manually approved project context, or any other source that provides enough executable scope, authorization when needed, success criteria, test expectations, feature registry state, and review context.
 
-The skill combines implementation, developer self-test, and developer review handoff. It does not independently validate like `evaluate`, decide convergence like `converge`, create the brainstorm Context/Test Plan section, or handle git checkpoint/release gates like `release`.
+The skill combines implementation, developer self-test, and developer review handoff. It does not independently validate like `evaluate`, decide convergence like `converge`, create the brainstorm Context/Test Plan section, or perform git checkpoint/release gates like `release`.
 
-`develop` is intentionally light on how the agent writes code. It should not constrain implementation strategy beyond the upstream contract and the repository's own conventions. Its core value is handoff discipline: consume upstream cleanly, cover the brainstorm test scope with self-tests, append developer evidence, and give downstream `release` a checkpoint packet that preserves state before `evaluate` attacks the work.
+`develop` is intentionally light on how the agent writes code. It should not constrain implementation strategy beyond the upstream contract and the repository's own conventions. Its core value is handoff discipline: consume upstream cleanly, cover the brainstorm test scope with self-tests, append developer evidence, and give downstream `release` a checkpoint packet that authorizes an automatic local developer checkpoint commit before `evaluate` attacks the work.
 
 ## Position In The Workflow
 
@@ -34,7 +34,7 @@ The existing Arbor development flow is:
 3. Self-test the change with artifact-appropriate checks, such as unit, integration, scenario, content, structure, dry-run, compile, lint, type, schema, or coverage checks.
 4. Append a structured Developer Round to the same existing review document named by `source.review_doc_path` for downstream evaluation.
 5. Update the selected feature status in `.arbor/workflow/features.json`.
-6. Route to `release` with enough evidence for a developer checkpoint; release then routes the same feature to `evaluate`.
+6. Route to `release` with enough evidence and policy authorization for a local developer checkpoint commit; release then routes the same feature to `evaluate`.
 
 This is intentionally not only coding. Documentation, project maps, workflow guides, and review artifacts can be developed when they are part of the managed development workflow.
 
@@ -54,7 +54,7 @@ Do not use `develop` for:
 - unresolved requirements or broad scope that still needs `brainstorm`;
 - independent validation of completed work, which belongs to `evaluate`;
 - deciding whether developer and evaluator agree, which belongs to `converge`;
-- commit, push, tag, or release handoff, which belongs to `release`;
+- checkpoint commit, push, tag, or release handoff, which belongs to `release`;
 - simple direct edits outside Arbor workflow;
 - read-only audits or analysis where the user said not to modify anything.
 
@@ -464,9 +464,15 @@ The structured `develop.v1` object is an internal workflow/runtime packet. `deve
     "next_skill": "release",
     "next_skill_context": {
       "release_mode": "checkpoint_develop",
-      "next_after_release": "evaluate"
+      "next_after_release": "evaluate",
+      "checkpoint_authorization": {
+        "source": "policy",
+        "ref": "arbor-workflow#checkpoint-policy",
+        "scope": "local checkpoint commit for develop handoff",
+        "allows_local_commit": true
+      }
     },
-    "reason": "Developer handoff is ready; release should checkpoint before evaluation."
+    "reason": "Developer handoff is ready; release should create a local checkpoint commit before evaluation."
   },
   "ui": {
     "summary": "",
@@ -499,7 +505,7 @@ The structured `develop.v1` object is an internal workflow/runtime packet. `deve
 
 `develop` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`.
 
-A `ready_for_evaluate` handoff is not workflow completion. The visible output must say that independent evaluation remains next and must not imply the feature is accepted, converged, release-ready, or complete.
+A `ready_for_evaluate` handoff is not workflow completion. The visible output must say that release will save a local checkpoint commit and independent evaluation remains next; it must not imply the feature is accepted, converged, release-ready, or complete.
 
 The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `develop` may set `continue_policy=auto_continue_allowed` only when implementation stayed in scope, all planned developer checks passed, no material hidden/default decision needs review, and no unresolved risk or deviation remains.
 
@@ -534,7 +540,7 @@ The visible response should include:
 | Implementation Defaults I Chose | Expose implementation-time decisions the user did not explicitly specify, or state that there were no material hidden decisions. |
 | How I Self-Tested | Summarize developer-side checks, what each check was proving, and the observed result. |
 | Risks And Gaps | List deviations, skipped checks, residual risks, blockers, or missing approvals. |
-| Next Step | Say the next workflow step in plain language. For success this is checkpointing before independent evaluation; for blockers this is planning, selection, approval, or stop. |
+| Next Step | Say the next workflow step in plain language. For success this is saving a local checkpoint commit before independent evaluation; for blockers this is planning, selection, approval, or stop. |
 
 For tables, every row and column must be written for a human reviewer. Translate internal sources, route reasons, status codes, check identifiers, and feature registry state into ordinary language.
 
@@ -564,7 +570,7 @@ Do not expose internal machine labels in `user_response`, including schema field
 | `ready_for_evaluate` | `completed` | `passed` or `partial` | `appended` | `release` | changed files, self-test evidence, known risks, evaluator focus, and checkpoint intent |
 | `route_correction` | `not_started` | `not_run` | `not_required` | appropriate declared route or `none` | reason the request belongs elsewhere |
 
-Only `ready_for_evaluate` may route to `release`, and that route must carry `route.next_skill_context.release_mode=checkpoint_develop` plus `next_after_release=evaluate`. Non-success states must not claim `implementation.status=completed`, `self_test.status=passed`, and `review_handoff.status=appended` together unless the matrix permits it.
+Only `ready_for_evaluate` may route to `release`, and that route must carry `route.next_skill_context.release_mode=checkpoint_develop`, `next_after_release=evaluate`, and policy authorization for the local checkpoint commit. Non-success states must not claim `implementation.status=completed`, `self_test.status=passed`, and `review_handoff.status=appended` together unless the matrix permits it.
 
 Blocked or failed states do not always need a full developer review document. They must still emit enough structured evidence for user review, `brainstorm`, or `converge` to decide the next step. If any code or artifact changed before failure, record those changes and the residual risk.
 

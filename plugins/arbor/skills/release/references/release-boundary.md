@@ -39,22 +39,22 @@ Safe local preparation:
 - classify dirty scope as `clean`, `selected_only`, `unrelated`, or `unknown`;
 - draft commit message;
 - append Release Round or blocker packet.
-- create a local checkpoint only when workflow checkpoint policy or explicit user authorization allows it;
+- create a local checkpoint commit after `develop.ready_for_evaluate` when workflow checkpoint policy authorizes it and readiness checks pass;
 - route the same feature to the next stage after a checkpoint state;
 - select the next unfinished feature after a release-final state.
 
 Confirmation-gated actions:
 
 - staging files;
-- creating a commit;
+- creating a finalization commit;
 - pushing a branch;
 - opening or updating a PR;
 - creating a tag;
 - publishing a package, plugin, release artifact, or marketplace entry.
 
-The user must authorize the specific action. "Release this" can authorize preparation, but not every external action unless the prompt clearly asks for it. For Arbor-managed checkpoint mode, local git commits may be authorized by an active workflow checkpoint policy; public actions still require explicit user authorization. Checkpoint authorization must be machine-readable through `checkpoint_authorization.source`, `checkpoint_authorization.ref`, `checkpoint_authorization.scope`, and `allows_local_commit`.
+The user must authorize the specific public or finalization action. "Release this" can authorize preparation, but not every external action unless the prompt clearly asks for it. For Arbor-managed checkpoint mode, local git commits are internal workflow actions authorized by active workflow checkpoint policy; public actions and finalization commits still require explicit user authorization. Checkpoint authorization must be machine-readable through `checkpoint_authorization.source`, `checkpoint_authorization.ref`, `checkpoint_authorization.scope`, and `allows_local_commit`.
 
-Standalone `stage` has no completed release terminal. `release` may prepare an exact stage file list, and staging may happen as part of an explicitly authorized commit, but a stage-only request should not be reported as completed release delivery.
+Standalone `stage` has no completed release terminal. `release` may prepare an exact stage file list, and staging may happen as part of an explicitly authorized finalization commit, but a stage-only request should not be reported as completed release delivery.
 
 ## User-Visible Boundary
 
@@ -90,9 +90,9 @@ Do not show `checkpoint_handoff`, `feature_registry_signal`, dirty-scope analysi
 
 Checkpointed release output is not final delivery. In checkpoint mode, `release` preserves the current handoff and routes the same feature onward; it must not imply that evaluation, convergence, or final release has already happened.
 
-Use `continue_policy=auto_continue_allowed` only for safe internal `checkpoint_develop` or `checkpoint_evaluate` handoffs with no external action, blocker, dirty-scope conflict, or confirmation need. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation.
+Use `continue_policy=auto_continue_allowed` only for safe internal `checkpoint_develop` or `checkpoint_evaluate` handoffs whose local checkpoint commit completed with no blocker, dirty-scope conflict, or confirmation need. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation.
 
-An explicit `develop_evaluate_converge` automation policy can allow release to carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. It does not authorize commit, push, PR, tag, publish, next-feature release, or any other external action.
+An explicit `develop_evaluate_converge` automation policy can allow release to carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. It authorizes the local checkpoint commit for those handoffs. It does not authorize finalization commit, push, PR, tag, publish, next-feature release, or any public action.
 
 ## Commit Convention
 
@@ -137,14 +137,14 @@ For public action success, the requested action and recorded effect must match. 
 
 ### Checkpointed
 
-Use when a developer or evaluator checkpoint has mode-specific review evidence, safe selected files, and local checkpoint authorization through user approval or workflow checkpoint policy.
+Use when a developer or evaluator checkpoint has mode-specific review evidence, safe selected files, and local checkpoint authorization through user approval or workflow checkpoint policy. For `checkpoint_develop`, successful developer handoff plus workflow checkpoint policy is enough authorization to create the local checkpoint commit before evaluation.
 
 Action:
 
 - append Release Round;
 - record checkpoint mode and selected files;
 - preserve the upstream handoff in `checkpoint_handoff`, including terminal state, review round reference, and feature registry signal when the checkpoint comes from evaluate;
-- record performed checkpoint commit when it was created, or the prepared checkpoint evidence when local commits are not authorized;
+- record performed checkpoint commit when it was created; block rather than silently continue if `checkpoint_develop` lacks local commit authorization;
 - route `checkpoint_develop` to `evaluate`;
 - route `checkpoint_evaluate` to `converge`;
 - keep `workflow_continuation.status=none` because this is the same feature, not next-feature selection.
@@ -184,7 +184,7 @@ Action:
 
 ### Needs Confirmation
 
-Use when the requested action would stage, commit, push, PR, tag, or publish without explicit authorization.
+Use when the requested action would stage, create a finalization commit, push, PR, tag, or publish without explicit authorization.
 
 Action:
 

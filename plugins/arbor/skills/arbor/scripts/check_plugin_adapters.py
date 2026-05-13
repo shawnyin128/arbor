@@ -325,6 +325,45 @@ def validate_in_flight_memory_contract(plugin_root: Path, errors: list[str]) -> 
             check(errors, term in text, f"{rel_path} missing in-flight memory contract term `{term}`")
 
 
+def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
+    repo_root = repo_root_from_plugin(plugin_root)
+    required = {
+        "skills/develop/SKILL.md": [
+            "automatic local developer checkpoint commit before `evaluate`",
+            "`release(checkpoint_develop)` creates the local checkpoint commit",
+            "policy authorization for a local checkpoint commit",
+        ],
+        "skills/develop/references/develop-boundary.md": [
+            "automatic local developer checkpoint commit before `evaluate`",
+            "policy authorization for a local developer checkpoint commit",
+        ],
+        "skills/release/SKILL.md": [
+            "policy-authorized checkpoint commits",
+            "For `checkpoint_develop`, that means creating a local checkpoint commit",
+            "Local checkpoint commits after successful develop are internal workflow actions",
+            "finalization commits and public actions require explicit user authorization",
+            "allowing policy-authorized checkpoint commits",
+        ],
+        "skills/release/references/release-boundary.md": [
+            "create a local checkpoint commit after `develop.ready_for_evaluate`",
+            "local git commits are internal workflow actions authorized by active workflow checkpoint policy",
+            "block rather than silently continue if `checkpoint_develop` lacks local commit authorization",
+        ],
+    }
+    if repo_root is not None:
+        required["README.md"] = [
+            "release(checkpoint_develop: local commit)",
+            "automatic local checkpoint commit before `evaluate`",
+            "gating finalization commit, push, PR, tag, and publish behind explicit user authorization",
+        ]
+
+    for rel_path, terms in required.items():
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing develop checkpoint commit term `{term}`")
+
+
 def main() -> int:
     errors: list[str] = []
     plugin_root = plugin_root_from_script()
@@ -334,6 +373,7 @@ def main() -> int:
     validate_claude_hook_structure(plugin_root, errors)
     validate_session_start_smoke(plugin_root, errors)
     validate_in_flight_memory_contract(plugin_root, errors)
+    validate_develop_checkpoint_commit_contract(plugin_root, errors)
 
     if errors:
         print("plugin adapter checks failed:")

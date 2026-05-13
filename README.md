@@ -94,12 +94,12 @@ Claude Code:  /arbor:release
 The managed development loop is:
 
 ```text
-intake -> brainstorm -> develop -> release(checkpoint_develop)
+intake -> brainstorm -> develop -> release(checkpoint_develop: local commit)
 -> evaluate -> release(checkpoint_evaluate)
 -> converge -> release(finalize_feature)
 ```
 
-`intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry.
+`intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry. After a successful `develop`, `release(checkpoint_develop)` creates an automatic local checkpoint commit before `evaluate`.
 
 Two workflow artifacts carry state between skills:
 
@@ -198,7 +198,7 @@ What it does well:
 - giving the agent implementation freedom inside the accepted scope;
 - running developer self-tests against the brainstorm review test scope or recording why they could not run;
 - appending developer review handoff evidence to the existing review document;
-- routing only completed developer handoffs to `release` for a checkpoint before `evaluate`.
+- routing only completed developer handoffs to `release` for an automatic local checkpoint commit before `evaluate`.
 
 Use it when:
 
@@ -256,10 +256,10 @@ Use it when:
 
 What it does well:
 
-- checkpointing developer and evaluator evidence before the next workflow skill runs;
+- checkpointing developer and evaluator evidence before the next workflow skill runs, including a local checkpoint commit after successful `develop`;
 - verifying convergence evidence and release readiness for the current feature;
 - enforcing the git convention `<type>[optional scope]: <description>` with optional body and footers;
-- gating commit, push, PR, tag, and publish behind explicit user authorization;
+- gating finalization commit, push, PR, tag, and publish behind explicit user authorization;
 - appending Release Round evidence to the review document;
 - selecting the next unfinished feature through structured `workflow_continuation`.
 

@@ -9,9 +9,9 @@ description: Execute an authorized Arbor-managed feature or artifact change, con
 
 Use `develop` when Arbor has an authorized implementation or managed-artifact unit ready to execute.
 
-`develop` is not a coding-style constraint. Use normal engineering judgment and the repo's conventions. The skill's job is workflow discipline: consume upstream context, preserve traceability, implement, self-test against the brainstorm review test scope, append developer evidence, and hand off to `release` for a developer checkpoint before `evaluate`.
+`develop` is not a coding-style constraint. Use normal engineering judgment and the repo's conventions. The skill's job is workflow discipline: consume upstream context, preserve traceability, implement, self-test against the brainstorm review test scope, append developer evidence, and hand off to `release` for an automatic local developer checkpoint commit before `evaluate`.
 
-It does not approve plans, independently validate like `evaluate`, decide convergence, commit, push, tag, or release. It also does not decide whether a checkpoint should bypass evaluation; `release` records the checkpoint and routes onward.
+It does not approve plans, independently validate like `evaluate`, decide convergence, push, tag, or publish. It also does not create the checkpoint commit itself or decide whether a checkpoint should bypass evaluation; `release(checkpoint_develop)` creates the local checkpoint commit and routes onward when the developer handoff is ready.
 
 `develop` is a mandatory user-visible checkpoint by default. The user must be able to see what changed, how the work maps to the plan, which implementation defaults were chosen, and how the developer self-tested before the workflow continues into independent evaluation.
 
@@ -46,7 +46,7 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
 - `ready_for_evaluate`: implementation, self-test, and developer review handoff are complete.
 - `route_correction`: request belongs to another skill or direct work.
 
-Only `ready_for_evaluate` may route to `release`, and the release handoff must identify `release_context.release_mode=checkpoint_develop` so the next workflow step can continue to `evaluate` after state is tracked.
+Only `ready_for_evaluate` may route to `release`, and the release handoff must identify `release_context.release_mode=checkpoint_develop` so `release` creates a local checkpoint commit before the next workflow step continues to `evaluate`.
 
 ## User-Facing Development Packet
 
@@ -62,7 +62,7 @@ Write it in plain natural language with these sections:
 4. **Implementation Defaults I Chose**: expose implementation-time decisions the user did not explicitly specify, such as fallback behavior, scope interpretation, test substitution, naming, file placement, or engineering tradeoffs. If there were no material hidden decisions, say so explicitly.
 5. **How I Self-Tested**: show the developer-side checks, what each check was meant to prove, and the observed result.
 6. **Risks And Gaps**: list unresolved risks, skipped checks, blockers, or deviations from the plan.
-7. **Next Step**: describe the next workflow step in plain language, such as saving a checkpoint before independent evaluation, returning to planning, or stopping because authorization is missing.
+7. **Next Step**: describe the next workflow step in plain language, such as saving a local checkpoint commit before independent evaluation, returning to planning, or stopping because authorization is missing.
 
 For non-success states, keep the same readable shape but make the blocker clear. For example, say "the plan has not been confirmed yet, so implementation cannot start" instead of exposing the internal authorization state.
 
@@ -272,9 +272,15 @@ Produce this structure for internal workflow handoff:
     "next_skill": "release",
     "next_skill_context": {
       "release_mode": "checkpoint_develop",
-      "next_after_release": "evaluate"
+      "next_after_release": "evaluate",
+      "checkpoint_authorization": {
+        "source": "policy",
+        "ref": "arbor-workflow#checkpoint-policy",
+        "scope": "local checkpoint commit for develop handoff",
+        "allows_local_commit": true
+      }
     },
-    "reason": "Developer handoff is ready; release should checkpoint before evaluation."
+    "reason": "Developer handoff is ready; release should create a local checkpoint commit before evaluation."
   },
   "ui": {
     "summary": "",
@@ -323,6 +329,7 @@ Use these enums:
 - `route.next_skill`: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, `none`
 - `route.next_skill_context.release_mode`: `checkpoint_develop` when `ready_for_evaluate` routes to `release`
 - `route.next_skill_context.next_after_release`: `evaluate` when `ready_for_evaluate` routes to `release`
+- `route.next_skill_context.checkpoint_authorization`: policy authorization for the local checkpoint commit that `release(checkpoint_develop)` must create before `evaluate`
 - `ui.checkpoint.visibility`: `user_visible`
 - `ui.checkpoint.continue_policy`: `must_stop` or `auto_continue_allowed`
 - `ui.checkpoint.resume_after`: `user_acknowledgement`, `auto_policy`, `brainstorm_ready`, `selection_ready`, or `blocker_resolved`
@@ -332,7 +339,7 @@ When adding a terminal state, update the status matrix, output enums, simulation
 
 For all terminal states, default to `ui.checkpoint.continue_policy=must_stop`. Use `auto_continue_allowed` only when all of these are true: the user explicitly enabled `develop_evaluate_converge` automation for the current workflow, implementation stayed inside scope, no material hidden/default decision needs review, all planned developer checks passed, and no unresolved risk or deviation is reported. Use `must_stop` for missing authorization, missing selection, missing brainstorm context, implementation failure, self-test failure, scope changes, or any blocker that needs a human decision.
 
-For `ready_for_evaluate`, the visible `user_response` must say that independent evaluation remains next. It must not imply the feature is accepted, converged, release-ready, or complete.
+For `ready_for_evaluate`, the visible `user_response` must say that `release` will save a local checkpoint commit and then independent evaluation remains next. It must not imply the feature is accepted, converged, release-ready, or complete.
 
 For `ready_for_evaluate`, `planned_test_coverage` must be non-empty, concrete check evidence must be present, and `uncovered_planned_tests` must be empty. Concrete result evidence comes from passed self-test table rows or passed `verification_checks` for content checks, structure checks, dry runs, schema checks, compile/lint/type checks, or other checks appropriate to the artifact. Raw command, unit-test, and scenario fields identify targets; they do not prove results by themselves. For `self_test_failed`, record the planned checks that were attempted and the planned checks still uncovered or failing.
 
@@ -359,7 +366,7 @@ Before returning:
 11. Did the output statuses match the status matrix?
 12. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
 13. Did blocked or failed runs expose a machine-readable `handoff_kind`, `blocker_kind`, and replay target where useful?
-13. Did I route to `release` only from `ready_for_evaluate`, with `route.next_skill_context.release_mode=checkpoint_develop` and `next_after_release=evaluate`?
+13. Did I route to `release` only from `ready_for_evaluate`, with `route.next_skill_context.release_mode=checkpoint_develop`, `next_after_release=evaluate`, and policy authorization for a local checkpoint commit?
 14. Did I include a user-visible checkpoint with the correct continue policy before independent evaluation?
 15. Did `user_response` expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
 16. Did `user_response` make clear that independent evaluation remains pending instead of implying final completion?
