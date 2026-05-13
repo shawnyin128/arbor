@@ -325,6 +325,27 @@ def validate_in_flight_memory_contract(plugin_root: Path, errors: list[str]) -> 
             check(errors, term in text, f"{rel_path} missing in-flight memory contract term `{term}`")
 
 
+def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) -> None:
+    required = {
+        "skills/brainstorm/SKILL.md": [
+            "do not stop with only chat prose",
+            "create a durable brainstorm checkpoint",
+            "Missing details become an explicit pending question",
+        ],
+        "skills/evaluate/SKILL.md": [
+            "The normal visible final response MUST include these exact Markdown headings",
+            "`**Findings First**`",
+            "`**Scenario Tests**`",
+            "A shorter prose-only",
+            "evaluation is not an acceptable `evaluate` checkpoint",
+        ],
+    }
+    for rel_path, terms in required.items():
+        text = (plugin_root / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing rendered checkpoint contract term `{term}`")
+
+
 def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
@@ -364,6 +385,30 @@ def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[
             check(errors, term in text, f"{rel_path} missing develop checkpoint commit term `{term}`")
 
 
+def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list[str]) -> None:
+    real_review = plugin_root / "skills" / "arbor" / "references" / "real-workflow-chain-review.md"
+    real_runner = plugin_root / "skills" / "arbor" / "scripts" / "check_real_workflow_chains.py"
+    check(errors, real_review.is_file(), "real workflow chain review matrix must be published as a skill reference")
+    check(errors, real_runner.is_file(), "real workflow chain runner must be published as a skill script")
+    if not real_review.is_file():
+        return
+
+    text = real_review.read_text(encoding="utf-8")
+    runner_text = real_runner.read_text(encoding="utf-8") if real_runner.is_file() else ""
+    for term in (
+        "real Codex or Claude Code process",
+        "captured final rendered response text",
+        "Static checks and JSONL fixture checks are preflight only",
+        "Ignored simulation fixtures and baseline scripts",
+        "real workflow chain review passed",
+    ):
+        check(errors, term in text, f"real workflow chain review missing term `{term}`")
+    for case_number in range(1, 27):
+        case_id = f"R{case_number:02d}"
+        check(errors, f"| {case_id} |" in text, f"real workflow chain review missing case {case_id}")
+        check(errors, f'"{case_id}"' in runner_text, f"real workflow chain runner missing case {case_id}")
+
+
 def main() -> int:
     errors: list[str] = []
     plugin_root = plugin_root_from_script()
@@ -373,7 +418,9 @@ def main() -> int:
     validate_claude_hook_structure(plugin_root, errors)
     validate_session_start_smoke(plugin_root, errors)
     validate_in_flight_memory_contract(plugin_root, errors)
+    validate_rendered_checkpoint_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
+    validate_real_workflow_chain_review_contract(plugin_root, errors)
 
     if errors:
         print("plugin adapter checks failed:")

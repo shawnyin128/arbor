@@ -64,6 +64,7 @@ Confirm route
 12. Before stopping with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the current in-flight plan/checkpoint until the work is committed or moved to durable docs.
 13. Never edit implementation files, run tests, commit, push, or declare validation success inside `brainstorm`.
 14. Always emit a user-visible checkpoint that stops automatic continuation before implementation.
+15. For an Arbor-managed engineering planning continuation, do not stop with only chat prose. If the request is broad enough to be Arbor-managed and the workspace is writable, create a durable brainstorm checkpoint even when one blocking question remains. Missing details become an explicit pending question and a blocked or pending feature status, not a reason to skip `.arbor/workflow/features.json` and the review Context/Test Plan.
 
 ## Anti-Patterns
 
@@ -172,6 +173,13 @@ For detailed boundary rationale, read `references/brainstorm-boundary.md`.
 - If the request was misrouted, return `route_correction`.
 - If the plan is ready but not approved, return `ready_for_user_review`.
 - If the plan is approved and scoped, return `ready_for_develop`.
+
+When stopping at `needs_clarification` or `needs_evidence` for a real Arbor-managed
+engineering plan, still persist the durable checkpoint whenever the available evidence
+supports a provisional feature split or review context. The review artifact should name
+the blocker, pending question, non-goals, provisional acceptance criteria, and what
+evidence must be loaded before `develop`. This prevents the workflow from degrading into
+an informal plan that downstream skills cannot resume.
 
 ## Structured Output Contract
 

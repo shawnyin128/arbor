@@ -381,6 +381,26 @@ out-of-scope plugin-level `agents/` and `PreCompact` adapters, a synthetic
 Claude startup event with budget-aware context truncation, and every Arbor skill
 package without relying on `quick_validate.py` being on the shell `PATH`.
 
+For workflow behavior, these checks are only preflight. The real release gate is
+the runtime case matrix in
+`plugins/arbor/skills/arbor/references/real-workflow-chain-review.md`: it must
+use real Codex or Claude Code processes, real Arbor skill invocation, rendered
+final responses, and real git/file side-effect assertions. Ignored simulation
+fixtures and baseline scripts are optional development aids and must not be
+reported as full-chain validation.
+
+Run tracked local-only real-chain guards with:
+
+```bash
+python3 plugins/arbor/skills/arbor/scripts/check_real_workflow_chains.py --runtime local
+```
+
+Run runtime cases explicitly when real model execution is intended, for example:
+
+```bash
+python3 plugins/arbor/skills/arbor/scripts/check_real_workflow_chains.py --runtime codex --cases R02,R07
+```
+
 For a real Claude Code session smoke test, load the local plugin with:
 
 ```bash

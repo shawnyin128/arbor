@@ -89,9 +89,11 @@ Claude Code does not have an equivalent project-level hook intent file. Its only
 - `references/agents-template.md`: template for `AGENTS.md`
 - `references/claude-template.md`: bridge template for `CLAUDE.md` (Claude Code installs only)
 - `references/project-hooks-template.md`: project hook contract
+- `references/real-workflow-chain-review.md`: real-runtime chain review case matrix and release gate
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order
 - `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments
 - `scripts/run_memory_hygiene_hook.py`: execute Hook 2 and forward optional agent-selected diff arguments
 - `scripts/run_agents_guide_drift_hook.py`: execute Hook 3 and forward optional agent-selected project doc paths
 - `scripts/register_project_hooks.py`: create or update `.codex/hooks.json` with Arbor hook intents
+- `scripts/check_real_workflow_chains.py`: execute real Codex/Claude workflow chain review cases

@@ -215,6 +215,26 @@ Write each section in natural language. For `Findings First`, say clearly whethe
 
 `Unit Tests` and `Scenario Tests` must be shown as Markdown tables, not bullets or loose prose. Use natural-language columns such as `Check`, `Behavior Covered`, `Expected`, `Actual`, and `Result`. Do not list only command names or test ids. Explain what each unit test or scenario test actually proved, what behavior it exercised, and whether it passed, failed, was blocked, or was not applicable. If no unit or scenario tests were appropriate, still include the table with a row explaining why the category was not applicable.
 
+The normal visible final response MUST include these exact Markdown headings, in this
+order, even when a section has only one sentence or a not-applicable table:
+
+- `**Evaluation Verdict**`
+- `**Findings First**`
+- `**How I Challenged The Work**`
+- `**Plan Coverage**`
+- `**What I Checked**`
+- `**Unit Tests**`
+- `**Scenario Tests**`
+- `**Other Checks**`
+- `**Evaluator Judgments I Made**`
+- `**Risks And Gaps**`
+- `**Next Step**`
+
+Before returning, self-check the captured visible response for the exact headings above
+and for Markdown tables under `Unit Tests` and `Scenario Tests`. If any heading or table
+is missing, rewrite the visible response before finishing. A shorter prose-only
+evaluation is not an acceptable `evaluate` checkpoint.
+
 Do not expose machine-oriented labels in visible text. Avoid schema field names, route assignments, terminal-state strings, fixture ids, synthetic feature ids, and shorthand such as `dev/eval`. Internal evidence may stay in structured fields; the visible text should explain the situation a user cares about.
 
 ### After Evaluation
