@@ -847,6 +847,8 @@ def selected_runtimes(runtime: str) -> tuple[str, ...]:
 def make_case_context(case_id: str, runtime: str, artifact_root: Path, plugin_root: Path) -> CaseContext:
     workdir = Path(tempfile.mkdtemp(prefix=f"arbor-{case_id.lower()}-{runtime}-", dir="/private/tmp"))
     artifacts = artifact_root / f"{case_id}-{runtime}"
+    if artifacts.exists():
+        shutil.rmtree(artifacts)
     artifacts.mkdir(parents=True, exist_ok=True)
     write(artifacts / "workdir.txt", str(workdir) + "\n")
     return CaseContext(case_id, runtime, workdir, artifacts, plugin_root)
