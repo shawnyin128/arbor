@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Automatically triage possible Arbor workflow or boundary-ambiguous development requests before any downstream skill. Use for future ideas, bugs, optimizations, planning, audits, codebase/paper/proposal/reviewer-backed decisions, tests, evaluation, release follow-ups, context patches, and managed docs. Decide Arbor vs direct, split intents, choose persistence, and route only to declared workflow skills while keeping intake output hidden from normal users.
+description: Automatically triage possible Arbor workflow or boundary-ambiguous development requests before any downstream skill. Use for future ideas, bugs, non-trivial runtime tracebacks, pipeline blockers, optimizations, planning, audits, codebase/paper/proposal/reviewer-backed decisions, tests, evaluation, release follow-ups, context patches, and managed docs. Decide Arbor vs direct, split intents, choose persistence, and route only to declared workflow skills while keeping intake output hidden from normal users.
 ---
 
 # Intake
@@ -49,6 +49,7 @@ Also choose `intake` for ambiguous boundary cases that need a direct-vs-managed 
 - broad read-only audits or impact reviews;
 - codebase, paper, proposal, report, or reviewer-feedback analysis that may affect research direction, experiments, implementation, or evaluation;
 - code review or review-current-changes requests when they attach to an active Arbor develop handoff, current Arbor feature, or review packet;
+- non-trivial runtime tracebacks, HPC or job failures, failing run logs, or pipeline blockers that may require debugging, implementation, validation, or active workflow routing;
 - mixed requests where one part is direct explanation and another part asks for optimization, design, or future work;
 - short context patches such as "continue," naming constraints, implementation constraints, or correction feedback;
 - conversational planning continuations such as "based on my requirements, think through what to do," "do the first item," "think through the design before touching files," or "design a plan" when they attach to active engineering context;
@@ -135,6 +136,7 @@ Enter Arbor when the request needs development workflow management:
 - feature breakdown, planning, implementation, evaluation, convergence, or release;
 - broad or risky engineering work that needs scope control;
 - codebase analysis that extracts implementation ideas, architecture patterns, impact maps, or experiment plans;
+- non-trivial runtime tracebacks, failing job logs, HPC failures, or pipeline blockers that affect an implementation, experiment, test, release, or active debugging workflow;
 - active workflow continuation, developer feedback replay, test replay, or release preflight;
 - code review of current changes when the active context is an Arbor develop handoff, current Arbor feature, or review packet;
 - development-serving artifacts such as feature specs, review reports, test plans, release notes, AGENTS project maps, or workflow rules;
@@ -183,6 +185,19 @@ Recommended context priority:
 
 If current conversation and workflow artifacts conflict, surface the conflict.
 
+### Runtime Traceback and Pipeline Blockers
+
+Pasted tracebacks and failing run logs are not automatically full Arbor workflows, but non-trivial runtime failures should first pass through intake because they often decide whether the next step is direct explanation, active bugfix, evidence replay, or broader planning.
+
+Use these routes:
+
+- active implementation, experiment, test, or cleanup context plus a traceback or blocker that needs a fix: route to `develop`, do not create todo;
+- post-fix replay, independent validation, or "review why this passed/failed" request attached to an Arbor handoff: route to `evaluate`;
+- unclear root cause, broad pipeline impact, or design-level remediation before touching files: route to `brainstorm`;
+- one-off explanation of an error with no downstream implementation, testing, or workflow effect: route to `none`.
+
+If the failure blocks a shared runtime path, the downstream skill should record validation evidence even when the fix is immediate.
+
 When a short acknowledgement or continuation refers back to the user's requirements and asks for planning, design, splitting, or verification, treat it as an active-context planning continuation. If the active context is an engineering, experiment, release, or workflow task, route to `brainstorm` before implementation so scope, assumptions, acceptance criteria, and verification are visible. If no engineering context exists, keep it context-dependent or direct according to the actual topic; do not route on planning words alone.
 
 ## Routing Rules
@@ -206,6 +221,8 @@ If a question depends on an external paper, spec, or codebase, the first action 
 ### `develop`
 
 Use for implementation and managed development artifacts. Do not use for every document or file edit.
+
+Use `develop` for active runtime error or traceback feedback when the current workflow needs a concrete fix or debugging pass. Do not create backlog todo for a bug the user is asking to fix now.
 
 ### `evaluate`
 

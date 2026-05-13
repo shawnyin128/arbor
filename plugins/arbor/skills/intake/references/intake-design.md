@@ -17,7 +17,7 @@ The skill must stay lightweight. It should not solve the task, design the full s
 
 Do not describe intake as non-selectable or manual-only. The intended user experience is that users do not need to call `$arbor:intake`, not that the runtime should avoid selecting intake.
 
-Automatic selection should cover direct-vs-managed ambiguity, not only obvious managed work. Examples include broad read-only audits, codebase or paper-backed analysis, proposal and reviewer feedback used for planning, code review requests attached to active Arbor develop handoffs, mixed explanation-plus-optimization requests, context patches, and documentation edits whose purpose may or may not serve development workflow.
+Automatic selection should cover direct-vs-managed ambiguity, not only obvious managed work. Examples include broad read-only audits, codebase or paper-backed analysis, proposal and reviewer feedback used for planning, code review requests attached to active Arbor develop handoffs, non-trivial runtime tracebacks, HPC or job failures, pipeline blockers, mixed explanation-plus-optimization requests, context patches, and documentation edits whose purpose may or may not serve development workflow.
 
 Keep the trigger description compact. Overly broad prose can make the model classify more cases, but it can also weaken the exact output contract. The skill should say when to select intake, then quickly hand control to the stable structured schema.
 
@@ -181,6 +181,7 @@ A request should enter Arbor when it needs development workflow management:
 - broad or risky engineering work that needs scope control;
 - codebase analysis that extracts implementation ideas, architecture patterns, impact maps, or experiment plans;
 - user-provided proposals, reports, reviewer comments, papers, specs, or docs that are being used to decide research direction, experiments, baselines, implementation, feature scope, or future workflow;
+- non-trivial runtime tracebacks, failing job logs, HPC failures, or pipeline blockers that affect implementation, experiments, tests, release, or active debugging workflow;
 - active workflow continuation, developer feedback replay, test replay, or release preflight;
 - code review of current changes when the active context is an Arbor develop handoff, current Arbor feature, or review packet;
 - development-serving artifacts such as feature specs, review reports, test plans, release notes, AGENTS project maps, or workflow rules;
@@ -246,6 +247,19 @@ Recommended context priority:
 4. backlog.
 
 If current conversation and workflow artifacts conflict, `intake` should surface the conflict instead of silently choosing.
+
+### Runtime Traceback and Pipeline Blockers
+
+Pasted tracebacks and failing run logs should trigger intake when the failure is non-trivial or may affect an implementation, experiment, test, release, or active workflow. The intake decision decides how far Arbor should go; it does not mean every debug question becomes a full loop.
+
+Use this boundary:
+
+- active implementation, experiment, test, cleanup, or workflow context plus a traceback or blocker needing a fix: Arbor-managed, `todo=no`, route to `develop`;
+- post-fix replay, independent validation, or review of developer evidence attached to an Arbor handoff: route to `evaluate`;
+- broad pipeline impact, unclear ownership, or design-level remediation before touching files: route to `brainstorm`;
+- one-off explanation of an error with no downstream development, testing, or workflow consequence: outside Arbor, route to `none`.
+
+If a runtime failure blocks a shared path, the downstream skill should record verification evidence even when the implementation is immediate.
 
 ### Affirmative Planning Continuations
 
@@ -314,6 +328,8 @@ If a question depends on an external paper, spec, or codebase, the first action 
 Use for implementation and project artifact generation when the artifact is part of the managed development workflow.
 
 `develop` is not only for code, but it should not be used for every document or file edit. Simple direct edits can stay outside Arbor.
+
+Active runtime error or traceback feedback routes to `develop` when the current workflow needs a concrete fix or debugging pass. Do not create backlog todo for a bug the user is asking to fix now.
 
 ### `evaluate`
 
