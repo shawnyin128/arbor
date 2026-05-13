@@ -121,6 +121,8 @@ What it does well:
 - refreshing short-term memory when current-session or uncommitted work makes `.arbor/memory.md` stale (auto via `arbor.in_session_memory_hygiene` hook intent on Codex; user-invoked on Claude Code);
 - preparing `AGENTS.md` updates when the project guide or map needs to point the agent at changed durable context (auto via `arbor.goal_constraint_drift` hook intent on Codex; user-invoked on Claude Code).
 
+On Codex, `AGENTS.md` is the reliable native startup bootstrap. `.codex/hooks.json` records project hook intents, but a fresh Codex prompt should not assume those intents already injected Arbor context. The generated `AGENTS.md` includes a Startup Protocol that tells the agent to load `AGENTS.md`, recent formatted git history, `.arbor/memory.md`, and `git status --short` before answering fresh-session, resumed-session, or project-overview prompts.
+
 The memory hygiene hook is intentionally high-recall around dirty Arbor workflow state. It should fire before stops, skill handoffs, release gates, commits, cache syncs, failed checks, or user review checkpoints when Arbor-managed changes are uncommitted, and it should stay quiet for clean direct answers, read-only inspections, explicit no-write turns, or unrelated dirty files outside Arbor scope.
 
 How long-term memory works:
@@ -355,7 +357,7 @@ A project that hosts both runtimes ends up with all four files, sharing the same
 - `arbor.in_session_memory_hygiene`: emits memory, git status, and diff context for short-term memory refresh.
 - `arbor.goal_constraint_drift`: emits project guide context when `AGENTS.md` may need to update its stable goals, constraints, or map pointers.
 
-The hooks are registered by the skill during project initialization; Arbor does not ship a root-level Codex hook manifest. The hooks emit context packets, and the agent decides whether to edit `.arbor/memory.md` or `AGENTS.md`.
+The hooks are registered by the skill during project initialization; Arbor does not ship a root-level Codex hook manifest. Treat the Codex hook file as a project contract and replay target, not as evidence that a new Codex model input already contains the packet. The generated `AGENTS.md` remains the native bootstrap that instructs the agent to load startup context before project-orientation answers.
 
 ### Claude Code
 

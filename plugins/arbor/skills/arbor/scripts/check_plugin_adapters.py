@@ -76,6 +76,51 @@ def validate_manifests(plugin_root: Path, errors: list[str]) -> None:
             check(errors, entry.get("source") == "./plugins/arbor", "Claude marketplace source must point at ./plugins/arbor")
 
 
+def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) -> None:
+    codex = load_json(plugin_root / ".codex-plugin" / "plugin.json", errors)
+    claude = load_json(plugin_root / ".claude-plugin" / "plugin.json", errors)
+    agents_template = (plugin_root / "skills" / "arbor" / "references" / "agents-template.md").read_text(encoding="utf-8")
+    arbor_skill = (plugin_root / "skills" / "arbor" / "SKILL.md").read_text(encoding="utf-8")
+
+    for term in (
+        "## Startup Protocol",
+        "fresh or resumed session",
+        "project overview questions",
+        "recent formatted git history",
+        ".arbor/memory.md",
+        "git status --short",
+        "Do not treat `.codex/hooks.json` as proof",
+    ):
+        check(errors, term in agents_template, f"agents template missing startup bootstrap term `{term}`")
+
+    for term in (
+        "answering what a project does",
+        "project-overview prompts",
+        "Do not assume `.codex/hooks.json` has already injected",
+        "`AGENTS.md` Startup Protocol",
+    ):
+        check(errors, term in arbor_skill, f"arbor skill missing startup bootstrap term `{term}`")
+
+    for manifest_name, manifest in (("Codex", codex), ("Claude", claude)):
+        description = str(manifest.get("description", ""))
+        check(
+            errors,
+            "project overview/resume requests" in description,
+            f"{manifest_name} manifest description must mention project overview/resume startup context",
+        )
+
+    interface = codex.get("interface")
+    if isinstance(interface, dict):
+        prompts = interface.get("defaultPrompt", [])
+        default_prompt = "\n".join(str(item) for item in prompts)
+        check(errors, isinstance(prompts, list) and len(prompts) <= 3, "Codex defaultPrompt must contain at most 3 prompts")
+        check(
+            errors,
+            "Resume or explain this repo with Arbor context" in default_prompt,
+            "Codex defaultPrompt must include project overview startup-context example",
+        )
+
+
 def validate_project_hook_contract(plugin_root: Path, errors: list[str]) -> None:
     import sys
 
@@ -284,6 +329,7 @@ def main() -> int:
     errors: list[str] = []
     plugin_root = plugin_root_from_script()
     validate_manifests(plugin_root, errors)
+    validate_startup_bootstrap_contract(plugin_root, errors)
     validate_project_hook_contract(plugin_root, errors)
     validate_claude_hook_structure(plugin_root, errors)
     validate_session_start_smoke(plugin_root, errors)

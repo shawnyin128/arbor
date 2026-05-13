@@ -1,7 +1,7 @@
 {
   "name": "arbor",
   "version": "0.4.1",
-  "description": "Maintain project-local Arbor memory and automatically gate possible Arbor-managed workflow requests, runtime tracebacks, and pipeline blockers from intake through release finalization; normal checkpoints render user_response/ui while raw workflow JSON and route labels stay hidden unless debug output is requested.",
+  "description": "Maintain project-local Arbor memory, load startup context for project overview/resume requests, and automatically gate possible Arbor-managed workflow requests, runtime tracebacks, and pipeline blockers from intake through release finalization; normal checkpoints render user_response/ui while raw workflow JSON and route labels stay hidden unless debug output is requested.",
   "author": {
     "name": "Shawn",
     "url": "https://github.com/shawnyin128"
@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Arbor",
     "shortDescription": "Project memory plus automatic workflow intake",
-    "longDescription": "Arbor initializes project-local memory, registers project-level Codex hook intents, loads startup context in a stable order, emits memory hygiene packets, emits AGENTS drift packets, and automatically gates possible Arbor-managed development requests, non-trivial runtime tracebacks, HPC/runtime errors, and pipeline blockers through intake before downstream workflow skills. Intake decides direct-vs-managed boundaries, keeps normal intake output hidden, and routes only to declared workflow skills. Arbor then turns managed requests into reviewable brainstorm plans, executes authorized develop units with developer self-test and review handoff evidence, independently evaluates completed develop handoffs, decides convergence, and internally finalizes release evidence before selecting the next feature. Normal user-visible checkpoints render user_response and ui fields; raw workflow JSON, route labels, and terminal-state labels stay hidden unless the user explicitly asks for debug or machine output. Brainstorm checkpoints use the standard rendered headings from the brainstorm skill, not ad hoc planning headings.",
+    "longDescription": "Arbor initializes project-local memory, registers project-level Codex hook intents, loads startup context in a stable order for fresh-session, resumed-session, and project-overview requests, emits memory hygiene packets, emits AGENTS drift packets, and automatically gates possible Arbor-managed development requests, non-trivial runtime tracebacks, HPC/runtime errors, and pipeline blockers through intake before downstream workflow skills. Intake decides direct-vs-managed boundaries, keeps normal intake output hidden, and routes only to declared workflow skills. Arbor then turns managed requests into reviewable brainstorm plans, executes authorized develop units with developer self-test and review handoff evidence, independently evaluates completed develop handoffs, decides convergence, and internally finalizes release evidence before selecting the next feature. Normal user-visible checkpoints render user_response and ui fields; raw workflow JSON, route labels, and terminal-state labels stay hidden unless the user explicitly asks for debug or machine output. Brainstorm checkpoints use the standard rendered headings from the brainstorm skill, not ad hoc planning headings.",
     "developerName": "Shawn",
     "category": "Coding",
     "capabilities": [
@@ -30,7 +30,7 @@
     ],
     "defaultPrompt": [
       "Initialize Arbor in this project",
-      "Resume this repo with Arbor context",
+      "Resume or explain this repo with Arbor context",
       "Automatically classify Arbor workflow requests, tracebacks, and blockers"
     ],
     "brandColor": "#2F6F4E",

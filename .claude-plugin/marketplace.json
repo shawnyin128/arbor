@@ -3,12 +3,12 @@
   "owner": {
     "name": "Shawn"
   },
-  "description": "Initialize and maintain project-local Arbor memory across Codex and Claude Code.",
+  "description": "Initialize, resume, and maintain project-local Arbor memory across Codex and Claude Code.",
   "plugins": [
     {
       "name": "arbor",
       "source": "./plugins/arbor",
-      "description": "Project-local memory and hook workflows for Codex and Claude Code.",
+      "description": "Project-local memory, startup context, and hook workflows for Codex and Claude Code.",
       "category": "Coding"
     }
   ]

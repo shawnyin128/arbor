@@ -1,6 +1,6 @@
 ---
 name: arbor
-description: Initialize and maintain project-local Arbor memory for daily development under the Arbor workflow on Codex or Claude Code. Use when starting or resuming work in a repo, creating `.arbor/memory.md`, migrating legacy `.codex/memory.md`, creating or updating `AGENTS.md`, generating a `CLAUDE.md` bridge on Claude Code installs, loading startup context from project docs, formatted git log, session memory, and git status, refreshing stale pre-triage observations, or detecting stable project guide, constraint, or project-map changes.
+description: Initialize, resume, and answer project-orientation questions with project-local Arbor memory under the Arbor workflow on Codex or Claude Code. Use when starting or resuming work in a repo, answering what a project does, summarizing repo purpose before work, creating `.arbor/memory.md`, migrating legacy `.codex/memory.md`, creating or updating `AGENTS.md`, generating a `CLAUDE.md` bridge on Claude Code installs, loading startup context from project docs, formatted git log, session memory, and git status, refreshing stale pre-triage observations, or detecting stable project guide, constraint, or project-map changes.
 ---
 
 # Arbor
@@ -22,6 +22,8 @@ When initializing, resuming, or orienting in a project:
    - `git status`
 4. Use `scripts/collect_project_context.py --root <project-root>` when a deterministic ordered context packet is useful. The script does not decide how much context is enough.
 5. Read additional docs, diffs, source files, or logs when the project map, task risk, or user request calls for them.
+
+On Codex, `AGENTS.md` is the reliable native startup bootstrap. Do not assume `.codex/hooks.json` has already injected `arbor.session_startup_context`. For fresh sessions, resumed sessions, and project-overview prompts such as "what does this project do?", actively run or manually reproduce the startup context load before answering.
 
 Collector sections include `Status`, `Source`, optional `Detail`, and raw body. Treat `missing`, `path-conflict`, `read-error`, `git-error`, and `empty` as fallback diagnostics, not blockers for reading later sections.
 
@@ -62,7 +64,7 @@ Update `AGENTS.md` only when the stable guide or map should change. Do not compr
 
 Arbor runs the same workflow on Codex and Claude Code, but each runtime carries it through a different entrypoint surface. The shared project state is always `AGENTS.md` plus `.arbor/memory.md`; everything else is adapter-side.
 
-- **Codex** auto-loads `AGENTS.md` natively. Project-level hook intents are registered in `.codex/hooks.json` via `scripts/register_project_hooks.py`. All three Arbor hook intents (`arbor.session_startup_context`, `arbor.in_session_memory_hygiene`, `arbor.goal_constraint_drift`) are project-level contracts that Codex can consume.
+- **Codex** auto-loads `AGENTS.md` natively. Project-level hook intents are registered in `.codex/hooks.json` via `scripts/register_project_hooks.py`, but they are hook contracts rather than proof that startup context has already entered the model input. The `AGENTS.md` Startup Protocol is the reliable Codex bootstrap and must tell the agent to run or manually reproduce `arbor.session_startup_context` on fresh/resumed/project-overview turns.
 - **Claude Code** reads `CLAUDE.md` natively. When `init_project_memory.py` runs from a Claude Code plugin install, it generates a short `CLAUDE.md` bridge that points at `AGENTS.md` and `.arbor/memory.md` (the canonical Arbor state). The bundled `hooks/hooks.json` registers a `SessionStart` hook on `startup|resume` that injects the Arbor startup packet into the conversation. Memory hygiene and goal/constraint drift are not auto-fired on Claude Code; invoke them through the user-driven workflows above.
 
 The runtime is auto-detected from the script's installed cache path (`~/.codex/plugins/cache/...` vs `~/.claude/plugins/cache/...`). Override with `--claude-bridge on|off` on `init_project_memory.py` when needed.
