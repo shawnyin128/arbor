@@ -33,8 +33,8 @@ STATUS_SKIP = "skip"
 ROOT = Path(__file__).resolve().parents[3]
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = PLUGIN_ROOT.parent.parent if PLUGIN_ROOT.parent.name == "plugins" else PLUGIN_ROOT
-CODEX_CACHE = Path.home() / ".codex/plugins/cache/arbor/arbor/0.4.1"
-CLAUDE_CACHE = Path.home() / ".claude/plugins/cache/arbor/arbor/0.4.1"
+CODEX_CACHE = Path.home() / ".codex/plugins/cache/arbor/arbor/0.4.2"
+CLAUDE_CACHE = Path.home() / ".claude/plugins/cache/arbor/arbor/0.4.2"
 
 
 class CaseFailure(AssertionError):

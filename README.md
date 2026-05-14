@@ -427,7 +427,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-0.4.1
+0.4.2
 ```
 
 Version files:
