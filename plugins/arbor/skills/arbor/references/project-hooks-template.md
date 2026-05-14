@@ -23,6 +23,7 @@ The hook file is a visible project artifact, not user-global state. A later Arbo
    - Positive cases include brainstorm/develop/evaluate/converge/release artifact changes, failed checks, scope changes, local cache sync, ignored review or fixture edits, and any pause/stop with dirty Arbor work.
    - Negative cases include clean git status, direct one-off explanations, read-only inspection with no unresolved Arbor state, committed-and-pruned work, AGENTS-only stable guide updates, explicit no-write turns, and unrelated dirty files outside Arbor scope.
    - The registered policy includes a machine-checkable `case_corpus`; adapter validation checks trigger/suppress counts, unique ids, required fields, and required scenario classes.
+   - Claude Code mapping: the bundled `Stop` adapter (`hooks/stop-memory-hygiene`) runs this entrypoint. `Stop` is the only native Claude Code event whose output can re-enter the agent loop, so the adapter self-gates: it honors `stop_hook_active` first so it can never loop, stays silent unless the project is Arbor-managed and the worktree is dirty, and otherwise blocks the stop with the packet as the block reason.
 
 3. `arbor.goal_constraint_drift`
    - Event: `project.guide_drift`
@@ -31,6 +32,7 @@ The hook file is a visible project artifact, not user-global state. A later Arbo
    - Emits an AGENTS drift packet with `AGENTS.md`, git status, and optional project-local docs.
    - The running agent decides whether to edit only `Project Goal`, `Project Constraints`, or `Project Map` in `AGENTS.md`.
    - `AGENTS.md` should remain the stable guide and map, not a complete long-term memory dump.
+   - Claude Code mapping: none. Claude Code has no native event for project-guide drift, so this intent stays user/skill-driven there.
 
 ## Policy
 

@@ -65,7 +65,7 @@ Update `AGENTS.md` only when the stable guide or map should change. Do not compr
 Arbor runs the same workflow on Codex and Claude Code, but each runtime carries it through a different entrypoint surface. The shared project state is always `AGENTS.md` plus `.arbor/memory.md`; everything else is adapter-side.
 
 - **Codex** auto-loads `AGENTS.md` natively. Project-level hook intents are registered in `.codex/hooks.json` via `scripts/register_project_hooks.py`, but they are hook contracts rather than proof that startup context has already entered the model input. The `AGENTS.md` Startup Protocol is the reliable Codex bootstrap and must tell the agent to run or manually reproduce `arbor.session_startup_context` on fresh/resumed/project-overview turns.
-- **Claude Code** reads `CLAUDE.md` natively. When `init_project_memory.py` runs from a Claude Code plugin install, it generates a short `CLAUDE.md` bridge that points at `AGENTS.md` and `.arbor/memory.md` (the canonical Arbor state). The bundled `hooks/hooks.json` registers a `SessionStart` hook on `startup|resume` that injects the Arbor startup packet into the conversation. Memory hygiene and goal/constraint drift are not auto-fired on Claude Code; invoke them through the user-driven workflows above.
+- **Claude Code** reads `CLAUDE.md` natively. When `init_project_memory.py` runs from a Claude Code plugin install, it generates a short `CLAUDE.md` bridge that points at `AGENTS.md` and `.arbor/memory.md` (the canonical Arbor state). The bundled `hooks/hooks.json` registers a `SessionStart` hook on `startup|resume` that injects the Arbor startup packet into the conversation, and a `Stop` hook that emits the memory hygiene packet when an Arbor-managed worktree is dirty. Goal/constraint drift is not auto-fired on Claude Code (no native event maps to it); invoke it through the user-driven workflows above.
 
 The runtime is auto-detected from the script's installed cache path (`~/.codex/plugins/cache/...` vs `~/.claude/plugins/cache/...`). Override with `--claude-bridge on|off` on `init_project_memory.py` when needed.
 
@@ -81,7 +81,12 @@ The memory hygiene hook should be treated as high-recall around dirty Arbor work
 
 Do not store Arbor hook state in user-global memory. Re-register hooks when needed; registration is idempotent and should preserve unrelated project hooks.
 
-Claude Code does not have an equivalent project-level hook intent file. Its only auto-fired Arbor hook is the bundled `SessionStart` adapter at `hooks/session-start`, which calls `run_session_startup_hook.py` and applies a runtime-specific injection budget so the rendered packet stays under Claude Code's `additionalContext` cap.
+Claude Code does not have an equivalent project-level hook intent file. It ships two auto-fired Arbor adapters in `hooks/hooks.json`:
+
+- `hooks/session-start` (`SessionStart`) calls `run_session_startup_hook.py` and applies a runtime-specific injection budget so the rendered packet stays under Claude Code's `additionalContext` cap.
+- `hooks/stop-memory-hygiene` (`Stop`) is the Claude Code mapping of `arbor.in_session_memory_hygiene`. `Stop` is the only native Claude Code event whose output can re-enter the agent loop, so the adapter self-gates: it honors `stop_hook_active` first (so it can never loop), stays silent unless the project is Arbor-managed and the worktree is dirty, and otherwise blocks the stop with the `run_memory_hygiene_hook.py` packet as the block reason.
+
+`arbor.goal_constraint_drift` has no native Claude Code event; it stays user/skill-driven there.
 
 ## Resources
 

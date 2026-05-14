@@ -237,13 +237,22 @@ def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None
     hooks = hooks_json.get("hooks")
     check(errors, isinstance(hooks, dict), "hooks/hooks.json must define hooks object")
     if isinstance(hooks, dict):
-        check(errors, set(hooks) == {"SessionStart"}, "Claude adapter should only define SessionStart in this release")
+        check(
+            errors,
+            set(hooks) == {"SessionStart", "Stop"},
+            "Claude adapter should define exactly the SessionStart and Stop hooks",
+        )
         session_hooks = hooks.get("SessionStart")
         check(errors, isinstance(session_hooks, list) and bool(session_hooks), "SessionStart hook must be a non-empty list")
+        stop_hooks = hooks.get("Stop")
+        check(errors, isinstance(stop_hooks, list) and bool(stop_hooks), "Stop hook must be a non-empty list")
 
     session_start = plugin_root / "hooks" / "session-start"
     check(errors, session_start.is_file(), "hooks/session-start must exist")
     check(errors, os.access(session_start, os.X_OK), "hooks/session-start must be executable")
+    stop_adapter = plugin_root / "hooks" / "stop-memory-hygiene"
+    check(errors, stop_adapter.is_file(), "hooks/stop-memory-hygiene must exist")
+    check(errors, os.access(stop_adapter, os.X_OK), "hooks/stop-memory-hygiene must be executable")
     check(errors, not (plugin_root / "hooks" / "pre-compact").exists(), "PreCompact adapter must not ship in this release")
     check(errors, not (plugin_root / "agents").exists(), "plugin-level agents directory is out of scope for this release")
 
@@ -288,6 +297,86 @@ def validate_session_start_smoke(plugin_root: Path, errors: list[str]) -> None:
         clear_proc = run_session_start(plugin_root, project, "clear")
         check(errors, clear_proc.returncode == 0, f"SessionStart clear smoke failed: {clear_proc.stderr.strip()}")
         check(errors, clear_proc.stdout == "", "SessionStart clear source must not inject context")
+
+
+def run_stop_hook(plugin_root: Path, project_root: Path, stop_hook_active: bool) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+    payload = {
+        "session_id": "adapter-smoke",
+        "transcript_path": str(project_root / "transcript.jsonl"),
+        "cwd": str(project_root),
+        "hook_event_name": "Stop",
+        "stop_hook_active": stop_hook_active,
+    }
+    return subprocess.run(
+        [str(plugin_root / "hooks" / "stop-memory-hygiene")],
+        input=json.dumps(payload),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        env=env,
+    )
+
+
+def _git(args: list[str], cwd: Path) -> None:
+    env = os.environ.copy()
+    env.update(
+        {
+            "GIT_AUTHOR_NAME": "Arbor Adapter Smoke",
+            "GIT_AUTHOR_EMAIL": "arbor@example.com",
+            "GIT_COMMITTER_NAME": "Arbor Adapter Smoke",
+            "GIT_COMMITTER_EMAIL": "arbor@example.com",
+        }
+    )
+    subprocess.run(["git", *args], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True, env=env)
+
+
+def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> None:
+    with tempfile.TemporaryDirectory(prefix="arbor-claude-stop-adapter-") as tmp:
+        project = Path(tmp)
+        (project / ".arbor").mkdir()
+        (project / ".arbor" / "memory.md").write_text("# Arbor Memory\n\n- Pending note.\n", encoding="utf-8")
+        (project / "AGENTS.md").write_text("# Project Guide\n", encoding="utf-8")
+        _git(["init"], project)
+        _git(["add", "-A"], project)
+        _git(["commit", "-m", "init"], project)
+
+        # Clean worktree: the adapter must stay silent and allow the stop.
+        clean_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, clean_proc.returncode == 0, f"Stop clean smoke failed: {clean_proc.stderr.strip()}")
+        check(errors, clean_proc.stdout == "", "Stop adapter must stay silent on a clean worktree")
+
+        # Dirty worktree: the adapter must block with the memory hygiene packet.
+        (project / "feature.txt").write_text("work in progress\n", encoding="utf-8")
+        dirty_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, dirty_proc.returncode == 0, f"Stop dirty smoke failed: {dirty_proc.stderr.strip()}")
+        try:
+            decision = json.loads(dirty_proc.stdout)
+        except json.JSONDecodeError:
+            add_error(errors, "Stop adapter must emit JSON when blocking a dirty worktree")
+            decision = {}
+        check(errors, decision.get("decision") == "block", "Stop adapter must block when the worktree is dirty")
+        check(
+            errors,
+            "# Memory Hygiene Context" in str(decision.get("reason", "")),
+            "Stop block reason must carry the memory hygiene packet",
+        )
+
+        # stop_hook_active guard: the adapter must never block a continuation.
+        active_proc = run_stop_hook(plugin_root, project, stop_hook_active=True)
+        check(errors, active_proc.returncode == 0, f"Stop active smoke failed: {active_proc.stderr.strip()}")
+        check(errors, active_proc.stdout == "", "Stop adapter must allow the stop when stop_hook_active is set")
+
+    # Non-Arbor project: the adapter must stay silent even when dirty.
+    with tempfile.TemporaryDirectory(prefix="arbor-claude-stop-nonarbor-") as tmp:
+        project = Path(tmp)
+        _git(["init"], project)
+        (project / "feature.txt").write_text("unrelated work\n", encoding="utf-8")
+        proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, proc.returncode == 0, f"Stop non-Arbor smoke failed: {proc.stderr.strip()}")
+        check(errors, proc.stdout == "", "Stop adapter must stay silent in a non-Arbor project")
 
 
 def validate_in_flight_memory_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -424,6 +513,7 @@ def main() -> int:
     validate_project_hook_contract(plugin_root, errors)
     validate_claude_hook_structure(plugin_root, errors)
     validate_session_start_smoke(plugin_root, errors)
+    validate_stop_memory_hygiene_smoke(plugin_root, errors)
     validate_in_flight_memory_contract(plugin_root, errors)
     validate_rendered_checkpoint_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)

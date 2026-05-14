@@ -62,7 +62,7 @@ From within a Claude Code session:
 /plugin install arbor@arbor
 ```
 
-Run `/reload-plugins` afterward to activate the skill and the bundled `SessionStart` hook in the current session. The hook auto-injects the Arbor startup packet (AGENTS.md, formatted git log, `.arbor/memory.md`, git status) on `startup` and `resume` sources, trimmed to fit Claude Code's context-injection cap.
+Run `/reload-plugins` afterward to activate the skill and the bundled `SessionStart` and `Stop` hooks in the current session. The `SessionStart` hook auto-injects the Arbor startup packet (AGENTS.md, formatted git log, `.arbor/memory.md`, git status) on `startup` and `resume` sources, trimmed to fit Claude Code's context-injection cap. The `Stop` hook emits the memory hygiene packet when an Arbor-managed worktree is dirty.
 
 ## Skills
 
@@ -361,9 +361,12 @@ The hooks are registered by the skill during project initialization; Arbor does 
 
 ### Claude Code
 
-The installed plugin bundles a single `SessionStart` hook (`hooks/hooks.json` + `hooks/session-start`) that fires on the `startup` and `resume` sources. Its Python adapter calls the shared `run_session_startup_hook.py`, applies a budget-aware truncation policy so the rendered packet stays under Claude Code's `additionalContext` cap, and prints the packet to stdout for automatic injection into the conversation.
+The installed plugin bundles two hooks in `hooks/hooks.json`:
 
-Memory hygiene and goal-constraint drift are not auto-fired on Claude Code (Claude Code has no native event that delivers a context packet at the right time). Invoke them through the user-driven workflows above; the underlying scripts are the same on both runtimes.
+- `SessionStart` (`hooks/session-start`) fires on the `startup` and `resume` sources. Its Python adapter calls the shared `run_session_startup_hook.py`, applies a budget-aware truncation policy so the rendered packet stays under Claude Code's `additionalContext` cap, and prints the packet to stdout for automatic injection into the conversation.
+- `Stop` (`hooks/stop-memory-hygiene`) is the Claude Code mapping of the Codex `arbor.in_session_memory_hygiene` hook. Claude Code has no native checkpoint event, and `Stop` is the only native event whose output can re-enter the agent loop, so the adapter self-gates: it stays silent unless the project is Arbor-managed (an `.arbor` directory exists) and the worktree is dirty, and it honors `stop_hook_active` first so it can never loop. When it does fire, it calls the shared `run_memory_hygiene_hook.py` and blocks the stop with the hygiene packet as the block reason, letting the agent decide whether to refresh `.arbor/memory.md`.
+
+Goal-constraint drift is not auto-fired on Claude Code: there is no native event that maps to `project.guide_drift`. Invoke it through the user-driven workflows above; the underlying scripts are the same on both runtimes.
 
 ## Adapter Validation
 
@@ -376,10 +379,13 @@ python3 plugins/arbor/skills/arbor/scripts/check_skill_packages.py
 ```
 
 The check validates Codex and Claude manifest identity fields, the Claude
-marketplace entry, the Claude `SessionStart` hook shape, the absence of
-out-of-scope plugin-level `agents/` and `PreCompact` adapters, a synthetic
-Claude startup event with budget-aware context truncation, and every Arbor skill
-package without relying on `quick_validate.py` being on the shell `PATH`.
+marketplace entry, the Claude `SessionStart` and `Stop` hook shapes, the absence
+of out-of-scope plugin-level `agents/` and `PreCompact` adapters, a synthetic
+Claude startup event with budget-aware context truncation, the `Stop`
+memory-hygiene adapter's self-gating (clean worktree, non-Arbor project, and
+`stop_hook_active` all stay silent; a dirty Arbor worktree blocks with the
+hygiene packet), and every Arbor skill package without relying on
+`quick_validate.py` being on the shell `PATH`.
 
 For workflow behavior, these checks are only preflight. The real release gate is
 the runtime case matrix in

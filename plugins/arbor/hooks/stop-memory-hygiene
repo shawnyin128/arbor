@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""Claude Code Stop hook adapter for Arbor in-session memory hygiene.
+
+Reads Claude Code ``Stop`` hook event JSON from stdin and, when the project
+is Arbor-managed and the worktree has uncommitted changes, blocks the stop
+and feeds the shared Arbor memory-hygiene packet back to the agent as the
+block ``reason``. The agent then decides -- using the packet's trigger
+policy plus conversation context -- whether to refresh ``.arbor/memory.md``
+before the turn truly ends.
+
+This is the Claude Code mapping of the Codex
+``arbor.in_session_memory_hygiene`` hook (event ``conversation.checkpoint``).
+Claude Code has no native checkpoint event, and ``Stop`` is the only native
+event whose output can re-enter the agent loop, so the adapter self-gates
+instead:
+
+* ``stop_hook_active`` is honored first -- once Claude is already continuing
+  because of this hook, the adapter allows the stop so it can never loop.
+* Projects without an ``.arbor`` directory are not Arbor-managed; the
+  adapter stays silent rather than blocking unrelated repositories.
+* A clean worktree has no uncommitted state to recover, so the adapter
+  stays silent there too.
+
+Any unexpected failure (missing ``cwd``, unreadable shared script, git or
+subprocess error) soft-fails on stderr with a non-zero exit code and never
+blocks the stop: a degraded turn is better than a wedged session.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+# The block reason is fed back to the model. Keep it bounded so a very large
+# dirty diff stat cannot blow up the continuation prompt; the agent can
+# always run deeper git reads on demand.
+REASON_BUDGET = 12000
+
+TRUNCATION_NOTICE = (
+    "[truncated - Arbor memory hygiene packet exceeded the adapter budget; "
+    "the agent can run deeper git reads on demand]"
+)
+
+
+def _emit_error(message: str) -> None:
+    print(f"arbor stop-memory-hygiene: {message}", file=sys.stderr)
+
+
+def resolve_plugin_root() -> Path:
+    env = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if env:
+        return Path(env).resolve()
+    return Path(__file__).resolve().parent.parent
+
+
+def parse_hook_payload(raw: str) -> dict:
+    if not raw.strip():
+        return {}
+    return json.loads(raw)
+
+
+def worktree_is_dirty(root: str) -> bool:
+    """Return True when ``git status --porcelain`` reports uncommitted state.
+
+    A non-git directory or any git failure returns False: without a clean
+    dirty signal the adapter must not block the stop.
+    """
+    proc = subprocess.run(
+        ["git", "-C", root, "status", "--porcelain"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return False
+    return bool(proc.stdout.strip())
+
+
+def apply_budget(packet: str, budget: int) -> str:
+    if len(packet) <= budget:
+        return packet
+    head = packet[: max(0, budget - len(TRUNCATION_NOTICE) - 2)].rstrip()
+    return f"{head}\n\n{TRUNCATION_NOTICE}\n"
+
+
+def main() -> int:
+    try:
+        payload = parse_hook_payload(sys.stdin.read())
+    except json.JSONDecodeError as exc:
+        _emit_error(f"could not parse hook event JSON: {exc}")
+        return 1
+
+    # Claude is already continuing because of this hook; allowing the stop
+    # here is what guarantees the adapter can never loop.
+    if payload.get("stop_hook_active"):
+        return 0
+
+    cwd = payload.get("cwd")
+    if not cwd:
+        _emit_error("hook event payload missing 'cwd'; not blocking stop")
+        return 1
+
+    project_root = Path(cwd)
+    # Only Arbor-managed projects keep an `.arbor` directory; staying silent
+    # everywhere else keeps unrelated repositories unblocked.
+    if not (project_root / ".arbor").is_dir():
+        return 0
+
+    # A clean worktree has no uncommitted state to recover.
+    if not worktree_is_dirty(cwd):
+        return 0
+
+    plugin_root = resolve_plugin_root()
+    script = plugin_root / "skills" / "arbor" / "scripts" / "run_memory_hygiene_hook.py"
+    if not script.is_file():
+        _emit_error(f"shared memory hygiene script not found at {script}")
+        return 1
+
+    proc = subprocess.run(
+        [sys.executable, str(script), "--root", cwd],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        detail = proc.stderr.strip() or proc.stdout.strip() or "no output"
+        _emit_error(f"shared memory hygiene script exited {proc.returncode}: {detail}")
+        return 1
+
+    output = {
+        "decision": "block",
+        "reason": apply_budget(proc.stdout, REASON_BUDGET),
+        "systemMessage": "Arbor: checking in-flight memory before stop (worktree is dirty).",
+    }
+    print(json.dumps(output))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
