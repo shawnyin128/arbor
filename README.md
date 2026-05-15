@@ -121,6 +121,7 @@ What it does well:
 - refreshing short-term memory when current-session or uncommitted work makes `.arbor/memory.md` stale (auto via `arbor.in_session_memory_hygiene` hook intent on Codex; user-invoked on Claude Code);
 - preparing `AGENTS.md` updates when the project guide or map needs to point the agent at changed durable context. The drift packet includes top-level project structure, mapped path validation, and `Project Map Drift Candidates`; when it reports `update-needed`, update the `Project Map` before handoff or release unless the missing or stale path is intentionally excluded (auto via `arbor.goal_constraint_drift` hook intent on Codex; user-invoked on Claude Code).
 - validating process-state facts before handoff, checkpoint, release, or publish. `scripts/check_process_state.py` is read-only and checks the feature registry, review document links, phase evidence, short-term memory, and optional Release Round evidence without choosing implementation or test strategy.
+- guarding rendered workflow checkpoints so normal users see readable status, findings, decisions, and next steps instead of raw `*.v1` packets, route labels, terminal-state labels, or unexplained internal ids. `references/rendered-checkpoint-protocol.md` defines this output boundary for workflow checkpoints only; it is not a template for direct answers or a constraint on implementation strategy.
 
 On Codex, `AGENTS.md` is the reliable native startup bootstrap. `.codex/hooks.json` records project hook intents, but a fresh Codex prompt should not assume those intents already injected Arbor context. The generated `AGENTS.md` includes a Startup Protocol that tells the agent to load `AGENTS.md`, recent formatted git history, `.arbor/memory.md`, and `git status --short` before answering fresh-session, resumed-session, or project-overview prompts.
 
@@ -397,6 +398,12 @@ use real Codex or Claude Code processes, real Arbor skill invocation, rendered
 final responses, and real git/file side-effect assertions. Ignored simulation
 fixtures and baseline scripts are optional development aids and must not be
 reported as full-chain validation.
+
+Rendered checkpoint validation follows
+`plugins/arbor/skills/arbor/references/rendered-checkpoint-protocol.md`. For
+workflow-facing changes, inspect at least one captured `final-response.md` from a
+real runtime replay when feasible; static fixture checks and JSON schema checks
+are preflight only.
 
 Run tracked local-only real-chain guards with:
 

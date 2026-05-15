@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -35,6 +36,14 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = PLUGIN_ROOT.parent.parent if PLUGIN_ROOT.parent.name == "plugins" else PLUGIN_ROOT
 CODEX_CACHE = Path.home() / ".codex/plugins/cache/arbor/arbor/0.4.2"
 CLAUDE_CACHE = Path.home() / ".claude/plugins/cache/arbor/arbor/0.4.2"
+RAW_CHECKPOINT_LEAK_RE = re.compile(
+    r"schema_version|```json|\"(?:source|route|ui|evaluation|review_context|release_context)\"\s*:|"
+    r"\b(?:brainstorm|develop|evaluate|converge|release)\.v1\b|"
+    r"\b(?:terminal_state|next_skill|feature_id|review_doc_path)\b|"
+    r"\b(?:ready_for_evaluate|needs_develop_handoff|route_correction|checkpointed)\b|"
+    r"^\s*(?:route|terminal state|next route|next skill)\s*:",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 class CaseFailure(AssertionError):
@@ -464,8 +473,10 @@ def assert_success(_: CaseContext, result: RuntimeResult | None) -> None:
 
 def assert_no_raw_schema(_: CaseContext, result: RuntimeResult | None) -> None:
     text = final_text(result)
-    forbidden = ('"schema_version"', '"route": {', '"source": {')
-    require(not any(term in text for term in forbidden), "final response exposes raw workflow JSON")
+    require(
+        RAW_CHECKPOINT_LEAK_RE.search(text) is None,
+        "final response exposes raw workflow schema or internal checkpoint labels",
+    )
 
 
 def assert_contains(*terms: str) -> Callable[[CaseContext, RuntimeResult | None], None]:

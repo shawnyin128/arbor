@@ -20,6 +20,13 @@ Full-chain validation requires all of these:
 - captured git status, git log, changed files, and workflow artifacts;
 - assertions over route trace, state changes, side effects, and readability.
 
+Rendered-output assertions should follow `rendered-checkpoint-protocol.md`.
+Reject raw workflow schema, route assignments, terminal-state labels,
+unexplained internal ids, and missing skill-specific visible sections in the
+captured `final-response.md`. These checks protect workflow readability; they do
+not prescribe implementation approach or apply to direct answers that correctly
+stay outside Arbor workflow.
+
 When runtime telemetry cannot prove exact skill selection, the case must say so and
 assert the strongest observable behavior. If exact skill sequence is required, the
 runtime review harness must enable a review-only trace file such as

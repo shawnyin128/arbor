@@ -546,7 +546,29 @@ def validate_in_flight_memory_contract(plugin_root: Path, errors: list[str]) -> 
 
 
 def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) -> None:
+    protocol = plugin_root / "skills" / "arbor" / "references" / "rendered-checkpoint-protocol.md"
+    check(errors, protocol.is_file(), "rendered checkpoint protocol reference must exist")
+    if protocol.is_file():
+        protocol_text = protocol.read_text(encoding="utf-8")
+        for term in (
+            "applies only to Arbor workflow checkpoints and decision points",
+            "apply to direct answers",
+            "raw workflow JSON",
+            "route assignments",
+            "terminal-state labels",
+            "unexplained feature ids",
+            "final rendered response text",
+            "preflight only",
+        ):
+            check(errors, term in protocol_text, f"rendered checkpoint protocol missing term `{term}`")
+
     required = {
+        "skills/arbor/SKILL.md": [
+            "Rendered Checkpoint Guard",
+            "references/rendered-checkpoint-protocol.md",
+            "final rendered response",
+            "Static fixture checks are preflight",
+        ],
         "skills/brainstorm/SKILL.md": [
             "do not stop with only chat prose",
             "create a durable brainstorm checkpoint",
@@ -573,8 +595,17 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "evaluation is not an acceptable `evaluate` checkpoint",
         ],
     }
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is not None:
+        required["README.md"] = [
+            "rendered workflow checkpoints",
+            "references/rendered-checkpoint-protocol.md",
+            "real runtime replay",
+            "static fixture checks and JSON schema checks",
+        ]
     for rel_path, terms in required.items():
-        text = (plugin_root / rel_path).read_text(encoding="utf-8")
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
         for term in terms:
             check(errors, term in text, f"{rel_path} missing rendered checkpoint contract term `{term}`")
 

@@ -72,6 +72,14 @@ Use `scripts/check_process_state.py --root <project-root>` when a managed Arbor 
 
 Treat normal warnings as migration or advisory evidence unless the current gate explicitly requires strictness. Use `--strict` or `--require-release-round-for-done` for release gates that should fail on those gaps. Do not use this guard to choose implementation steps, tests, routes, or feature priorities.
 
+### Rendered Checkpoint Guard
+
+Use `references/rendered-checkpoint-protocol.md` as the shared boundary for Arbor's user-visible workflow checkpoints. The raw `*.v1` packet is a runtime handoff; normal users should see the rendered checkpoint from `user_response` and `ui`.
+
+The protocol applies only to Arbor workflow checkpoints and decision points. It must not force ordinary direct answers, read-only explanations, implementation strategy, testing strategy, or private reasoning into a template. For workflow checkpoints, the visible text must explain the current situation, what the checkpoint controls, evidence or findings, material defaults or judgment calls, and the next step in readable language.
+
+Before claiming a workflow-facing change is validated, inspect the final rendered response when feasible. The tracked real-chain runner captures `final-response.md`; use it to reject raw schema leaks, route labels, terminal-state labels, unexplained internal ids, and missing required visible sections. Static fixture checks are preflight, not a substitute for real final-response inspection.
+
 ## Runtime Entrypoints
 
 Arbor runs the same workflow on Codex and Claude Code, but each runtime carries it through a different entrypoint surface. The shared project state is always `AGENTS.md` plus `.arbor/memory.md`; everything else is adapter-side.
@@ -108,6 +116,7 @@ Claude Code does not have an equivalent project-level hook intent file. It ships
 - `references/project-hooks-template.md`: project hook contract
 - `references/real-workflow-chain-review.md`: real-runtime chain review case matrix and release gate
 - `references/process-state-authority.md`: source-of-truth map for Arbor workflow state
+- `references/rendered-checkpoint-protocol.md`: shared user-visible checkpoint rendering contract
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order
 - `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments
