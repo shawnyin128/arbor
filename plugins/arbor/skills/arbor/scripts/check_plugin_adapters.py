@@ -310,31 +310,50 @@ def validate_agents_guide_drift_smoke(plugin_root: Path, errors: list[str]) -> N
     import sys
 
     script = plugin_root / "skills" / "arbor" / "scripts" / "run_agents_guide_drift_hook.py"
-    with tempfile.TemporaryDirectory(prefix="arbor-guide-drift-") as tmp:
-        project = Path(tmp)
-        (project / "AGENTS.md").write_text(
+    smoke_cases = (
+        (
+            "missing tools directory",
             "# Agent Guide\n\n## Project Map\n\n- `src/`: existing code.\n",
-            encoding="utf-8",
-        )
-        (project / "src").mkdir()
-        (project / "tools").mkdir()
-        proc = subprocess.run(
-            [sys.executable, str(script), "--root", str(project)],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
-    check(errors, proc.returncode == 0, f"AGENTS guide drift smoke failed: {proc.stderr}")
-    output = proc.stdout
-    for term in (
-        "Project Map Snapshot",
-        "Project Map Drift Candidates",
-        "Status: update-needed",
-        "`tools/`",
-        "before handoff or release",
-    ):
-        check(errors, term in output, f"AGENTS guide drift smoke missing `{term}`")
+            ("src", "tools"),
+            ("Status: update-needed", "`tools/`"),
+        ),
+        (
+            "stale legacy directory",
+            "# Agent Guide\n\n## Project Map\n\n- `src/`: existing code.\n- `legacy/`: removed code.\n",
+            ("src",),
+            ("Status: update-needed", "stale top-level entries", "`legacy/`"),
+        ),
+        (
+            "prose mention is not a map entry",
+            "# Agent Guide\n\n## Project Map\n\n- `src/`: existing code.\n\nProject tools are discussed in docs.\n",
+            ("src", "tools"),
+            ("Status: update-needed", "`tools/`"),
+        ),
+    )
+    with tempfile.TemporaryDirectory(prefix="arbor-guide-drift-") as tmp:
+        base = Path(tmp)
+        for index, (label, agents_text, dirs, required_terms) in enumerate(smoke_cases, start=1):
+            project = base / f"case-{index}"
+            project.mkdir()
+            (project / "AGENTS.md").write_text(agents_text, encoding="utf-8")
+            for dirname in dirs:
+                (project / dirname).mkdir()
+            proc = subprocess.run(
+                [sys.executable, str(script), "--root", str(project)],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            check(errors, proc.returncode == 0, f"AGENTS guide drift smoke failed for {label}: {proc.stderr}")
+            output = proc.stdout
+            for term in (
+                "Project Map Snapshot",
+                "Project Map Drift Candidates",
+                "before handoff or release",
+                *required_terms,
+            ):
+                check(errors, term in output, f"AGENTS guide drift smoke {label} missing `{term}`")
 
 
 def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None:

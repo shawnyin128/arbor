@@ -451,7 +451,7 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
             "decision_rule": (
                 "Trigger when durable project goals, constraints, or project-map entrypoints may have changed. "
                 "If the drift packet reports Project Map Drift Candidates as update-needed, update AGENTS.md "
-                "Project Map before handoff or release unless the candidate is intentionally excluded."
+                "Project Map before handoff or release unless the missing or stale candidate is intentionally excluded."
             ),
         },
         "depth_policy": "agent-selected; no fixed read limits",

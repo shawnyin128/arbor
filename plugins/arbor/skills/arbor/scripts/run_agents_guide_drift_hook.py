@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -20,6 +21,9 @@ from collect_project_context import ContextSection, read_file_section, run_git_s
 ALLOWED_AGENTS_SECTIONS = ["Project Goal", "Project Constraints", "Project Map"]
 PROJECT_MAP_HEADING = "Project Map"
 MAX_PROJECT_MAP_CANDIDATES = 60
+MAP_TOKEN_RE = re.compile(r"`([^`\n]+)`")
+LIST_ITEM_RE = re.compile(r"^\s*[-*]\s+")
+MAP_LIST_PATH_RE = re.compile(r"^\s*[-*]\s+([A-Za-z0-9._/-]+/?)(?=\s*(?::|-|--|$))")
 SKIP_PROJECT_MAP_NAMES = {
     ".DS_Store",
     ".claude",
@@ -109,14 +113,92 @@ def read_agents_text(root: Path) -> str:
         return ""
 
 
-def missing_project_map_candidates(root: Path) -> list[str]:
-    project_map = extract_agents_section(read_agents_text(root), PROJECT_MAP_HEADING)
+def normalize_map_token(raw: str) -> str:
+    token = raw.strip().strip("'\"")
+    while token.startswith("./"):
+        token = token[2:]
+    return token
+
+
+def is_project_map_entry_token(token: str) -> bool:
+    if not token or token.startswith("#"):
+        return False
+    if "://" in token:
+        return False
+    path = Path(token.rstrip("/"))
+    if path.is_absolute():
+        return False
+    return bool(path.parts)
+
+
+def project_map_tokens(project_map: str) -> set[str]:
+    tokens: set[str] = set()
+    for line in project_map.splitlines():
+        if not LIST_ITEM_RE.match(line):
+            continue
+        backtick_match = MAP_TOKEN_RE.search(line)
+        if backtick_match:
+            token = normalize_map_token(backtick_match.group(1))
+            if is_project_map_entry_token(token):
+                tokens.add(token)
+            continue
+        match = MAP_LIST_PATH_RE.match(line)
+        if match:
+            token = normalize_map_token(match.group(1))
+            if is_project_map_entry_token(token):
+                tokens.add(token)
+    return tokens
+
+
+def candidate_is_mapped(candidate: str, tokens: set[str]) -> bool:
+    normalized = normalize_map_token(candidate)
+    variants = {normalized}
+    if normalized.endswith("/"):
+        variants.add(normalized.rstrip("/"))
+    else:
+        variants.add(f"{normalized}/")
+    if variants & tokens:
+        return True
+    if normalized.endswith("/"):
+        return any(token.startswith(normalized) for token in tokens)
+    return False
+
+
+def top_level_map_tokens(tokens: set[str]) -> set[str]:
+    top_level: set[str] = set()
+    for token in tokens:
+        stripped = token.rstrip("/")
+        if "/" in stripped:
+            continue
+        if stripped in SKIP_PROJECT_MAP_NAMES or stripped == "AGENTS.md":
+            continue
+        if "." in stripped and stripped not in INCLUDE_PROJECT_MAP_FILES:
+            continue
+        top_level.add(f"{stripped}/" if token.endswith("/") else stripped)
+    return top_level
+
+
+def missing_project_map_candidates(root: Path, tokens: set[str] | None = None) -> list[str]:
+    if tokens is None:
+        project_map = extract_agents_section(read_agents_text(root), PROJECT_MAP_HEADING)
+        tokens = project_map_tokens(project_map)
     missing: list[str] = []
     for candidate in project_map_candidates(root):
-        token = candidate.rstrip("/")
-        if candidate not in project_map and token not in project_map:
+        if not candidate_is_mapped(candidate, tokens):
             missing.append(candidate)
     return missing
+
+
+def stale_project_map_entries(root: Path, tokens: set[str] | None = None) -> list[str]:
+    if tokens is None:
+        project_map = extract_agents_section(read_agents_text(root), PROJECT_MAP_HEADING)
+        tokens = project_map_tokens(project_map)
+    candidates = set(project_map_candidates(root))
+    stale: list[str] = []
+    for token in sorted(top_level_map_tokens(tokens), key=str.lower):
+        if not candidate_is_mapped(token, candidates):
+            stale.append(token)
+    return stale
 
 
 def collect_project_map_snapshot(root: Path) -> ContextSection:
@@ -144,26 +226,42 @@ def collect_project_map_snapshot(root: Path) -> ContextSection:
 
 
 def collect_project_map_drift(root: Path) -> ContextSection:
-    missing = missing_project_map_candidates(root)
-    if missing:
-        body = "\n".join(
-            [
-                "The current `AGENTS.md` Project Map does not mention these top-level candidates:",
-                "",
-                *[f"- `{candidate}`" for candidate in missing],
-                "",
-                "Update `AGENTS.md` Project Map before handoff or release unless a candidate is intentionally out of scope.",
-            ]
+    project_map = extract_agents_section(read_agents_text(root), PROJECT_MAP_HEADING)
+    tokens = project_map_tokens(project_map)
+    missing = missing_project_map_candidates(root, tokens)
+    stale = stale_project_map_entries(root, tokens)
+    if missing or stale:
+        lines = []
+        if missing:
+            lines.extend(
+                [
+                    "The current `AGENTS.md` Project Map does not mention these top-level candidates:",
+                    "",
+                    *[f"- `{candidate}`" for candidate in missing],
+                    "",
+                ]
+            )
+        if stale:
+            lines.extend(
+                [
+                    "The current `AGENTS.md` Project Map still mentions these stale top-level entries:",
+                    "",
+                    *[f"- `{entry}`" for entry in stale],
+                    "",
+                ]
+            )
+        lines.append(
+            "Update `AGENTS.md` Project Map before handoff or release unless a missing or stale path is intentionally out of scope."
         )
         return ContextSection(
             title="4. Project Map Drift Candidates",
-            body=body,
+            body="\n".join(lines),
             status="update-needed",
             source="AGENTS.md Project Map compared with top-level project entries",
         )
     return ContextSection(
         title="4. Project Map Drift Candidates",
-        body="No missing top-level project map candidates detected.",
+        body="No missing or stale top-level project map candidates detected.",
         status="ok",
         source="AGENTS.md Project Map compared with top-level project entries",
     )
@@ -191,7 +289,7 @@ def render_agents_guide_drift_packet(sections: list[ContextSection]) -> str:
         "## Agent Instructions",
         "",
         "- Decide whether `AGENTS.md` needs a durable update using this packet plus current conversation context.",
-        "- When `Project Map Drift Candidates` reports `update-needed`, update `AGENTS.md` Project Map before handoff or release unless the listed paths are intentionally excluded.",
+        "- When `Project Map Drift Candidates` reports `update-needed`, update `AGENTS.md` Project Map before handoff or release unless the listed missing or stale paths are intentionally excluded.",
         f"- If an update is needed, edit only these sections: {allowed}.",
         "- Keep current uncommitted progress, transient observations, and implementation notes out of `AGENTS.md`.",
         f"- Put short-term undecided work in `{CANONICAL_MEMORY_PATH}`; put feature/review evidence in review docs.",

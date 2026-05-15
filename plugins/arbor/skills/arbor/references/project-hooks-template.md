@@ -32,7 +32,7 @@ The hook file is a visible project artifact, not user-global state. A later Arbo
    - Emits an AGENTS drift packet with `AGENTS.md`, git status, top-level project structure, `Project Map Drift Candidates`, and optional project-local docs.
    - The running agent decides whether to edit only `Project Goal`, `Project Constraints`, or `Project Map` in `AGENTS.md`.
    - Trigger with high recall after adding, removing, or renaming durable project entrypoints, after adding a new skill or runtime adapter, and before release/publish/handoff when project structure changed.
-   - When `Project Map Drift Candidates` reports `update-needed`, update `AGENTS.md` Project Map before handoff or release unless the listed path is intentionally excluded.
+   - When `Project Map Drift Candidates` reports `update-needed`, update `AGENTS.md` Project Map before handoff or release unless the listed missing or stale path is intentionally excluded.
    - `AGENTS.md` should remain the stable guide and map, not a complete long-term memory dump.
    - Claude Code mapping: none. Claude Code has no native event for project-guide drift, so this intent stays user/skill-driven there.
 
