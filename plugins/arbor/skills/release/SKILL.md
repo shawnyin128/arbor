@@ -19,7 +19,7 @@ It does not plan, implement, evaluate, or decide convergence.
 
 Checkpointed release output is not final delivery. In checkpoint mode, `release` preserves the current handoff and routes the same feature onward; it must not imply that evaluation, convergence, or final release has already happened.
 
-When the user explicitly enables `develop_evaluate_converge` automation, or makes an equivalent natural-language request to automatically continue to convergence for the current workflow, `release` may carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. Checkpoint policy authorizes the local checkpoint commit for those handoffs. It does not authorize finalization commit, push, PR, tag, publish, cache sync, next-feature release, or any public action.
+When the user explicitly enables `develop_evaluate_converge` automation, `release` may carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. Checkpoint policy authorizes the local checkpoint commit for those handoffs. It does not authorize finalization commit, push, PR, tag, publish, next-feature release, or any public action.
 
 ## Checklist
 

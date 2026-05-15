@@ -92,7 +92,7 @@ Checkpointed release output is not final delivery. In checkpoint mode, `release`
 
 Use `continue_policy=auto_continue_allowed` only for safe internal `checkpoint_develop` or `checkpoint_evaluate` handoffs whose local checkpoint commit completed with no blocker, dirty-scope conflict, or confirmation need. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation.
 
-An explicit current-workflow automatic convergence request can allow release to carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. The user may name the `develop_evaluate_converge` policy or use an equivalent natural-language request to continue automatically to convergence. This authorizes the local checkpoint commit for those handoffs. It does not authorize finalization commit, push, PR, tag, publish, cache sync, next-feature release, or any public action.
+An explicit `develop_evaluate_converge` automation policy can allow release to carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. It authorizes the local checkpoint commit for those handoffs. It does not authorize finalization commit, push, PR, tag, publish, next-feature release, or any public action.
 
 ## Commit Convention
 

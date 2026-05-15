@@ -87,9 +87,7 @@ Do not include a "What Will Be Preserved" section. Persistence and checkpoint de
 
 A `converged` decision is not release completion. The visible output must say that release finalization remains next and must not imply commit, push, publish, or full release has happened.
 
-The only allowed automatic continuation is an explicit current-workflow automatic convergence request, either by naming the `develop_evaluate_converge` policy or by an equivalent natural-language request to continue automatically to convergence. Even then, `converge` may set `continue_policy=auto_continue_allowed` only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, blocked convergence, or external release action required.
-
-This policy is narrow. It authorizes only the current feature's internal convergence loop. It does not authorize release finalization, finalization commits, push, PR, tag, publish, cache sync, next-feature release, or next-feature development.
+The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `converge` may set `continue_policy=auto_continue_allowed` only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, blocked convergence, or external release action required.
 
 ## Route Decisions
 
