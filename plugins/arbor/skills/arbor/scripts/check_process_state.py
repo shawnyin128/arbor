@@ -91,6 +91,16 @@ def relative_inside_root(root: Path, raw_path: str, *, base_path: Path = Path())
     return resolved
 
 
+def is_review_doc_path(raw_path: str) -> bool:
+    candidate = Path(raw_path)
+    return (
+        len(candidate.parts) >= 3
+        and candidate.parts[0] == "docs"
+        and candidate.parts[1] == "review"
+        and candidate.suffix == ".md"
+    )
+
+
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -212,6 +222,14 @@ def validate_registry_rows(root: Path, registry: dict[str, Any] | None, findings
             resolved = relative_inside_root(root, review_doc_raw)
             if resolved is None:
                 add_finding(findings, "error", "unsafe_review_doc_path", path_label, f"Feature {feature_id} review_doc_path must stay inside the project root.")
+            elif not is_review_doc_path(review_doc_raw):
+                add_finding(
+                    findings,
+                    "error",
+                    "review_doc_path_outside_review_dir",
+                    path_label,
+                    f"Feature {feature_id} review_doc_path must point to docs/review/*.md.",
+                )
             else:
                 review_doc_path = Path(review_doc_raw)
 
@@ -500,7 +518,19 @@ def run_self_tests() -> None:
         seed_registry(unsafe_path, "approved", "../outside.md")
         expect_report("unsafe review path", validate_process_state(unsafe_path), status="fail", code="unsafe_review_doc_path")
 
-    print("process state self-tests passed count=8")
+        wrong_review_dir = base / "wrong-review-dir"
+        wrong_review_dir.mkdir()
+        seed_project(wrong_review_dir)
+        seed_registry(wrong_review_dir, "approved", "notes/feature.md")
+        write(wrong_review_dir / "notes/feature.md", "## Context/Test Plan\n\nAcceptance criteria.\n")
+        expect_report(
+            "wrong review directory",
+            validate_process_state(wrong_review_dir),
+            status="fail",
+            code="review_doc_path_outside_review_dir",
+        )
+
+    print("process state self-tests passed count=9")
 
 
 def build_parser() -> argparse.ArgumentParser:

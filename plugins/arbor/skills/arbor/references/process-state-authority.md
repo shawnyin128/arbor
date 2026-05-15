@@ -12,7 +12,8 @@ artifacts own the durable facts for a managed workflow:
 | Completed work | git history plus release/checkpoint evidence | Finished state after local checkpoints, publish, push, or other release actions. |
 
 `scripts/check_process_state.py` validates these facts without mutating them.
-It checks registry shape, review-document existence, phase round presence,
+It checks registry shape, `docs/review/*.md` review-document ownership,
+review-document existence, phase round presence,
 open-work memory hygiene, stale in-flight memory after terminal features, and
 optional release-round evidence for done features.
 
