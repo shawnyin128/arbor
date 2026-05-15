@@ -29,7 +29,7 @@ The hook file is a visible project artifact, not user-global state. A later Arbo
    - Event: `project.guide_drift`
    - Entrypoint: `scripts/run_agents_guide_drift_hook.py --root ${PROJECT_ROOT}`
    - Optional argument channel: repeat `--doc "${DOC_PATH}"` for each agent-selected project-local doc.
-   - Emits an AGENTS drift packet with `AGENTS.md`, git status, top-level project structure, `Project Map Drift Candidates`, and optional project-local docs.
+   - Emits an AGENTS drift packet with `AGENTS.md`, git status, top-level project structure, mapped path validation, `Project Map Drift Candidates`, and optional project-local docs.
    - The running agent decides whether to edit only `Project Goal`, `Project Constraints`, or `Project Map` in `AGENTS.md`.
    - Trigger with high recall after adding, removing, or renaming durable project entrypoints, after adding a new skill or runtime adapter, and before release/publish/handoff when project structure changed.
    - When `Project Map Drift Candidates` reports `update-needed`, update `AGENTS.md` Project Map before handoff or release unless the listed missing or stale path is intentionally excluded.

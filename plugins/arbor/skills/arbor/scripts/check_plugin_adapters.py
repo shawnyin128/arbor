@@ -246,6 +246,7 @@ def validate_guide_drift_hook_contract(errors: list[str], guide_hook: object) ->
     reads_text = "\n".join(str(item) for item in guide_hook.get("reads", []))
     for term in (
         "top-level project structure",
+        "mapped path validation",
         "git status --short --untracked-files=all",
     ):
         check(errors, term in reads_text, f"AGENTS guide drift hook reads missing `{term}`")
@@ -321,13 +322,19 @@ def validate_agents_guide_drift_smoke(plugin_root: Path, errors: list[str]) -> N
             "stale legacy directory",
             "# Agent Guide\n\n## Project Map\n\n- `src/`: existing code.\n- `legacy/`: removed code.\n",
             ("src",),
-            ("Status: update-needed", "stale top-level entries", "`legacy/`"),
+            ("Status: update-needed", "stale mapped path entries", "`legacy/`"),
         ),
         (
             "prose mention is not a map entry",
             "# Agent Guide\n\n## Project Map\n\n- `src/`: existing code.\n\nProject tools are discussed in docs.\n",
             ("src", "tools"),
             ("Status: update-needed", "`tools/`"),
+        ),
+        (
+            "stale stable subpath",
+            "# Agent Guide\n\n## Project Map\n\n- `plugins/arbor/`: removed plugin package.\n",
+            ("plugins/new",),
+            ("Status: update-needed", "stale mapped path entries", "`plugins/arbor/`"),
         ),
     )
     with tempfile.TemporaryDirectory(prefix="arbor-guide-drift-") as tmp:
@@ -337,7 +344,7 @@ def validate_agents_guide_drift_smoke(plugin_root: Path, errors: list[str]) -> N
             project.mkdir()
             (project / "AGENTS.md").write_text(agents_text, encoding="utf-8")
             for dirname in dirs:
-                (project / dirname).mkdir()
+                (project / dirname).mkdir(parents=True)
             proc = subprocess.run(
                 [sys.executable, str(script), "--root", str(project)],
                 text=True,

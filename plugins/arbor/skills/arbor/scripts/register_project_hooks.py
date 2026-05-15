@@ -294,7 +294,7 @@ GUIDE_DRIFT_CASE_CORPUS: list[dict[str, Any]] = [
     },
     {
         "id": "trigger-removed-or-renamed-entrypoint",
-        "situation": "after removing or renaming a top-level directory or stable entrypoint named in AGENTS.md",
+        "situation": "after removing or renaming a top-level directory or stable mapped subpath named in AGENTS.md",
         "expected": "trigger",
         "map_area": "Project Map",
         "rationale": "stale map pointers mislead future startup context",
@@ -438,6 +438,7 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
         "reads": [
             str(PROJECT_GUIDE_PATH),
             "top-level project structure",
+            "mapped path validation",
             "git status --short --untracked-files=all",
             "project docs selected by the agent",
         ],
@@ -451,7 +452,7 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
             "decision_rule": (
                 "Trigger when durable project goals, constraints, or project-map entrypoints may have changed. "
                 "If the drift packet reports Project Map Drift Candidates as update-needed, update AGENTS.md "
-                "Project Map before handoff or release unless the missing or stale candidate is intentionally excluded."
+                "Project Map before handoff or release unless the missing candidate or stale mapped path is intentionally excluded."
             ),
         },
         "depth_policy": "agent-selected; no fixed read limits",

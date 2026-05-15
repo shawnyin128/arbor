@@ -26,4 +26,4 @@ Use this as the entrypoint to durable project context, not as the whole long-ter
 
 - Document major directories, modules, commands, architecture boundaries, and where to start reading.
 - Add pointers to deeper design, review, and domain docs as the project grows.
-- When durable top-level entrypoints are added, removed, or renamed, refresh this section before handoff or release; keep transient current-session progress in `.arbor/memory.md` instead.
+- When durable top-level entrypoints or stable mapped subpaths are added, removed, or renamed, refresh this section before handoff or release; keep transient current-session progress in `.arbor/memory.md` instead.
