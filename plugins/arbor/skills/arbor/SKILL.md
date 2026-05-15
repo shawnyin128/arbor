@@ -66,6 +66,12 @@ Before handoff, release, publish, or a session boundary after adding, removing, 
 
 Durable project-map entrypoints include stable top-level directories, new skills, hook adapters, runtime integration paths, shared helper modules, command/script roots, and project docs that future agents need for startup orientation. Do not add transient caches, pycache, scratch output, current-session implementation notes, or unresolved progress to `AGENTS.md`; those belong in ignored artifacts or `.arbor/memory.md`.
 
+### Process State Authority Guard
+
+Use `scripts/check_process_state.py --root <project-root>` when a managed Arbor workflow is about to stop, hand off, checkpoint, release, or publish and the current state needs an auditable consistency check. The checker is read-only: it validates feature-registry shape, review-document links, phase evidence, short-term memory for open work, stale in-flight memory after resolved work, and optional Release Round evidence for done features.
+
+Treat normal warnings as migration or advisory evidence unless the current gate explicitly requires strictness. Use `--strict` or `--require-release-round-for-done` for release gates that should fail on those gaps. Do not use this guard to choose implementation steps, tests, routes, or feature priorities.
+
 ## Runtime Entrypoints
 
 Arbor runs the same workflow on Codex and Claude Code, but each runtime carries it through a different entrypoint surface. The shared project state is always `AGENTS.md` plus `.arbor/memory.md`; everything else is adapter-side.
@@ -101,10 +107,12 @@ Claude Code does not have an equivalent project-level hook intent file. It ships
 - `references/claude-template.md`: bridge template for `CLAUDE.md` (Claude Code installs only)
 - `references/project-hooks-template.md`: project hook contract
 - `references/real-workflow-chain-review.md`: real-runtime chain review case matrix and release gate
+- `references/process-state-authority.md`: source-of-truth map for Arbor workflow state
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order
 - `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments
 - `scripts/run_memory_hygiene_hook.py`: execute Hook 2 and forward optional agent-selected diff arguments
 - `scripts/run_agents_guide_drift_hook.py`: execute Hook 3 and forward optional agent-selected project doc paths
+- `scripts/check_process_state.py`: validate Arbor workflow state facts without mutating implementation or routing decisions
 - `scripts/register_project_hooks.py`: create or update `.codex/hooks.json` with Arbor hook intents
 - `scripts/check_real_workflow_chains.py`: execute real Codex/Claude workflow chain review cases
