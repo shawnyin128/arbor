@@ -324,6 +324,46 @@ def setup_local_only(ctx: CaseContext) -> None:
     common_project(ctx)
 
 
+def setup_project_map_drift_context(ctx: CaseContext) -> None:
+    init_git(ctx)
+    write(
+        ctx.workdir / "AGENTS.md",
+        """
+        # Project Guide
+
+        ## Startup Protocol
+
+        For project overview questions, load this guide, recent git history,
+        `.arbor/memory.md`, and `git status --short` before answering.
+
+        ## Project Purpose
+
+        This project tests AGENTS project-map drift handling.
+
+        ## Project Map
+
+        - `src/`: implementation code.
+        """,
+    )
+    write(
+        ctx.workdir / ".arbor/memory.md",
+        """
+        # Session Memory
+
+        ## Observations
+
+        - None.
+
+        ## In-flight
+
+        - None.
+        """,
+    )
+    write(ctx.workdir / "src/example.py", "def answer() -> int:\n    return 41\n")
+    commit_all(ctx)
+    write(ctx.workdir / "tools/map_helper.py", "def helper() -> str:\n    return 'map'\n")
+
+
 def runtime_available(runtime: str) -> bool:
     return shutil.which(runtime) is not None
 
@@ -592,6 +632,12 @@ def make_cases() -> dict[str, CaseSpec]:
             setup_planning_context,
             [
                 *common_assertions,
+                assert_contains(
+                    "Understanding And Recommendation",
+                    "Suggested Small Steps",
+                    "How I Would Validate Each Step",
+                    "Expected Delivery",
+                ),
                 assert_file_exists(".arbor/workflow/features.json"),
                 assert_file_exists("docs/review"),
                 assert_file_equals("src/example.py", "def answer() -> int:\n    return 41\n"),
@@ -817,10 +863,32 @@ def make_cases() -> dict[str, CaseSpec]:
             setup_planning_context,
             [
                 *common_assertions,
+                assert_contains(
+                    "Understanding And Recommendation",
+                    "Suggested Small Steps",
+                    "How I Would Validate Each Step",
+                    "Expected Delivery",
+                ),
                 assert_file_exists(".arbor/workflow/features.json"),
                 assert_file_exists("docs/review"),
                 assert_file_equals("src/example.py", "def answer() -> int:\n    return 41\n"),
             ],
+        ),
+        CaseSpec(
+            "R28",
+            "AGENTS project map drift is updated",
+            agent_prompt(
+                "R28",
+                "$arbor update AGENTS.md Project Map for the new durable tools/ directory before release. "
+                "Use the AGENTS drift hook packet and keep current-session progress out of AGENTS.md.",
+            ),
+            setup_project_map_drift_context,
+            [
+                *common_assertions,
+                assert_file_contains("AGENTS.md", "Project Map", "tools/"),
+                assert_any_contains("AGENTS", "Project Map", "tools"),
+            ],
+            runtimes=(RUNTIME_CODEX,),
         ),
     ]
     return {case.case_id: case for case in cases}

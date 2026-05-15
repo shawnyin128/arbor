@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Automatically triage possible Arbor workflow or boundary-ambiguous development requests before any downstream skill. Use for future ideas, bugs, non-trivial runtime tracebacks, pipeline blockers, optimizations, planning, audits, codebase/paper/proposal/reviewer-backed decisions, tests, evaluation, release follow-ups, context patches, and managed docs. Decide Arbor vs direct, split intents, choose persistence, and route only to declared workflow skills while keeping intake output hidden from normal users.
+description: Automatically triage possible Arbor workflow or boundary-ambiguous development requests before any downstream skill. Use for future ideas, bugs, non-trivial runtime tracebacks, pipeline blockers, optimizations, planning, audits, codebase/paper/proposal/reviewer-backed decisions, tests, evaluation, release follow-ups, context patches, active engineering planning continuations, and managed docs. Decide Arbor vs direct, split intents, choose persistence, and route only to declared workflow skills while keeping intake output hidden from normal users. Planning continuations routed to brainstorm must render the standard brainstorm headings, not ad hoc plans.
 ---
 
 # Intake
@@ -200,11 +200,15 @@ If the failure blocks a shared runtime path, the downstream skill should record 
 
 When a short acknowledgement or continuation refers back to the user's requirements and asks for planning, design, splitting, or verification, treat it as an active-context planning continuation. If the active context is an engineering, experiment, release, or workflow task, route to `brainstorm` before implementation so scope, assumptions, acceptance criteria, and verification are visible. If no engineering context exists, keep it context-dependent or direct according to the actual topic; do not route on planning words alone.
 
+For active engineering planning continuations that route to `brainstorm`, the downstream visible answer must be the standard brainstorm checkpoint, not an ad hoc planning summary. The final rendered response must use the brainstorm headings exactly: `Understanding And Recommendation`, `How I Would Handle This`, `Suggested Small Steps`, `How I Would Validate Each Step`, `Default Decisions I Made`, `Expected Delivery`, and `Next`. Do not use substitutes such as `Brainstorm Checkpoint`, `Recommended plan`, or prose-only acceptance criteria.
+
 ## Routing Rules
 
 ### `brainstorm`
 
 Use for clarification, planning, impact analysis, codebase-backed design synthesis, implementation strategy, experiment design, and feature breakdown.
+
+When routing to `brainstorm`, preserve the user-visible output contract. A planning continuation that arrived through `intake` still needs the exact brainstorm headings in the rendered response; route labels and internal JSON stay hidden.
 
 Writing-only help is direct work. Use `brainstorm` when a paper, proposal, report, reviewer comment, spec, or other user artifact is being used to change implementation plan, experiment plan, feature scope, research direction, or development artifacts.
 

@@ -119,11 +119,13 @@ What it does well:
 - registering Arbor hooks into target-project `.codex/hooks.json` (Codex);
 - loading startup context in the fixed order: `AGENTS.md`, formatted `git log`, `.arbor/memory.md`, `git status` — automatically on Claude Code via `SessionStart`, on demand on Codex via the project hook intent;
 - refreshing short-term memory when current-session or uncommitted work makes `.arbor/memory.md` stale (auto via `arbor.in_session_memory_hygiene` hook intent on Codex; user-invoked on Claude Code);
-- preparing `AGENTS.md` updates when the project guide or map needs to point the agent at changed durable context (auto via `arbor.goal_constraint_drift` hook intent on Codex; user-invoked on Claude Code).
+- preparing `AGENTS.md` updates when the project guide or map needs to point the agent at changed durable context. The drift packet includes top-level project structure and `Project Map Drift Candidates`; when it reports `update-needed`, update the `Project Map` before handoff or release unless the path is intentionally excluded (auto via `arbor.goal_constraint_drift` hook intent on Codex; user-invoked on Claude Code).
 
 On Codex, `AGENTS.md` is the reliable native startup bootstrap. `.codex/hooks.json` records project hook intents, but a fresh Codex prompt should not assume those intents already injected Arbor context. The generated `AGENTS.md` includes a Startup Protocol that tells the agent to load `AGENTS.md`, recent formatted git history, `.arbor/memory.md`, and `git status --short` before answering fresh-session, resumed-session, or project-overview prompts.
 
 The memory hygiene hook is intentionally high-recall around dirty Arbor workflow state. It should fire before stops, skill handoffs, release gates, commits, cache syncs, failed checks, or user review checkpoints when Arbor-managed changes are uncommitted, and it should stay quiet for clean direct answers, read-only inspections, explicit no-write turns, or unrelated dirty files outside Arbor scope.
+
+The AGENTS guide-drift hook is intentionally high-recall around durable project-map changes. It should fire after adding, removing, or renaming top-level project entrypoints, new skills, hook adapters, runtime integration paths, or shared helper modules, and before release/publish/handoff when project structure changed. It should not add transient caches, scratch output, pycache, or current-session progress to `AGENTS.md`.
 
 How long-term memory works:
 

@@ -284,6 +284,73 @@ MEMORY_HYGIENE_NEGATIVE_CASES = [
     str(case["situation"]) for case in MEMORY_HYGIENE_CASE_CORPUS if case.get("expected") == "suppress"
 ]
 
+GUIDE_DRIFT_CASE_CORPUS: list[dict[str, Any]] = [
+    {
+        "id": "trigger-new-top-level-directory",
+        "situation": "after adding a new top-level source, tool, package, data, docs, or workflow directory",
+        "expected": "trigger",
+        "map_area": "Project Map",
+        "rationale": "new durable entrypoints should be discoverable from AGENTS.md",
+    },
+    {
+        "id": "trigger-removed-or-renamed-entrypoint",
+        "situation": "after removing or renaming a top-level directory or stable entrypoint named in AGENTS.md",
+        "expected": "trigger",
+        "map_area": "Project Map",
+        "rationale": "stale map pointers mislead future startup context",
+    },
+    {
+        "id": "trigger-new-skill-or-runtime-adapter",
+        "situation": "after adding a new skill, hook adapter, runtime cache path, or shared helper module",
+        "expected": "trigger",
+        "map_area": "Project Map",
+        "rationale": "workflow entrypoints need an AGENTS map pointer",
+    },
+    {
+        "id": "trigger-guide-drift-before-release",
+        "situation": "before release, publish, push, or handoff when project structure changed",
+        "expected": "trigger",
+        "map_area": "Project Map",
+        "rationale": "release should not publish a stale project guide",
+    },
+    {
+        "id": "trigger-project-map-drift-packet",
+        "situation": "when the AGENTS drift packet reports `Project Map Drift Candidates` as `update-needed`",
+        "expected": "trigger",
+        "map_area": "Project Map",
+        "rationale": "the packet has detected missing map candidates",
+    },
+    {
+        "id": "suppress-transient-temp-files",
+        "situation": "only transient cache, pycache, temporary output, or ignored scratch files changed",
+        "expected": "suppress",
+        "map_area": "none",
+        "rationale": "temporary files do not belong in AGENTS.md",
+    },
+    {
+        "id": "suppress-current-session-progress",
+        "situation": "only in-flight implementation notes or unresolved current-session progress changed",
+        "expected": "suppress",
+        "map_area": "none",
+        "rationale": "short-term progress belongs in .arbor/memory.md",
+    },
+    {
+        "id": "suppress-no-durable-map-change",
+        "situation": "git status is clean and the current Project Map already mentions the stable entrypoints",
+        "expected": "suppress",
+        "map_area": "none",
+        "rationale": "there is no durable guide drift to apply",
+    },
+]
+
+GUIDE_DRIFT_POSITIVE_CASES = [
+    str(case["situation"]) for case in GUIDE_DRIFT_CASE_CORPUS if case.get("expected") == "trigger"
+]
+
+GUIDE_DRIFT_NEGATIVE_CASES = [
+    str(case["situation"]) for case in GUIDE_DRIFT_CASE_CORPUS if case.get("expected") == "suppress"
+]
+
 ARBOR_HOOKS: list[dict[str, Any]] = [
     {
         "id": "arbor.session_startup_context",
@@ -368,9 +435,25 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
                 }
             ],
         },
-        "reads": [str(PROJECT_GUIDE_PATH), "project docs selected by the agent"],
+        "reads": [
+            str(PROJECT_GUIDE_PATH),
+            "top-level project structure",
+            "git status --short --untracked-files=all",
+            "project docs selected by the agent",
+        ],
         "writes": [str(PROJECT_GUIDE_PATH)],
         "allowed_sections": ["Project Goal", "Project Constraints", "Project Map"],
+        "trigger_policy": {
+            "mode": "high_recall_for_durable_guide_or_project_map_drift",
+            "positive_cases": GUIDE_DRIFT_POSITIVE_CASES,
+            "negative_cases": GUIDE_DRIFT_NEGATIVE_CASES,
+            "case_corpus": GUIDE_DRIFT_CASE_CORPUS,
+            "decision_rule": (
+                "Trigger when durable project goals, constraints, or project-map entrypoints may have changed. "
+                "If the drift packet reports Project Map Drift Candidates as update-needed, update AGENTS.md "
+                "Project Map before handoff or release unless the candidate is intentionally excluded."
+            ),
+        },
         "depth_policy": "agent-selected; no fixed read limits",
     },
 ]

@@ -177,6 +177,12 @@ def validate_project_hook_contract(plugin_root: Path, errors: list[str]) -> None
     )
     validate_memory_hygiene_case_corpus(errors, case_corpus)
 
+    guide_hook = next(
+        (hook for hook in ARBOR_HOOKS if isinstance(hook, dict) and hook.get("id") == "arbor.goal_constraint_drift"),
+        None,
+    )
+    validate_guide_drift_hook_contract(errors, guide_hook)
+
 
 def validate_memory_hygiene_case_corpus(errors: list[str], case_corpus: object) -> None:
     check(errors, isinstance(case_corpus, list), "memory hygiene hook must include a machine-checkable case_corpus list")
@@ -230,6 +236,105 @@ def validate_memory_hygiene_case_corpus(errors: list[str], case_corpus: object) 
         check(errors, term in trigger_text, f"memory hygiene trigger case_corpus missing scenario class `{term}`")
     for term in ("direct", "read_only", "no_write", "out_of_scope", "unrelated"):
         check(errors, term in suppress_text, f"memory hygiene suppress case_corpus missing scenario class `{term}`")
+
+
+def validate_guide_drift_hook_contract(errors: list[str], guide_hook: object) -> None:
+    check(errors, isinstance(guide_hook, dict), "AGENTS guide drift hook must be registered")
+    if not isinstance(guide_hook, dict):
+        return
+
+    reads_text = "\n".join(str(item) for item in guide_hook.get("reads", []))
+    for term in (
+        "top-level project structure",
+        "git status --short --untracked-files=all",
+    ):
+        check(errors, term in reads_text, f"AGENTS guide drift hook reads missing `{term}`")
+
+    trigger_policy = guide_hook.get("trigger_policy")
+    check(errors, isinstance(trigger_policy, dict), "AGENTS guide drift hook must include trigger_policy")
+    if not isinstance(trigger_policy, dict):
+        return
+
+    check(
+        errors,
+        "high_recall" in str(trigger_policy.get("mode", "")),
+        "AGENTS guide drift trigger policy must be high recall",
+    )
+    positives = trigger_policy.get("positive_cases")
+    negatives = trigger_policy.get("negative_cases")
+    case_corpus = trigger_policy.get("case_corpus")
+    check(errors, isinstance(positives, list) and len(positives) >= 5, "AGENTS guide drift needs trigger cases")
+    check(errors, isinstance(negatives, list) and len(negatives) >= 3, "AGENTS guide drift needs suppress cases")
+    policy_text = "\n".join(str(item) for item in (positives or [])) + "\n" + str(trigger_policy.get("decision_rule", ""))
+    for term in (
+        "new top-level",
+        "new skill",
+        "before release",
+        "Project Map Drift Candidates",
+        "update-needed",
+    ):
+        check(errors, term in policy_text, f"AGENTS guide drift trigger policy missing `{term}`")
+    validate_guide_drift_case_corpus(errors, case_corpus)
+
+
+def validate_guide_drift_case_corpus(errors: list[str], case_corpus: object) -> None:
+    check(errors, isinstance(case_corpus, list), "AGENTS guide drift hook must include case_corpus")
+    if not isinstance(case_corpus, list):
+        return
+
+    trigger_cases = [case for case in case_corpus if isinstance(case, dict) and case.get("expected") == "trigger"]
+    suppress_cases = [case for case in case_corpus if isinstance(case, dict) and case.get("expected") == "suppress"]
+    check(errors, len(trigger_cases) >= 5, "AGENTS guide drift case_corpus must include at least 5 trigger cases")
+    check(errors, len(suppress_cases) >= 3, "AGENTS guide drift case_corpus must include at least 3 suppress cases")
+
+    ids: list[str] = []
+    required_fields = {"id", "situation", "expected", "map_area", "rationale"}
+    for index, case in enumerate(case_corpus, start=1):
+        if not isinstance(case, dict):
+            add_error(errors, f"AGENTS guide drift case_corpus entry {index} must be an object")
+            continue
+        missing = sorted(required_fields - case.keys())
+        check(errors, not missing, f"AGENTS guide drift case {index} missing fields: {', '.join(missing)}")
+        case_id = case.get("id")
+        expected = case.get("expected")
+        situation = case.get("situation")
+        check(errors, isinstance(case_id, str) and bool(case_id.strip()), f"AGENTS guide drift case {index} needs id")
+        check(errors, isinstance(situation, str) and bool(situation.strip()), f"AGENTS guide drift case {index} needs situation")
+        check(errors, expected in {"trigger", "suppress"}, f"AGENTS guide drift case {index} expected must be trigger or suppress")
+        if isinstance(case_id, str):
+            ids.append(case_id)
+    check(errors, len(ids) == len(set(ids)), "AGENTS guide drift case ids must be unique")
+
+
+def validate_agents_guide_drift_smoke(plugin_root: Path, errors: list[str]) -> None:
+    import sys
+
+    script = plugin_root / "skills" / "arbor" / "scripts" / "run_agents_guide_drift_hook.py"
+    with tempfile.TemporaryDirectory(prefix="arbor-guide-drift-") as tmp:
+        project = Path(tmp)
+        (project / "AGENTS.md").write_text(
+            "# Agent Guide\n\n## Project Map\n\n- `src/`: existing code.\n",
+            encoding="utf-8",
+        )
+        (project / "src").mkdir()
+        (project / "tools").mkdir()
+        proc = subprocess.run(
+            [sys.executable, str(script), "--root", str(project)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    check(errors, proc.returncode == 0, f"AGENTS guide drift smoke failed: {proc.stderr}")
+    output = proc.stdout
+    for term in (
+        "Project Map Snapshot",
+        "Project Map Drift Candidates",
+        "Status: update-needed",
+        "`tools/`",
+        "before handoff or release",
+    ):
+        check(errors, term in output, f"AGENTS guide drift smoke missing `{term}`")
 
 
 def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None:
@@ -420,6 +525,19 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "do not stop with only chat prose",
             "create a durable brainstorm checkpoint",
             "Missing details become an explicit pending question",
+            "Use the following section headings exactly",
+            "Understanding And Recommendation",
+            "Suggested Small Steps",
+            "How I Would Validate Each Step",
+            "Expected Delivery",
+        ],
+        "skills/intake/SKILL.md": [
+            "active engineering planning continuations",
+            "the downstream visible answer must be the standard brainstorm checkpoint",
+            "Understanding And Recommendation",
+            "Suggested Small Steps",
+            "How I Would Validate Each Step",
+            "Expected Delivery",
         ],
         "skills/evaluate/SKILL.md": [
             "The normal visible final response MUST include these exact Markdown headings",
@@ -499,7 +617,7 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "no selected case/runtime pair executed",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
-    for case_number in range(1, 28):
+    for case_number in range(1, 29):
         case_id = f"R{case_number:02d}"
         check(errors, f"| {case_id} |" in text, f"real workflow chain review missing case {case_id}")
         check(errors, f'"{case_id}"' in runner_text, f"real workflow chain runner missing case {case_id}")
@@ -511,6 +629,7 @@ def main() -> int:
     validate_manifests(plugin_root, errors)
     validate_startup_bootstrap_contract(plugin_root, errors)
     validate_project_hook_contract(plugin_root, errors)
+    validate_agents_guide_drift_smoke(plugin_root, errors)
     validate_claude_hook_structure(plugin_root, errors)
     validate_session_start_smoke(plugin_root, errors)
     validate_stop_memory_hygiene_smoke(plugin_root, errors)

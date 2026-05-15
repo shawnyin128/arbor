@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Clarify Arbor-managed requirements, load required evidence, expose hidden decisions, compare approaches, split broad work into independently testable features, and produce a natural-language review packet plus structured plan before develop/evaluate begins.
+description: Clarify Arbor-managed requirements, load required evidence, expose hidden decisions, compare approaches, split broad work into independently testable features, and produce a natural-language review packet with the standard brainstorm headings plus structured plan before develop/evaluate begins.
 ---
 
 # Brainstorm
