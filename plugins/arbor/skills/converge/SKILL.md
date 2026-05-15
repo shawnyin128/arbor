@@ -17,7 +17,9 @@ The normal terminal output is a structured `converge.v1` decision plus a Converg
 
 A `converged` decision is not release completion. Do not present convergence-only work as committed, pushed, published, or fully released. The visible output must make release finalization explicit as the next step.
 
-The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `converge` may continue automatically only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, or external release action required.
+The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. A natural-language request to automatically continue to convergence enables the same current-workflow policy even when the user does not name the internal policy string. Under that policy, `converge` may continue automatically only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, or external release action required.
+
+This policy is narrow. It authorizes only the current feature's internal convergence loop. It does not authorize release finalization, finalization commits, push, PR, tag, publish, cache sync, next-feature release, or next-feature development.
 
 ## Checklist
 

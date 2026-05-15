@@ -21,7 +21,9 @@ The terminal state is a structured `evaluate.v1` output plus, when evaluation re
 
 An `accepted` evaluation is not workflow completion. Do not present evaluation-only work as done, converged, released, or finished. The visible output must make convergence explicit as pending, either by stopping at the checkpoint or by continuing only under an eligible `develop_evaluate_converge` automation policy.
 
-The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `evaluate` may continue automatically only when evaluation evidence is appendable, no blocker requires a user decision, and the next route remains inside the develop/evaluate/converge loop.
+The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. A natural-language request to automatically continue to convergence enables the same current-workflow policy even when the user does not name the internal policy string. Under that policy, `evaluate` may continue automatically only when evaluation evidence is appendable, no blocker requires a user decision, and the next route remains inside the develop/evaluate/converge loop.
+
+This policy is narrow. It authorizes only internal continuation through the current feature's evaluator checkpoint and convergence decision when every checkpoint is eligible. It does not authorize skipping required evidence, finalization commits, push, PR, tag, publish, cache sync, or next-feature work.
 
 ## Checklist
 

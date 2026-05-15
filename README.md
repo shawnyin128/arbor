@@ -101,6 +101,8 @@ intake -> brainstorm -> develop -> release(checkpoint_develop: local commit)
 
 `intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry. After a successful `develop`, `release(checkpoint_develop)` creates an automatic local checkpoint commit before `evaluate`.
 
+When the user explicitly asks the current workflow to automatically continue to convergence, Arbor treats that as the same narrow automation policy as `develop_evaluate_converge`. This only carries the current feature through eligible internal checkpoints to convergence; it does not authorize brainstorm skipping, release finalization, push, PR, tag, publish, cache sync, or next-feature work.
+
 Two workflow artifacts carry state between skills:
 
 - `.arbor/workflow/features.json` is the feature queue and status index.
