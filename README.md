@@ -405,6 +405,12 @@ workflow-facing changes, inspect at least one captured `final-response.md` from 
 real runtime replay when feasible; static fixture checks and JSON schema checks
 are preflight only.
 
+Real routing replay reports include user-level scenario metadata and
+classification counts for stable pass, weak pass, wrong route,
+flaky/ambiguous, blocked runtime, and skipped cases. A weak pass is acceptable
+evidence only when the report explains that exact route telemetry was unavailable
+and the strongest observable substitute passed.
+
 Run tracked local-only real-chain guards with:
 
 ```bash

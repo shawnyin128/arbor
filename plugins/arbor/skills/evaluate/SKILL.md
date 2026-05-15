@@ -147,6 +147,8 @@ When the planned scope includes unit-level behavior, an accepted evaluation need
 
 For workflow, skill, router, plugin, or prompt-routing changes, include at least one realistic workflow or user scenario replay. If a live `codex exec`, Claude Code, browser, connector, or external model replay is too costly or unavailable, use the strongest deterministic substitute and record the live gap in `Risks And Gaps`; do not claim live trigger behavior was verified unless it actually ran.
 
+For workflow, process-control, routing, plugin, prompt-routing, or output-layer changes, accepted evaluation must be stronger than a normal documentation check: replay the developer evidence, inspect the relevant runtime output or strongest available substitute, add a checker or harness negative probe that would fail under a broken contract, and explicitly state whether any result is a weak pass because exact runtime telemetry was unavailable.
+
 Every accepted evaluation should include a negative control, mutation probe, static contract probe, or equivalent adversarial check that is expected to catch a purposeful broken input. If no meaningful adversarial probe is possible, record why and treat that as residual risk before deciding whether acceptance is justified.
 
 ### Write Findings

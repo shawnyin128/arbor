@@ -30,6 +30,92 @@ RUNTIMES = (RUNTIME_CODEX, RUNTIME_CLAUDE)
 STATUS_PASS = "pass"
 STATUS_FAIL = "fail"
 STATUS_SKIP = "skip"
+CLASS_STABLE_PASS = "stable_pass"
+CLASS_WEAK_PASS = "weak_pass"
+CLASS_WRONG_ROUTE = "wrong_route"
+CLASS_FLAKY_AMBIGUOUS = "flaky_ambiguous"
+CLASS_BLOCKED_RUNTIME = "blocked_runtime"
+CLASS_SKIPPED = "skipped"
+CLASSIFICATIONS = (
+    CLASS_STABLE_PASS,
+    CLASS_WEAK_PASS,
+    CLASS_WRONG_ROUTE,
+    CLASS_FLAKY_AMBIGUOUS,
+    CLASS_BLOCKED_RUNTIME,
+    CLASS_SKIPPED,
+)
+
+ROUTING_REPLAY_CASES = {
+    "R01": {
+        "category": "planning_continuation",
+        "situation": "An active engineering planning prompt should become a formal brainstorm checkpoint before code changes.",
+        "expected_chain": "intake -> brainstorm",
+    },
+    "R03": {
+        "category": "direct_answer_control",
+        "situation": "A standalone explanation should stay direct and should not create Arbor workflow state.",
+        "expected_chain": "direct answer or intake -> none",
+    },
+    "R04": {
+        "category": "active_review_evaluate",
+        "situation": "A review request attached to an active developer handoff should run independent evaluation.",
+        "expected_chain": "intake -> evaluate",
+    },
+    "R05": {
+        "category": "runtime_traceback",
+        "situation": "A non-trivial traceback blocking an active pipeline should enter Arbor-managed debugging.",
+        "expected_chain": "intake -> develop or intake -> brainstorm",
+    },
+    "R07": {
+        "category": "active_review_evaluate",
+        "situation": "Evaluation output should be rendered for a user instead of exposing raw evaluator packets.",
+        "expected_chain": "evaluate",
+    },
+    "R12": {
+        "category": "release_publish",
+        "situation": "A release request without explicit public-action authorization should stop at confirmation.",
+        "expected_chain": "release(finalize_feature)",
+    },
+    "R13": {
+        "category": "release_publish",
+        "situation": "An explicitly scoped release action should perform only the authorized local action.",
+        "expected_chain": "release(finalize_feature)",
+    },
+    "R15": {
+        "category": "startup_session",
+        "situation": "A fresh project overview should load Arbor startup context before answering.",
+        "expected_chain": "arbor startup context",
+    },
+    "R17": {
+        "category": "memory_hygiene",
+        "situation": "Dirty Arbor-managed work should refresh short-term memory before stopping.",
+        "expected_chain": "arbor memory hygiene",
+    },
+    "R21": {
+        "category": "active_review_evaluate",
+        "situation": "A workflow-skill output smoke should render the user-facing evaluation sections.",
+        "expected_chain": "evaluate",
+    },
+    "R27": {
+        "category": "planning_continuation",
+        "situation": "A split-context engineering planning continuation should still become brainstorm.",
+        "expected_chain": "intake -> brainstorm",
+    },
+    "R28": {
+        "category": "project_map_drift",
+        "situation": "A durable new project entrypoint should update the AGENTS Project Map before release.",
+        "expected_chain": "arbor project-map drift",
+    },
+}
+REQUIRED_ROUTING_CATEGORIES = {
+    "planning_continuation",
+    "runtime_traceback",
+    "active_review_evaluate",
+    "direct_answer_control",
+    "memory_hygiene",
+    "project_map_drift",
+    "release_publish",
+}
 
 ROOT = Path(__file__).resolve().parents[3]
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
@@ -87,6 +173,10 @@ class CaseReport:
     title: str
     runtime: str
     status: str
+    classification: str
+    category: str
+    situation: str
+    expected_chain: str
     artifact_dir: str
     reason: str = ""
     command: list[str] = field(default_factory=list)
@@ -454,6 +544,34 @@ def snapshot_state(ctx: CaseContext) -> None:
     trace = ctx.workdir / ".arbor/e2e-trace.jsonl"
     if trace.exists():
         shutil.copy2(trace, ctx.artifacts / "e2e-trace.jsonl")
+
+
+def case_metadata(case: CaseSpec) -> dict[str, str]:
+    metadata = ROUTING_REPLAY_CASES.get(case.case_id, {})
+    return {
+        "category": metadata.get("category", "general_workflow"),
+        "situation": metadata.get("situation", case.description or case.title),
+        "expected_chain": metadata.get("expected_chain", "case-specific observable contract"),
+    }
+
+
+def classify_success(ctx: CaseContext, case: CaseSpec) -> str:
+    if not case.requires_agent:
+        return CLASS_STABLE_PASS
+    if (ctx.artifacts / "e2e-trace.jsonl").exists():
+        return CLASS_STABLE_PASS
+    return CLASS_WEAK_PASS
+
+
+def classify_failure(exc: BaseException) -> str:
+    if isinstance(exc, subprocess.TimeoutExpired):
+        return CLASS_BLOCKED_RUNTIME
+    reason = str(exc).lower()
+    if any(term in reason for term in ("runtime unavailable", "operation not permitted", "timed out", "permission", "failed to initialize")):
+        return CLASS_BLOCKED_RUNTIME
+    if any(term in reason for term in ("flaky", "ambiguous", "telemetry cannot prove")):
+        return CLASS_FLAKY_AMBIGUOUS
+    return CLASS_WRONG_ROUTE
 
 
 def require(condition: bool, message: str) -> None:
@@ -942,6 +1060,7 @@ def make_case_context(case_id: str, runtime: str, artifact_root: Path, plugin_ro
 def run_case(case: CaseSpec, runtime: str, artifact_root: Path, plugin_root: Path, keep_workdirs: bool) -> CaseReport:
     ctx = make_case_context(case.case_id, runtime, artifact_root, plugin_root)
     result: RuntimeResult | None = None
+    metadata = case_metadata(case)
     try:
         case.setup(ctx)
         if case.requires_agent:
@@ -952,24 +1071,52 @@ def run_case(case: CaseSpec, runtime: str, artifact_root: Path, plugin_root: Pat
             assertion(ctx, result)
         snapshot_state(ctx)
         command = result.command if result else ["local"]
-        return CaseReport(case.case_id, case.title, runtime, STATUS_PASS, str(ctx.artifacts), command=command)
+        return CaseReport(
+            case.case_id,
+            case.title,
+            runtime,
+            STATUS_PASS,
+            classify_success(ctx, case),
+            metadata["category"],
+            metadata["situation"],
+            metadata["expected_chain"],
+            str(ctx.artifacts),
+            command=command,
+        )
     except (CaseFailure, subprocess.TimeoutExpired) as exc:
         snapshot_state(ctx)
         command = result.command if result else ["local"]
         write(ctx.artifacts / "failure.txt", str(exc) + "\n")
-        return CaseReport(case.case_id, case.title, runtime, STATUS_FAIL, str(ctx.artifacts), reason=str(exc), command=command)
+        return CaseReport(
+            case.case_id,
+            case.title,
+            runtime,
+            STATUS_FAIL,
+            classify_failure(exc),
+            metadata["category"],
+            metadata["situation"],
+            metadata["expected_chain"],
+            str(ctx.artifacts),
+            reason=str(exc),
+            command=command,
+        )
     finally:
         if not keep_workdirs:
             shutil.rmtree(ctx.workdir, ignore_errors=True)
 
 
 def write_report(path: Path, reports: list[CaseReport]) -> None:
+    classification_counts = {
+        classification: sum(report.classification == classification for report in reports)
+        for classification in CLASSIFICATIONS
+    }
     data = {
         "summary": {
             "passed": sum(report.status == STATUS_PASS for report in reports),
             "failed": sum(report.status == STATUS_FAIL for report in reports),
             "skipped": sum(report.status == STATUS_SKIP for report in reports),
             "total": len(reports),
+            "classification_counts": classification_counts,
         },
         "reports": [
             {
@@ -977,6 +1124,10 @@ def write_report(path: Path, reports: list[CaseReport]) -> None:
                 "title": report.title,
                 "runtime": report.runtime,
                 "status": report.status,
+                "classification": report.classification,
+                "category": report.category,
+                "situation": report.situation,
+                "expected_chain": report.expected_chain,
                 "artifact_dir": report.artifact_dir,
                 "reason": report.reason,
                 "command": report.command,
@@ -1011,13 +1162,27 @@ def main() -> int:
     reports: list[CaseReport] = []
     for case in cases:
         for runtime in runtimes:
+            metadata = case_metadata(case)
             if runtime not in case.runtimes:
-                reports.append(CaseReport(case.case_id, case.title, runtime, STATUS_SKIP, "", reason="runtime not required for case"))
+                reports.append(
+                    CaseReport(
+                        case.case_id,
+                        case.title,
+                        runtime,
+                        STATUS_SKIP,
+                        CLASS_SKIPPED,
+                        metadata["category"],
+                        metadata["situation"],
+                        metadata["expected_chain"],
+                        "",
+                        reason="runtime not required for case",
+                    )
+                )
                 continue
             print(f"running: {case.case_id} {runtime} {case.title}", flush=True)
             report = run_case(case, runtime, args.artifact_root, args.plugin_root, args.keep_workdirs)
             reports.append(report)
-            print(f"{report.status}: {case.case_id} {runtime} {case.title}", flush=True)
+            print(f"{report.status}/{report.classification}: {case.case_id} {runtime} {case.title}", flush=True)
             if report.reason:
                 print(f"  reason: {report.reason}", flush=True)
             print(f"  artifacts: {report.artifact_dir}", flush=True)
@@ -1039,6 +1204,13 @@ def main() -> int:
     print(
         "real workflow chain checks passed: "
         f"passed={len(passed)} failed=0 skipped={len(skipped)} total={len(reports)}"
+    )
+    print(
+        "classifications: "
+        + " ".join(
+            f"{classification}={sum(report.classification == classification for report in reports)}"
+            for classification in CLASSIFICATIONS
+        )
     )
     print(f"report: {report_path}")
     return 0

@@ -27,6 +27,21 @@ captured `final-response.md`. These checks protect workflow readability; they do
 not prescribe implementation approach or apply to direct answers that correctly
 stay outside Arbor workflow.
 
+Routing replay reports must classify the observable result instead of hiding
+boundary uncertainty behind a single pass/fail label:
+
+| Classification | Meaning |
+| --- | --- |
+| stable pass | The case passed and route evidence or local deterministic checks were strong enough for the selected runtime. |
+| weak pass | The observable behavior passed, but exact skill telemetry was unavailable, so the result relies on the strongest visible substitute. |
+| wrong route | The runtime produced the wrong observable route, side effect, or rendered contract for the scenario. |
+| flaky/ambiguous | The case could not prove a stable route because runtime output or telemetry was ambiguous across the selected evidence. |
+| blocked runtime | The runtime, permission model, timeout, or environment prevented a route judgment. |
+
+The report must include a user-level situation and expected chain for each
+routing replay case, so reviewers can understand what was tested without reading
+only internal case ids or route labels.
+
 When runtime telemetry cannot prove exact skill selection, the case must say so and
 assert the strongest observable behavior. If exact skill sequence is required, the
 runtime review harness must enable a review-only trace file such as

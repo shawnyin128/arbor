@@ -133,6 +133,8 @@ If planned scope includes unit-level behavior, acceptance needs an independent u
 
 For workflow, skill, router, plugin, prompt-routing, or UI-facing changes, acceptance should include a realistic workflow or user scenario replay. If a live `codex exec`, Claude Code, browser, connector, or external model replay is too costly or unavailable, use the strongest deterministic substitute and record the live gap in the visible risks.
 
+For workflow, process-control, routing, plugin, prompt-routing, or output-layer changes, acceptance must also include a checker or harness negative probe that would fail under a broken contract. If the evidence is only an observable substitute because exact runtime telemetry was unavailable, label it as a weak pass in the evaluator evidence instead of presenting it as a fully proven route.
+
 ## Findings
 
 Findings should be structured and actionable:

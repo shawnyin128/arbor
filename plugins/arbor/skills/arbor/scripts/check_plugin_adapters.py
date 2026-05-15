@@ -593,6 +593,9 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "`**Scenario Tests**`",
             "A shorter prose-only",
             "evaluation is not an acceptable `evaluate` checkpoint",
+            "workflow, process-control, routing, plugin, prompt-routing, or output-layer changes",
+            "checker or harness negative probe",
+            "weak pass",
         ],
     }
     repo_root = repo_root_from_plugin(plugin_root)
@@ -665,6 +668,11 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "Static checks and JSONL fixture checks are preflight only",
         "Ignored simulation fixtures and baseline scripts",
         "real workflow chain review passed",
+        "stable pass",
+        "weak pass",
+        "wrong route",
+        "flaky/ambiguous",
+        "blocked runtime",
     ):
         check(errors, term in text, f"real workflow chain review missing term `{term}`")
     for term in (
@@ -672,8 +680,26 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "shutil.rmtree(artifacts)",
         "artifact root exists and is not a directory",
         "no selected case/runtime pair executed",
+        "ROUTING_REPLAY_CASES",
+        "REQUIRED_ROUTING_CATEGORIES",
+        "classification_counts",
+        "CLASS_STABLE_PASS",
+        "CLASS_WEAK_PASS",
+        "CLASS_WRONG_ROUTE",
+        "CLASS_FLAKY_AMBIGUOUS",
+        "CLASS_BLOCKED_RUNTIME",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
+    for category in (
+        "planning_continuation",
+        "runtime_traceback",
+        "active_review_evaluate",
+        "direct_answer_control",
+        "memory_hygiene",
+        "project_map_drift",
+        "release_publish",
+    ):
+        check(errors, category in runner_text, f"real workflow chain runner missing routing category `{category}`")
     for case_number in range(1, 29):
         case_id = f"R{case_number:02d}"
         check(errors, f"| {case_id} |" in text, f"real workflow chain review missing case {case_id}")
