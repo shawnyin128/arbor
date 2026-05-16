@@ -60,6 +60,22 @@ Treat long-term context as a layered project record:
 
 Update `AGENTS.md` only when the stable guide or map should change. Do not compress all long-term memory into `AGENTS.md`. Put completed implementation history in commits, keep deeper durable knowledge in project docs, and keep only undecided transient observations in `.arbor/memory.md`.
 
+### Guidance Placement Guard
+
+Use `references/guidance-placement-guard.md` when deciding where agent-facing guidance belongs. The guard improves context quality without controlling how the agent reads, reasons, implements, or tests.
+
+Default placement:
+
+- Put durable repo goals, constraints, startup protocol, and map pointers in `AGENTS.md`.
+- Keep Claude Code's `CLAUDE.md` as a short bridge to `AGENTS.md` and `.arbor/memory.md`; do not duplicate the project guide there.
+- Put unresolved current-session state in `.arbor/memory.md`.
+- Put repeatable task methods, workflow contracts, and domain-specific behavior in skills and skill references.
+- Put append-only brainstorm, developer, evaluator, convergence, and release evidence in `docs/review/`.
+- Put completed outcomes in git history and release/checkpoint evidence.
+- Fetch or link volatile external context through tools, MCP servers, URLs, or task-specific docs instead of copying it into startup guidance.
+
+Only add guidance to startup files when removing it would likely cause repeated mistakes across sessions. If guidance grows into examples, tutorials, file-by-file descriptions, or task-specific procedures, move those details to a referenced doc or skill. Do not impose fixed reading limits, mandatory plan-first behavior, mandatory subagents, fixed implementation strategies, or fixed test suites as part of placement guidance.
+
 ### Project Map Drift Guard
 
 Before handoff, release, publish, or a session boundary after adding, removing, or renaming durable project entrypoints, run `scripts/run_agents_guide_drift_hook.py --root <project-root>` or reproduce its checks manually. The drift packet includes top-level project structure, mapped path validation, git status, and `Project Map Drift Candidates`. When that section reports `update-needed`, update only the `AGENTS.md` `Project Map` section before continuing unless each missing or stale path is intentionally excluded and the reason is recorded in review evidence or `.arbor/memory.md`.
@@ -117,6 +133,7 @@ Claude Code does not have an equivalent project-level hook intent file. It ships
 - `references/real-workflow-chain-review.md`: real-runtime chain review case matrix and release gate
 - `references/process-state-authority.md`: source-of-truth map for Arbor workflow state
 - `references/rendered-checkpoint-protocol.md`: shared user-visible checkpoint rendering contract
+- `references/guidance-placement-guard.md`: placement rubric for startup guidance, memory, skills, review evidence, and external context
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order
 - `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments

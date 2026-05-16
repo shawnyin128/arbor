@@ -22,6 +22,14 @@ an implementation is good, update statuses, or impose a coding process. Use it
 as an advisory check during development and as a stricter release-gate input
 when warnings should block a checkpoint.
 
+Guidance placement follows the same ownership model. `AGENTS.md` is the concise startup map,
+`.arbor/memory.md` is short-term unresolved state, skills hold
+repeatable task methods, review docs hold append-only evidence, git history
+records completed work, and volatile external context should be fetched through
+tools or linked from task-specific docs. The placement guard does not impose
+fixed reading limits, mandatory planning, subagents, worktrees, automations, or
+implementation strategy.
+
 Useful commands:
 
 ```bash

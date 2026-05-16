@@ -18,3 +18,5 @@ Follow the Arbor startup order:
 Keep this file as a short bridge: do not duplicate long-term project knowledge
 here. Durable goals, constraints, and project-map pointers belong in
 `AGENTS.md`. Short-term unresolved state belongs in `.arbor/memory.md`.
+Task-specific workflows, examples, and longer design notes belong in Arbor
+skills or referenced project docs, not in this bridge.

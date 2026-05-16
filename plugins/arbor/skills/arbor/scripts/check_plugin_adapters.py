@@ -613,6 +613,72 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             check(errors, term in text, f"{rel_path} missing rendered checkpoint contract term `{term}`")
 
 
+def validate_guidance_placement_contract(plugin_root: Path, errors: list[str]) -> None:
+    reference = plugin_root / "skills" / "arbor" / "references" / "guidance-placement-guard.md"
+    check(errors, reference.is_file(), "guidance placement guard reference must exist")
+    if reference.is_file():
+        text = reference.read_text(encoding="utf-8")
+        for term in (
+            "Arbor improves the agent's working conditions",
+            "`AGENTS.md`",
+            "`CLAUDE.md`",
+            "`.arbor/memory.md`",
+            "Arbor skills and skill references",
+            "`docs/review/`",
+            "Git history",
+            "MCP tools, CLI tools, URLs, or task-specific docs",
+            "impose fixed reading limits",
+            "require plan-first behavior",
+            "require subagents, worktrees, fan-out execution, or automations",
+            "turn hooks into workflow decision makers",
+        ):
+            check(errors, term in text, f"guidance placement guard missing term `{term}`")
+
+    required = {
+        "skills/arbor/SKILL.md": [
+            "Guidance Placement Guard",
+            "references/guidance-placement-guard.md",
+            "removing it would likely cause repeated mistakes",
+            "Do not impose fixed reading limits",
+            "mandatory plan-first behavior",
+            "mandatory subagents",
+        ],
+        "skills/arbor/references/agents-template.md": [
+            "Keep this file concise",
+            "task-specific workflows",
+            "referenced project docs",
+            "Link to volatile external context",
+        ],
+        "skills/arbor/references/claude-template.md": [
+            "short bridge",
+            "Task-specific workflows",
+            "not in this bridge",
+        ],
+        "skills/arbor/references/process-state-authority.md": [
+            "Guidance placement follows the same ownership model",
+            "concise startup map",
+            "volatile external context",
+            "fixed reading limits",
+            "implementation strategy",
+        ],
+    }
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is not None:
+        required["README.md"] = [
+            "task-specific workflows",
+            "frequently changing external context",
+            "The placement rule is deliberately narrow",
+            "guidance-placement-guard.md",
+            "not how the agent must reason or implement",
+        ]
+
+    for rel_path, terms in required.items():
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing guidance placement term `{term}`")
+
+
 def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
@@ -718,6 +784,7 @@ def main() -> int:
     validate_stop_memory_hygiene_smoke(plugin_root, errors)
     validate_in_flight_memory_contract(plugin_root, errors)
     validate_rendered_checkpoint_contract(plugin_root, errors)
+    validate_guidance_placement_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 

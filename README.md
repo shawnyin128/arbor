@@ -137,8 +137,12 @@ Important: `AGENTS.md` is not Arbor's long-term memory database.
 - `git log` is the completed-work history. Good commits make finished features, fixes, and verification discoverable.
 - project docs hold deeper design, review, and domain context that should not be compressed into `AGENTS.md`.
 - `.arbor/memory.md` is only for short-term unresolved state before it is committed, resolved, or moved to durable docs.
+- task-specific workflows, long examples, and domain methods belong in skills or referenced project docs, not in startup guidance.
+- frequently changing external context should be fetched through tools, MCP servers, URLs, or task-specific docs instead of copied into `AGENTS.md`.
 
 Any Arbor-managed workflow that leaves uncommitted project changes must keep `.arbor/memory.md` current before the assistant stops or hands off. Review documents and `.arbor/workflow/features.json` hold workflow evidence, but they do not replace the short-term resume pointer. After a successful commit or publish resolves the work, prune resolved memory entries so git history becomes the source of truth.
+
+The placement rule is deliberately narrow: it improves context quality without imposing fixed reading limits, mandatory plan-first behavior, mandatory subagents or worktrees, fixed implementation strategy, or fixed test suites.
 
 Use it when:
 
@@ -404,6 +408,13 @@ Rendered checkpoint validation follows
 workflow-facing changes, inspect at least one captured `final-response.md` from a
 real runtime replay when feasible; static fixture checks and JSON schema checks
 are preflight only.
+
+Guidance placement follows
+`plugins/arbor/skills/arbor/references/guidance-placement-guard.md`. Keep
+startup guidance concise, move task-specific methods into skills or referenced
+docs, keep unresolved state in `.arbor/memory.md`, keep review evidence in
+`docs/review/`, and fetch volatile external context through tools or links. This
+guard is about where context lives, not how the agent must reason or implement.
 
 Real routing replay reports include user-level scenario metadata and
 classification counts for stable pass, weak pass, wrong route,

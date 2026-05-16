@@ -19,6 +19,7 @@ Describe the stable project objective here.
 
 - Record durable engineering, workflow, validation, style, and collaboration constraints here.
 - Keep transient current-session progress in `.arbor/memory.md`.
+- Keep this file concise. Put task-specific workflows, examples, and long design notes in skills or referenced project docs.
 
 ## Project Map
 
@@ -26,4 +27,5 @@ Use this as the entrypoint to durable project context, not as the whole long-ter
 
 - Document major directories, modules, commands, architecture boundaries, and where to start reading.
 - Add pointers to deeper design, review, and domain docs as the project grows.
+- Link to volatile external context instead of copying it here.
 - When durable top-level entrypoints or stable mapped subpaths are added, removed, or renamed, refresh this section before handoff or release; keep transient current-session progress in `.arbor/memory.md` instead.
