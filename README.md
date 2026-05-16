@@ -108,6 +108,8 @@ Two workflow artifacts carry state between skills:
 
 Managed features also carry a done-when verification thread. `brainstorm` states what completion means, `develop` maps self-tests to those criteria, `evaluate` challenges them and labels weak pass substitutes, `converge` checks agreement against the original goal, and `release` checks that verification evidence exists before finalization or publish. This thread uses artifact-appropriate verification and does not force one test type or pull small direct tasks into Arbor.
 
+When correction loops become unreliable, Arbor uses a loop-health advisory instead of an automatic reset. `evaluate` can mark evidence conflicts, weak replay evidence, or context contamination; `converge` can surface repeated same-class failures before another broad correction. The advisory may recommend narrowing scope, re-brainstorming, exact runtime replay, or a fresh-session handoff, but it does not automatically clear context, spawn subagents, or create worktrees. Subagents and worktrees remain optional strategies, and a normal correction loop with a clear owner and replay target should continue below the round limit.
+
 ### `arbor`
 
 Use Arbor when you want either runtime to stay oriented across a real development workflow, especially when work spans multiple sessions or depends on git history.
@@ -125,6 +127,7 @@ What it does well:
 - validating process-state facts before handoff, checkpoint, release, or publish. `scripts/check_process_state.py` is read-only and checks the feature registry, review document links, phase evidence, short-term memory, and optional Release Round evidence without choosing implementation or test strategy.
 - guarding rendered workflow checkpoints so normal users see readable status, findings, decisions, and next steps instead of raw `*.v1` packets, route labels, terminal-state labels, or unexplained internal ids. `references/rendered-checkpoint-protocol.md` defines this output boundary for workflow checkpoints only; it is not a template for direct answers or a constraint on implementation strategy.
 - carrying done-when verification from planning through release so managed features show what completion means, how developer evidence covers it, how evaluation challenged it, and whether release has enough proof to finalize. `references/done-when-verification-thread.md` defines this evidence thread without prescribing implementation strategy or a single test type.
+- surfacing loop-health advisories when repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination make another automatic correction unreliable. `references/loop-health-advisory.md` keeps the response advisory-only: recommend narrowing scope, re-brainstorming, exact runtime replay, or a fresh-session handoff without requiring subagents, worktrees, fan-out execution, or automatic context clearing.
 
 On Codex, `AGENTS.md` is the reliable native startup bootstrap. `.codex/hooks.json` records project hook intents, but a fresh Codex prompt should not assume those intents already injected Arbor context. The generated `AGENTS.md` includes a Startup Protocol that tells the agent to load `AGENTS.md`, recent formatted git history, `.arbor/memory.md`, and `git status --short` before answering fresh-session, resumed-session, or project-overview prompts.
 
@@ -231,6 +234,7 @@ What it does well:
 - replaying developer self-tests when useful;
 - adding independent adversarial unit, scenario, edge, negative, mutation, static, schema, or coverage checks;
 - challenging done-when criteria and labeling weak pass evidence when exact runtime proof was unavailable;
+- marking loop-health risk when evidence conflicts, weak replay evidence, or context contamination make the next correction unreliable, without fixing implementation directly;
 - appending Evaluator Round evidence to the same review document;
 - routing completed evaluation results to `converge`.
 
@@ -255,6 +259,7 @@ What it does well:
 - routing implementation/test findings back to `develop`;
 - routing planning contradictions or missing brainstorm evidence back to `brainstorm`;
 - routing missing developer/evaluator evidence to the owner of that evidence;
+- surfacing loop-health risk for repeated same-class failures, evidence conflicts, weak replay evidence, context contamination, or round-limit pressure before continuing a broad automatic loop;
 - updating the selected feature to `done` only after convergence is justified;
 - routing converged features to internal `release` finalization.
 

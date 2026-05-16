@@ -32,6 +32,7 @@ Use `evaluate` for:
 - running additional unit, scenario, edge, negative, mutation, static, compile, lint, schema, or coverage checks;
 - checking whether implementation matches brainstorm acceptance criteria, done-when criteria, and test plan;
 - finding defects, missing test coverage, scope drift, and adjacent regressions;
+- marking loop-health risks when evidence conflicts, weak replay evidence, context contamination, or repeated same-class failures make the next correction unreliable;
 - appending evaluator evidence to `docs/review/`;
 - producing structured findings for `converge`.
 
@@ -138,6 +139,27 @@ For workflow, skill, router, plugin, prompt-routing, or UI-facing changes, accep
 For workflow, process-control, routing, plugin, prompt-routing, or output-layer changes, acceptance must also include a checker or harness negative probe that would fail under a broken contract. If the evidence is only an observable substitute because exact runtime telemetry was unavailable, label it as a weak pass in the evaluator evidence instead of presenting it as a fully proven route.
 
 For Arbor-managed features with done-when criteria, acceptance also requires a visible mapping from evaluator evidence to those criteria. A completed evaluation must not hide weak substitutes for live trigger behavior, rendered output, external models, connectors, or publish paths; label the substitute as a weak pass and name the exact proof that remains unverified.
+
+## Loop Health Advisory
+
+`evaluate` should mark loop-health risk when independent validation finds one of
+these conditions:
+
+- evidence conflicts between developer claims, evaluator replay, review docs,
+  feature registry state, or runtime output;
+- weak replay evidence reused as full proof;
+- context contamination, such as stale assumptions from another feature, copied
+  findings that no longer match changed files, or mixed feature identities;
+- repeated same-class failures visible in prior review rounds.
+
+The advisory is not a fix step. `evaluate` must not patch implementation files directly. It should state whether the risk blocks acceptance and recommend the
+next owner: a narrower developer correction, re-brainstorming when criteria or
+test scope are unclear, exact runtime replay when weak evidence blocks proof, or
+a fresh-session handoff when stale context is likely affecting review quality.
+
+Do not automatically clear context, spawn subagents, create worktrees, or require
+fan-out execution. Subagents and worktrees remain optional strategies. A normal correction loop should continue without escalation when the finding is new,
+coherent, clearly owned, and below the round limit.
 
 ## Findings
 

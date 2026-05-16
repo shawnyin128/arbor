@@ -755,6 +755,97 @@ def validate_done_when_verification_thread_contract(plugin_root: Path, errors: l
             check(errors, term in text, f"{rel_path} missing done-when verification term `{term}`")
 
 
+def validate_loop_health_advisory_contract(plugin_root: Path, errors: list[str]) -> None:
+    reference = plugin_root / "skills" / "arbor" / "references" / "loop-health-advisory.md"
+    check(errors, reference.is_file(), "loop-health advisory reference must exist")
+    if reference.is_file():
+        text = reference.read_text(encoding="utf-8")
+        for term in (
+            "repeated same-class failures",
+            "evidence conflicts",
+            "weak replay evidence",
+            "context contamination",
+            "fresh-session handoff",
+            "must not automatically clear context",
+            "Subagents and worktrees remain optional strategies",
+            "normal correction loops should continue",
+        ):
+            check(errors, term in text, f"loop-health advisory reference missing term `{term}`")
+
+    required = {
+        "skills/arbor/SKILL.md": [
+            "Loop Health Advisory",
+            "references/loop-health-advisory.md",
+            "repeated same-class failures",
+            "weak replay evidence",
+            "context contamination",
+            "fresh-session handoff",
+            "must not automatically clear context",
+            "normal correction loops should continue",
+        ],
+        "skills/evaluate/SKILL.md": [
+            "Loop Health Advisory",
+            "evidence conflicts",
+            "weak replay evidence",
+            "context contamination",
+            "does not grant permission to patch implementation files",
+            "recommend a fresh-session handoff",
+            "Subagents and worktrees remain optional strategies",
+            "normal correction loop",
+        ],
+        "skills/evaluate/references/evaluate-boundary.md": [
+            "Loop Health Advisory",
+            "evidence conflicts",
+            "weak replay evidence",
+            "context contamination",
+            "must not patch implementation files directly",
+            "fresh-session handoff",
+            "Subagents and worktrees remain optional strategies",
+            "normal correction loop",
+        ],
+        "skills/converge/SKILL.md": [
+            "Loop Health Advisory",
+            "repeated same-class failures",
+            "evidence conflicts",
+            "weak replay evidence",
+            "context contamination",
+            "fresh-session handoff",
+            "Do not escalate a normal correction loop",
+            "Do not automatically clear context",
+            "Subagents and worktrees remain optional strategies",
+        ],
+        "skills/converge/references/converge-boundary.md": [
+            "Loop Health Advisory",
+            "repeated same-class failures",
+            "evidence conflicts",
+            "weak replay evidence",
+            "context contamination",
+            "fresh-session handoff",
+            "must not automatically clear context",
+            "normal correction loop should continue",
+        ],
+    }
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is not None:
+        required["README.md"] = [
+            "loop-health advisory",
+            "repeated same-class failures",
+            "evidence conflicts",
+            "weak replay evidence",
+            "context contamination",
+            "fresh-session handoff",
+            "does not automatically clear context",
+            "Subagents and worktrees remain optional strategies",
+            "normal correction loop",
+        ]
+
+    for rel_path, terms in required.items():
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing loop-health advisory term `{term}`")
+
+
 def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
@@ -862,6 +953,7 @@ def main() -> int:
     validate_rendered_checkpoint_contract(plugin_root, errors)
     validate_guidance_placement_contract(plugin_root, errors)
     validate_done_when_verification_thread_contract(plugin_root, errors)
+    validate_loop_health_advisory_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 

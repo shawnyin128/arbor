@@ -27,7 +27,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 4. **Check identity**: confirm feature id, review document, registry row, and evaluator signal all point to the same feature.
 5. **Check agreement**: decide whether develop and evaluate agree, or whether evaluator findings require another round.
 6. **Check brainstorm alignment**: decide whether the accepted result still satisfies brainstorm goals, acceptance criteria, done-when criteria, non-goals, and test scope.
-7. **Apply loop policy**: route automatically while under the round limit; escalate when the limit is reached or a user/product decision is required.
+7. **Apply loop policy**: route automatically while under the round limit; surface loop-health risk before automatic continuation when repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination make the next route unreliable; escalate when the limit is reached or a user/product decision is required.
 8. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature.
 9. **Append convergence evidence**: append a Convergence Round to the same review document without rewriting prior rounds.
 10. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the converged or looping feature, changed registry/review paths, decision, unresolved blockers, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
@@ -56,6 +56,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 8. Append convergence evidence to the same review document.
 9. Always emit a user-visible checkpoint before release finalization, next-feature selection, or another automatic loop.
 10. Never present convergence-only output as release completion; `release` owns finalization and next-feature selection.
+11. A loop-health advisory may recommend narrowing scope, re-brainstorming, exact runtime replay, or a fresh-session handoff, but it must not automatically clear context, spawn subagents, create worktrees, or require fan-out execution.
 
 ## Route Rules
 
@@ -115,6 +116,27 @@ Do not include a "What Will Be Preserved" section in the visible response. Persi
 `converge` closes the loop only when the developer and evaluator evidence agrees with the brainstorm done-when criteria. It does not rerun evaluation or invent missing proof; it checks whether the evidence already appended by `develop` and `evaluate` is strong enough to justify completion.
 
 If done-when evidence is absent, generic, or only a weak pass for a criterion that required live proof, return the appropriate evidence or planning route instead of marking the feature done. If the weak pass was explicitly accepted by the brainstorm plan or by evaluator judgment with a visible residual risk, convergence may proceed only when that residual risk does not block the stated criteria.
+
+## Loop Health Advisory
+
+Use the loop-health advisory when the loop evidence suggests that another broad automatic correction would likely repeat the same failure or rely on stale/conflicting context.
+
+Surface a loop-health risk when any of these appear in the latest rounds:
+
+- repeated same-class failures across correction attempts;
+- unresolved evidence conflicts between developer claims, evaluator replay, review docs, feature registry state, or runtime output;
+- weak replay evidence being treated as full proof for a criterion that needs stronger runtime evidence;
+- context contamination, such as stale assumptions from older features, mixed feature identities, or copied findings that no longer match the current changed files;
+- round-limit pressure combined with unclear ownership or scope.
+
+The advisory changes the route only when the next safe step is no longer a clear normal correction. Use these routes:
+
+- route to `develop` with a narrower correction when the owner and replay target are clear;
+- route to `brainstorm` when acceptance criteria, done-when criteria, or test scope need restating;
+- route to `evaluate` when the missing proof is exact runtime replay or evidence reconciliation;
+- route to user decision when product intent, stale context, or round-limit pressure cannot be resolved from evidence.
+
+Do not escalate a normal correction loop just because the evaluator found one new, coherent, scoped issue below the round limit. Do not automatically clear context, spawn subagents, create worktrees, or require fan-out execution. Subagents and worktrees remain optional strategies the agent may choose outside the convergence contract.
 
 ## Structured Output Contract
 

@@ -102,6 +102,12 @@ Use `references/done-when-verification-thread.md` as the shared cross-skill cont
 
 The thread is evidence discipline, not a fixed testing strategy. It must not force one test type, full test suite, live runtime replay, subagent use, or plan-first behavior for direct tasks. Small direct answers and simple edits stay outside the managed verification thread.
 
+### Loop Health Advisory
+
+Use `references/loop-health-advisory.md` when a develop/evaluate correction loop shows repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination. The advisory helps `evaluate` and `converge` recommend a narrower correction, re-brainstorming, stronger runtime replay, or a fresh-session handoff when the loop is becoming unreliable.
+
+The advisory is not an automatic reset mechanism. It must not automatically clear context, spawn subagents, create worktrees, or require fan-out execution. Subagents and worktrees remain optional strategies, and normal correction loops should continue when the owner is clear, evidence is coherent, and the loop remains below the round limit.
+
 ## Runtime Entrypoints
 
 Arbor runs the same workflow on Codex and Claude Code, but each runtime carries it through a different entrypoint surface. The shared project state is always `AGENTS.md` plus `.arbor/memory.md`; everything else is adapter-side.
@@ -141,6 +147,7 @@ Claude Code does not have an equivalent project-level hook intent file. It ships
 - `references/rendered-checkpoint-protocol.md`: shared user-visible checkpoint rendering contract
 - `references/guidance-placement-guard.md`: placement rubric for startup guidance, memory, skills, review evidence, and external context
 - `references/done-when-verification-thread.md`: cross-skill done-when criteria and verification evidence thread
+- `references/loop-health-advisory.md`: advisory for repeated failures, evidence conflicts, weak replay, context contamination, and fresh-session handoff recommendations
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order
 - `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments

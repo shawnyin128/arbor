@@ -32,7 +32,7 @@ You MUST complete these steps in order:
 3. **Load review context**: the review document named by the develop handoff must contain brainstorm Context/Test Plan and a Developer Round.
 4. **Inspect implementation evidence**: review changed files/artifacts, developer self-tests, planned test coverage, uncovered planned tests, known risks, and replay targets.
 5. **Plan adversarial evaluation**: map brainstorm acceptance criteria, done-when criteria, required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus to concrete checks.
-6. **Run evaluation**: replay developer tests when useful, independently challenge the done-when criteria, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, and record blocked checks.
+6. **Run evaluation**: replay developer tests when useful, independently challenge the done-when criteria, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, mark loop-health risks when evidence conflicts, weak replay evidence, or context contamination appear, and record blocked checks.
 7. **Find bugs, not confirmation**: prioritize behavioral regressions, missing tests, contract drift, scope creep, and untested edge cases.
 8. **Append evaluator evidence**: append an Evaluator Round to the same review document. Do not overwrite brainstorm or developer rounds.
 9. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the evaluated feature/artifact, changed evidence paths, evaluator result, unresolved findings or risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
@@ -78,6 +78,7 @@ Only completed evaluation states (`accepted`, `changes_requested`, `needs_brains
 9. Do not decide final convergence; `converge` owns that decision.
 10. Do not mark a feature `done` or update final feature status. `evaluate` emits a feature-registry signal for `converge`.
 11. Do not accept by replay alone. Accepted evaluations require independent evaluator evidence across multiple useful dimensions.
+12. Loop-health advisories are evidence labels and recommendations, not implementation fixes. Mark repeated evidence conflicts, weak replay evidence, or context contamination when found, then route the next owner instead of fixing implementation directly.
 
 ## Anti-Patterns
 
@@ -154,6 +155,26 @@ For workflow, process-control, routing, plugin, prompt-routing, or output-layer 
 Every accepted evaluation should include a negative control, mutation probe, static contract probe, or equivalent adversarial check that is expected to catch a purposeful broken input. If no meaningful adversarial probe is possible, record why and treat that as residual risk before deciding whether acceptance is justified.
 
 For Arbor-managed features with done-when criteria, acceptance also requires a visible mapping from evaluator evidence to those criteria. If the evaluator uses a deterministic substitute for a live runtime trigger, rendered output, external model, connector, or publish path, label the result as a weak pass and explain what exact proof remains unverified.
+
+### Loop Health Advisory
+
+Use the loop-health advisory when the latest evaluation suggests the correction loop itself is becoming unreliable. The advisory belongs in evaluator evidence and visible risks; it does not grant permission to patch implementation files.
+
+Mark a loop-health risk when any of these appear:
+
+- developer claims, evaluator replay, review docs, feature registry state, or runtime output conflict;
+- weak replay evidence is being reused as if it were exact runtime proof;
+- context contamination is likely, such as stale assumptions from an older feature, copied findings that no longer match changed files, or mixed feature identities in one handoff;
+- repeated same-class failures are visible in the review history and the next correction would otherwise repeat the same broad instruction.
+
+Recommended evaluator actions:
+
+- ask `develop` for a narrower correction when the owner is clear;
+- ask `brainstorm` to restate acceptance criteria or test scope when requirements are no longer clear;
+- recommend a fresh-session handoff when stale context is likely affecting review quality;
+- request exact runtime replay when weak evidence blocks proof.
+
+Do not automatically clear context, spawn subagents, create worktrees, or require fan-out execution. Subagents and worktrees remain optional strategies outside the evaluator contract. A normal correction loop with a new, clear, scoped finding should continue without escalation.
 
 ### Write Findings
 

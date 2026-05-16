@@ -145,6 +145,7 @@ Use when:
 - the configured correction round limit is reached;
 - the next step requires a product/design choice not settled by brainstorm;
 - develop and evaluate evidence conflict in a way the agent cannot resolve safely.
+- repeated same-class failures, weak replay evidence, or context contamination make another broad automatic correction unreliable and the safe route is not clear.
 
 Action:
 
@@ -198,6 +199,22 @@ Never update a row whose id does not match the evaluator signal.
 The normal automatic loop limit is three correction rounds unless a project-specific policy says otherwise.
 
 Round count should come from structured handoff fields when available. If only review prose is available, count distinct Developer/Evaluator correction rounds conservatively and record uncertainty.
+
+## Loop Health Advisory
+
+`converge` should surface loop-health risk before automatic continuation when
+the latest rounds show repeated same-class failures, evidence conflicts,
+unresolved evidence conflicts, weak replay evidence being treated as full proof, context
+contamination, or round-limit pressure with unclear ownership.
+
+The advisory is a routing and readability aid. It can recommend a narrower
+developer correction, re-brainstorming, exact runtime replay, evidence
+reconciliation, a fresh-session handoff, or a user decision. It must not automatically clear context, spawn subagents, create worktrees, or require
+fan-out execution. Subagents and worktrees remain optional strategies.
+
+A normal correction loop should continue without loop-health escalation when
+the finding is new, coherent, clearly owned, below the round limit, and has a
+specific replay target.
 
 ## Review Append
 
