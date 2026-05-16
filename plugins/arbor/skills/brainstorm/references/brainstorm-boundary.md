@@ -176,6 +176,7 @@ The initial review document should include:
 - selected feature id/title;
 - problem summary, goals, non-goals, and constraints;
 - hidden decisions and resolved assumptions;
+- decision trace handoff with key decisions, rejected options, allowed implementation discretion, and decision invariants;
 - selected approach and rejected alternatives when relevant;
 - acceptance criteria;
 - done-when criteria and the artifact-appropriate verification method for each criterion;
@@ -206,6 +207,12 @@ Choose artifact targets by purpose:
 For ready Arbor-managed implementation work, `brainstorm` starts the done-when verification thread. It should describe what completion means in outcome language, map each criterion to artifact-appropriate verification, and name any weak evidence risk when exact live proof may not be available.
 
 Do not force one test type. A feature may need unit tests, scenario replay, content/structure checks, rendered-output inspection, static/schema checks, mutation probes, or live runtime evidence depending on what the feature changes. Small direct tasks stay outside this thread.
+
+### Decision Trace Handoff
+
+For ready Arbor-managed implementation work, `brainstorm` also starts the decision trace handoff. The Context/Test Plan should record key decisions, rejected options, allowed implementation discretion, and decision invariants so `develop`, `evaluate`, and `converge` do not lose or rewrite upstream intent.
+
+This is workflow evidence, not a default multi-agent orchestration model. The trace must not require subagents or worktrees, fixed fan-out, or a fixed implementation strategy, and it must not pull small direct tasks into Arbor.
 
 Do not write durable artifacts when:
 

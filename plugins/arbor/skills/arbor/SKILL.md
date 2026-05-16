@@ -102,6 +102,12 @@ Use `references/done-when-verification-thread.md` as the shared cross-skill cont
 
 The thread is evidence discipline, not a fixed testing strategy. It must not force one test type, full test suite, live runtime replay, subagent use, or plan-first behavior for direct tasks. Small direct answers and simple edits stay outside the managed verification thread.
 
+### Decision Trace Handoff
+
+Use `references/decision-trace-handoff.md` to preserve decision continuity across Arbor workflow roles. Brainstorm records key decisions, rejected options, allowed implementation discretion, and decision invariants. Develop records implementation-time decisions and decision deviations against that trace. Evaluate checks decision drift and hidden decision conflict. Converge checks decision trace consistency before marking a feature done.
+
+This is not a default multi-agent orchestration layer. It must not require subagents or worktrees, fan-out execution, fixed implementation strategy, or heavy workflow for direct tasks. The trace narrows only workflow evidence: it helps later stages understand the decisions that matter while preserving normal agent judgment inside the accepted scope.
+
 ### Loop Health Advisory
 
 Use `references/loop-health-advisory.md` when a develop/evaluate correction loop shows repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination. The advisory helps `evaluate` and `converge` recommend a narrower correction, re-brainstorming, stronger runtime replay, or a fresh-session handoff when the loop is becoming unreliable.
@@ -147,6 +153,7 @@ Claude Code does not have an equivalent project-level hook intent file. It ships
 - `references/rendered-checkpoint-protocol.md`: shared user-visible checkpoint rendering contract
 - `references/guidance-placement-guard.md`: placement rubric for startup guidance, memory, skills, review evidence, and external context
 - `references/done-when-verification-thread.md`: cross-skill done-when criteria and verification evidence thread
+- `references/decision-trace-handoff.md`: decision trace handoff for key decisions, implementation-time decisions, decision drift checks, and optional delegation boundaries
 - `references/loop-health-advisory.md`: advisory for repeated failures, evidence conflicts, weak replay, context contamination, and fresh-session handoff recommendations
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order

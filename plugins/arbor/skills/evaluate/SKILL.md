@@ -30,9 +30,9 @@ You MUST complete these steps in order:
 1. **Confirm source**: accept only a valid `develop.ready_for_evaluate` handoff or equivalent evaluator-ready packet. If missing, return `needs_develop_handoff`.
 2. **Load workflow state**: read the shared review document and, when present, `.arbor/workflow/features.json` for the selected feature status.
 3. **Load review context**: the review document named by the develop handoff must contain brainstorm Context/Test Plan and a Developer Round.
-4. **Inspect implementation evidence**: review changed files/artifacts, developer self-tests, planned test coverage, uncovered planned tests, known risks, and replay targets.
-5. **Plan adversarial evaluation**: map brainstorm acceptance criteria, done-when criteria, required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus to concrete checks.
-6. **Run evaluation**: replay developer tests when useful, independently challenge the done-when criteria, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, mark loop-health risks when evidence conflicts, weak replay evidence, or context contamination appear, and record blocked checks.
+4. **Inspect implementation evidence**: review changed files/artifacts, developer self-tests, planned test coverage, decision trace handoff, implementation-time decisions, decision deviations, uncovered planned tests, known risks, and replay targets.
+5. **Plan adversarial evaluation**: map brainstorm acceptance criteria, done-when criteria, decision invariants, required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus to concrete checks.
+6. **Run evaluation**: replay developer tests when useful, independently challenge the done-when criteria, check for decision drift and hidden decision conflict, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, mark loop-health risks when evidence conflicts, weak replay evidence, or context contamination appear, and record blocked checks.
 7. **Find bugs, not confirmation**: prioritize behavioral regressions, missing tests, contract drift, scope creep, and untested edge cases.
 8. **Append evaluator evidence**: append an Evaluator Round to the same review document. Do not overwrite brainstorm or developer rounds.
 9. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the evaluated feature/artifact, changed evidence paths, evaluator result, unresolved findings or risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
@@ -79,6 +79,7 @@ Only completed evaluation states (`accepted`, `changes_requested`, `needs_brains
 10. Do not mark a feature `done` or update final feature status. `evaluate` emits a feature-registry signal for `converge`.
 11. Do not accept by replay alone. Accepted evaluations require independent evaluator evidence across multiple useful dimensions.
 12. Loop-health advisories are evidence labels and recommendations, not implementation fixes. Mark repeated evidence conflicts, weak replay evidence, or context contamination when found, then route the next owner instead of fixing implementation directly.
+13. For brainstorm-backed work with a decision trace handoff, check decision drift, hidden decision conflict, missing implementation-time decisions, and unresolved decision deviations. Evaluate does not fix implementation directly.
 
 ## Anti-Patterns
 
@@ -129,6 +130,7 @@ No. `accepted` only means independent evaluation did not find a blocking issue. 
 
 - Treat the brainstorm test plan as the minimum scope.
 - Inspect changed files/artifacts before deciding what to test.
+- Compare developer implementation-time decisions and decision deviations against the brainstorm decision trace handoff.
 - Compare developer self-tests against required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus.
 - Compare developer self-tests against done-when criteria and identify any verification gap before choosing an acceptance verdict.
 - Look for nearby behavior that could regress even if the direct happy path works.

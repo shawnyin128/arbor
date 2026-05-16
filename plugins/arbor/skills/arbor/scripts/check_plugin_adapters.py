@@ -863,6 +863,103 @@ def validate_loop_health_advisory_contract(plugin_root: Path, errors: list[str])
             check(errors, term in text, f"{rel_path} missing loop-health advisory term `{term}`")
 
 
+def validate_decision_trace_handoff_contract(plugin_root: Path, errors: list[str]) -> None:
+    reference = plugin_root / "skills" / "arbor" / "references" / "decision-trace-handoff.md"
+    check(errors, reference.is_file(), "decision trace handoff reference must exist")
+    if reference.is_file():
+        text = reference.read_text(encoding="utf-8")
+        for term in (
+            "key decisions",
+            "rejected options",
+            "allowed implementation discretion",
+            "decision invariants",
+            "implementation-time decisions",
+            "decision deviations",
+            "decision drift",
+            "hidden decision conflict",
+            "must not require subagents or worktrees",
+            "not a default multi-agent orchestration",
+        ):
+            check(errors, term in text, f"decision trace handoff reference missing term `{term}`")
+
+    required = {
+        "skills/arbor/SKILL.md": [
+            "Decision Trace Handoff",
+            "references/decision-trace-handoff.md",
+            "key decisions",
+            "decision invariants",
+            "not a default multi-agent orchestration",
+        ],
+        "skills/brainstorm/SKILL.md": [
+            "Decision Trace Handoff",
+            "key decisions",
+            "rejected options",
+            "allowed implementation discretion",
+            "decision invariants",
+        ],
+        "skills/brainstorm/references/brainstorm-boundary.md": [
+            "decision trace handoff",
+            "key decisions",
+            "rejected options",
+            "allowed implementation discretion",
+            "decision invariants",
+        ],
+        "skills/develop/SKILL.md": [
+            "Decision Trace Handoff",
+            "implementation-time decisions",
+            "decision deviations",
+            "decision invariants",
+            "needs_brainstorm",
+        ],
+        "skills/develop/references/develop-boundary.md": [
+            "Decision Trace Handoff",
+            "implementation-time decisions",
+            "decision deviations",
+            "decision invariants",
+            "needs_brainstorm",
+        ],
+        "skills/evaluate/SKILL.md": [
+            "decision drift",
+            "hidden decision conflict",
+            "implementation-time decisions",
+            "does not fix implementation directly",
+        ],
+        "skills/evaluate/references/evaluate-boundary.md": [
+            "decision drift",
+            "hidden decision conflict",
+            "implementation-time decisions",
+            "does not fix implementation directly",
+        ],
+        "skills/converge/SKILL.md": [
+            "decision trace consistency",
+            "decision drift",
+            "decision invariants",
+            "return the appropriate evidence or planning route",
+        ],
+        "skills/converge/references/converge-boundary.md": [
+            "decision trace consistency",
+            "decision drift",
+            "decision invariants",
+            "return the appropriate evidence or planning route",
+        ],
+    }
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is not None:
+        required["README.md"] = [
+            "decision trace handoff",
+            "key decisions",
+            "implementation-time decisions",
+            "decision drift",
+            "does not require subagents or worktrees",
+        ]
+
+    for rel_path, terms in required.items():
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing decision trace handoff term `{term}`")
+
+
 def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
@@ -972,6 +1069,7 @@ def main() -> int:
     validate_guidance_placement_contract(plugin_root, errors)
     validate_done_when_verification_thread_contract(plugin_root, errors)
     validate_loop_health_advisory_contract(plugin_root, errors)
+    validate_decision_trace_handoff_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 

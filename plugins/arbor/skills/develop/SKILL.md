@@ -27,8 +27,8 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
    Treat the known sources as examples, not the complete set. If the source is different, apply the fallback upstream contract below.
 2. **Record execution basis**: record why execution is allowed. If required authorization is missing, stop with `blocked`.
 3. **Select scope**: identify the selected feature or managed artifact. If multiple independent units exist with no selection, stop with `needs_selection`.
-4. **Review upstream critically**: verify acceptance criteria, constraints, risks, feature registry path, review document path, and brainstorm test expectations are usable. If not, stop with `needs_brainstorm`.
-5. **Implement freely within scope**: use repo conventions and senior engineering judgment. Record material deviations.
+4. **Review upstream critically**: verify acceptance criteria, constraints, risks, feature registry path, review document path, brainstorm test expectations, and decision trace handoff are usable. If not, stop with `needs_brainstorm`.
+5. **Implement freely within scope**: use repo conventions and senior engineering judgment. Record material deviations, implementation-time decisions, decision deviations, and whether decision invariants still hold.
 6. **Self-test against the plan**: design and run developer checks that cover the artifact-appropriate verification scope and done-when criteria from the brainstorm review document. Record any uncovered planned checks. When using `verification_checks`, make each item replayable: name the inspected artifact, the check performed, the expected result, the actual result, and the result. For `ready_for_evaluate`, only `passed` verification checks count as completed evidence; skipped, failed, blocked, or not-run checks must be reflected in `uncovered_planned_tests`, `not_run`, or a non-ready terminal state.
 7. **Append handoff**: append a Developer Round to the same existing review document named by `source.review_doc_path`. Do not create the Context/Test Plan section. Include a detailed self-test table so `evaluate` can see what was tested, what passed or failed, what was skipped, and which planned checks or done-when criteria each row covers.
 8. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the selected feature/artifact, changed paths, current developer checkpoint, unresolved risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
@@ -90,11 +90,17 @@ Set `source.from_skill` to the known skill name when the source is `brainstorm`,
 
 ### `brainstorm`
 
-Consume the selected feature, recommended approach, goals, non-goals, constraints, acceptance criteria, done-when criteria, feature registry path, review document path, brainstorm verification scope, risks, evidence pointers, and execution basis.
+Consume the selected feature, recommended approach, goals, non-goals, constraints, acceptance criteria, done-when criteria, decision trace handoff, feature registry path, review document path, brainstorm verification scope, risks, evidence pointers, and execution basis.
 
 If `brainstorm` ended in `ready_for_user_review`, require user approval evidence. If it ended in `ready_for_develop`, record that terminal state as the authorization source.
 
 If the brainstorm handoff lacks `docs/review/<feature>-review.md` or an equivalent review context with test scope, return `needs_brainstorm` instead of creating it inside `develop`.
+
+### Decision Trace Handoff
+
+For brainstorm-backed work, consume the decision trace before editing. The trace should include key decisions, rejected options, allowed implementation discretion, and decision invariants. Implement freely inside that boundary, but record implementation-time decisions and decision deviations in the Developer Round.
+
+If implementation would violate decision invariants, reopen rejected options, or materially change product intent, return `needs_brainstorm` or record a blocker instead of silently changing the plan. The trace must not be used to require subagents, worktrees, or a fixed implementation strategy.
 
 ## Done-When Verification Thread
 

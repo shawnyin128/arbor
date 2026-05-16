@@ -31,8 +31,9 @@ If this evidence is missing, return `needs_evidence` rather than guessing.
 
 1. Do `develop` and `evaluate` agree?
 2. Does the latest result still satisfy brainstorm goals, acceptance criteria, done-when criteria, non-goals, and test scope?
+3. Does the evidence show decision trace consistency across key decisions, decision invariants, implementation-time decisions, decision deviations, decision drift checks, and hidden decision conflict checks?
 
-Both must be true to return `converged`.
+All must be true to return `converged`.
 
 ## User-Facing Convergence Packet
 
@@ -118,6 +119,8 @@ Use when:
 - registry update finalizes the same feature from `in_evaluate` to `done`;
 - evaluator evidence maps to brainstorm acceptance criteria;
 - evaluator evidence maps to done-when criteria when present;
+- evaluator evidence checks decision drift and hidden decision conflict when a decision trace handoff is present;
+- developer evidence records implementation-time decisions and decision deviations against decision invariants when material;
 - round limit has not been reached.
 
 Action:
@@ -145,6 +148,7 @@ Use when evaluator evidence reveals:
 - invalid or missing test plan;
 - scope drift from brainstorm goals;
 - an implementation correction that would change hidden decisions or product behavior.
+- missing key decisions, rejected options, allowed implementation discretion, or decision invariants that block decision trace consistency.
 
 Action:
 
@@ -174,6 +178,9 @@ Use when required evidence is missing even if some fields look accepted:
 - missing brainstorm Context/Test Plan, acceptance criteria, or goals routes to `brainstorm`;
 - missing latest Developer Round routes to `develop`;
 - missing latest Evaluator Round or inconsistent evaluator signal routes to `evaluate`.
+- missing decision trace consistency evidence follows the same owner rule: brainstorm owns key decisions and decision invariants, develop owns implementation-time decisions and decision deviations, and evaluate owns decision drift or hidden decision conflict checks.
+
+When decision trace evidence is missing or inconsistent, return the appropriate evidence or planning route instead of marking the feature done.
 
 Action:
 

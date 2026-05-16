@@ -31,6 +31,7 @@ Use `evaluate` for:
 - replaying developer self-tests;
 - running additional unit, scenario, edge, negative, mutation, static, compile, lint, schema, or coverage checks;
 - checking whether implementation matches brainstorm acceptance criteria, done-when criteria, and test plan;
+- checking decision drift, hidden decision conflict, implementation-time decisions, and decision deviations against the brainstorm decision trace handoff;
 - finding defects, missing test coverage, scope drift, and adjacent regressions;
 - marking loop-health risks when evidence conflicts, weak replay evidence, context contamination, or repeated same-class failures make the next correction unreliable;
 - appending evaluator evidence to `docs/review/`;
@@ -93,6 +94,7 @@ The review document must contain:
 - brainstorm Context/Test Plan section;
 - acceptance criteria;
 - done-when criteria when present;
+- decision trace handoff when present, including key decisions, rejected options, allowed implementation discretion, and decision invariants;
 - required unit tests;
 - required scenario tests;
 - edge cases and negative cases;
@@ -117,6 +119,7 @@ Minimum evaluation surface:
 - inspect changed files/artifacts;
 - map checks to brainstorm acceptance criteria;
 - map checks to done-when criteria when present;
+- check implementation-time decisions and decision deviations for decision drift or hidden decision conflict;
 - cover required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus;
 - add at least one independent check for completed evaluation unless the change is documentation-only and the review plan justifies content/scenario checks instead;
 - for accepted evaluations, add at least two independent evaluator check categories;
@@ -139,6 +142,8 @@ For workflow, skill, router, plugin, prompt-routing, or UI-facing changes, accep
 For workflow, process-control, routing, plugin, prompt-routing, or output-layer changes, acceptance must also include a checker or harness negative probe that would fail under a broken contract. If the evidence is only an observable substitute because exact runtime telemetry was unavailable, label it as a weak pass in the evaluator evidence instead of presenting it as a fully proven route.
 
 For Arbor-managed features with done-when criteria, acceptance also requires a visible mapping from evaluator evidence to those criteria. A completed evaluation must not hide weak substitutes for live trigger behavior, rendered output, external models, connectors, or publish paths; label the substitute as a weak pass and name the exact proof that remains unverified.
+
+For Arbor-managed features with a decision trace handoff, acceptance also requires checking decision drift and hidden decision conflict. If developer evidence omits implementation-time decisions or decision deviations for material choices, request a developer handoff correction instead of accepting by artifact inspection alone. Evaluate does not fix implementation directly.
 
 ## Loop Health Advisory
 

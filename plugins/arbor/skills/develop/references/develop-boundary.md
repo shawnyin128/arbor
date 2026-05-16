@@ -136,6 +136,7 @@ Primary inputs from `brainstorm`:
 - review document path with brainstorm-owned Context/Test Plan section;
 - feature registry path with the selected feature entry;
 - hidden decisions already resolved by the user or plan;
+- decision trace handoff, including key decisions, rejected options, allowed implementation discretion, and decision invariants;
 - unresolved assumptions and risks;
 - loaded evidence and source pointers;
 - execution authorization state;
@@ -155,7 +156,15 @@ If implementation reveals missing requirements, major scope changes, or invalid 
 
 If the brainstorm handoff lacks `.arbor/workflow/features.json`, `docs/review/<feature>-review.md`, or equivalent feature/review context with test scope, return `needs_brainstorm`; do not create the missing brainstorm-owned context inside `develop`.
 
-In the review handoff, record that the source was `brainstorm`, include the selected feature id/title, link or summarize the review context when available, and map implementation/tests back to the upstream acceptance criteria, done-when criteria, and planned test scope.
+In the review handoff, record that the source was `brainstorm`, include the selected feature id/title, link or summarize the review context when available, and map implementation/tests back to the upstream acceptance criteria, done-when criteria, decision trace handoff, and planned test scope.
+
+### Decision Trace Handoff
+
+For brainstorm-backed work, `develop` consumes the decision trace handoff before changing files. The trace should name key decisions, rejected options, allowed implementation discretion, and decision invariants.
+
+The Developer Round should record implementation-time decisions, decision deviations, and whether decision invariants still hold. When a necessary change would violate decision invariants, reopen rejected options, or make a product/design choice not settled by the plan, return `needs_brainstorm` or record a blocker instead of hiding the drift inside implementation.
+
+This handoff must not require subagents or worktrees, fan-out execution, fixed file order, fixed implementation strategy, or a fixed test type.
 
 ## Execution Basis Contract
 
@@ -373,6 +382,7 @@ The review entry must include:
 - acceptance criteria;
 - done-when criteria;
 - mapping from brainstorm planned verification scope to developer self-tests;
+- implementation-time decisions and decision deviations against the decision trace handoff;
 - a detailed self-test table with category, check, evidence, expected, actual, result, and covers;
 - developer self-test commands and results;
 - scenario tests and results;

@@ -26,7 +26,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 3. **Load loop evidence**: identify brainstorm Context/Test Plan, latest Developer Round, latest Evaluator Round, evaluator findings, feature-registry signal, and round count.
 4. **Check identity**: confirm feature id, review document, registry row, and evaluator signal all point to the same feature.
 5. **Check agreement**: decide whether develop and evaluate agree, or whether evaluator findings require another round.
-6. **Check brainstorm alignment**: decide whether the accepted result still satisfies brainstorm goals, acceptance criteria, done-when criteria, non-goals, and test scope.
+6. **Check brainstorm alignment**: decide whether the accepted result still satisfies brainstorm goals, acceptance criteria, done-when criteria, decision invariants, non-goals, and test scope.
 7. **Apply loop policy**: route automatically while under the round limit; surface loop-health risk before automatic continuation when repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination make the next route unreliable; escalate when the limit is reached or a user/product decision is required.
 8. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature.
 9. **Append convergence evidence**: append a Convergence Round to the same review document without rewriting prior rounds.
@@ -57,6 +57,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 9. Always emit a user-visible checkpoint before release finalization, next-feature selection, or another automatic loop.
 10. Never present convergence-only output as release completion; `release` owns finalization and next-feature selection.
 11. A loop-health advisory may recommend narrowing scope, re-brainstorming, exact runtime replay, or a fresh-session handoff, but it must not automatically clear context, spawn subagents, create worktrees, or require fan-out execution.
+12. Check decision trace consistency before marking work done. Unresolved decision drift, hidden decision conflict, or violated decision invariants must return the appropriate evidence or planning route.
 
 ## Route Rules
 
@@ -127,6 +128,12 @@ Before returning, self-check the captured visible response for the exact heading
 `converge` closes the loop only when the developer and evaluator evidence agrees with the brainstorm done-when criteria. It does not rerun evaluation or invent missing proof; it checks whether the evidence already appended by `develop` and `evaluate` is strong enough to justify completion.
 
 If done-when evidence is absent, generic, or only a weak pass for a criterion that required live proof, return the appropriate evidence or planning route instead of marking the feature done. If the weak pass was explicitly accepted by the brainstorm plan or by evaluator judgment with a visible residual risk, convergence may proceed only when that residual risk does not block the stated criteria.
+
+### Decision Trace Handoff
+
+`converge` closes the decision trace handoff only when developer and evaluator evidence shows decision trace consistency. Check that key decisions, rejected options, allowed implementation discretion, decision invariants, implementation-time decisions, decision deviations, decision drift checks, and hidden decision conflict checks all agree.
+
+If the trace is missing, generic, or conflicted, return the appropriate evidence or planning route instead of marking the feature done: missing brainstorm trace routes to `brainstorm`, missing developer decision evidence routes to `develop`, and missing evaluator drift checks route to `evaluate`.
 
 ## Loop Health Advisory
 
