@@ -110,6 +110,8 @@ Managed features also carry a done-when verification thread. `brainstorm` states
 
 Managed features also carry a decision trace handoff. `brainstorm` records key decisions, rejected options, allowed implementation discretion, and decision invariants. `develop` records implementation-time decisions and deviations against that trace. `evaluate` checks for decision drift and hidden-decision conflicts, and `converge` checks decision trace consistency before marking work done. This does not require subagents or worktrees and is not a default multi-agent orchestration layer; it preserves agent judgment while keeping workflow decisions visible.
 
+For separable evidence gathering, Arbor documents an optional delegation packet and effort budget. A packet names the objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions for a bounded investigation. This does not require subagents or worktrees: direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default.
+
 When correction loops become unreliable, Arbor uses a loop-health advisory instead of an automatic reset. `evaluate` can mark evidence conflicts, weak replay evidence, or context contamination; `converge` can surface repeated same-class failures before another broad correction. The advisory may recommend narrowing scope, re-brainstorming, exact runtime replay, or a fresh-session handoff, but it does not automatically clear context, spawn subagents, or create worktrees. Subagents and worktrees remain optional strategies, and a normal correction loop with a clear owner and replay target should continue below the round limit.
 
 ### `arbor`
@@ -130,6 +132,7 @@ What it does well:
 - guarding rendered workflow checkpoints so normal users see readable status, findings, decisions, and next steps instead of raw `*.v1` packets, route labels, terminal-state labels, or unexplained internal ids. `references/rendered-checkpoint-protocol.md` defines this output boundary for workflow checkpoints only; it is not a template for direct answers or a constraint on implementation strategy.
 - carrying done-when verification from planning through release so managed features show what completion means, how developer evidence covers it, how evaluation challenged it, and whether release has enough proof to finalize. `references/done-when-verification-thread.md` defines this evidence thread without prescribing implementation strategy or a single test type.
 - carrying decision trace handoff from planning through convergence so key decisions, implementation-time decisions, and decision drift remain visible without requiring subagents or worktrees. `references/decision-trace-handoff.md` defines this handoff contract without turning Arbor into a default multi-agent orchestration system.
+- documenting optional delegation packets with objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions for bounded evidence gathering. `references/delegation-packet-effort-budget.md` keeps direct answers and tightly coupled coding single-threaded by default.
 - surfacing loop-health advisories when repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination make another automatic correction unreliable. `references/loop-health-advisory.md` keeps the response advisory-only: recommend narrowing scope, re-brainstorming, exact runtime replay, or a fresh-session handoff without requiring subagents, worktrees, fan-out execution, or automatic context clearing.
 
 On Codex, `AGENTS.md` is the reliable native startup bootstrap. `.codex/hooks.json` records project hook intents, but a fresh Codex prompt should not assume those intents already injected Arbor context. The generated `AGENTS.md` includes a Startup Protocol that tells the agent to load `AGENTS.md`, recent formatted git history, `.arbor/memory.md`, and `git status --short` before answering fresh-session, resumed-session, or project-overview prompts.
@@ -446,6 +449,15 @@ discretion, decision invariants, implementation-time decisions, decision
 deviations, decision drift checks, and hidden-decision conflict checks across the
 workflow. This handoff does not require subagents or worktrees and is not a
 default multi-agent orchestration layer.
+
+Delegation packet and effort budget guidance follows
+`plugins/arbor/skills/arbor/references/delegation-packet-effort-budget.md`.
+Delegation remains optional and bounded. When used, the packet should name the
+objective, output format, tools/sources, boundaries, effort budget, context
+pointers, and stop conditions. The guidance does not require subagents or
+worktrees, does not require fan-out execution, and keeps direct answers, simple
+edits, tightly coupled coding, and tightly coupled workflow changes
+single-threaded by default.
 
 Real routing replay reports include user-level scenario metadata and
 classification counts for stable pass, weak pass, wrong route,

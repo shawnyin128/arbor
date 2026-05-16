@@ -58,6 +58,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 10. Never present convergence-only output as release completion; `release` owns finalization and next-feature selection.
 11. A loop-health advisory may recommend narrowing scope, re-brainstorming, exact runtime replay, or a fresh-session handoff, but it must not automatically clear context, spawn subagents, create worktrees, or require fan-out execution.
 12. Check decision trace consistency before marking work done. Unresolved decision drift, hidden decision conflict, or violated decision invariants must return the appropriate evidence or planning route.
+13. Do not require delegation to mark work done. When optional delegation packet evidence exists, use evaluator evidence to decide whether the objective, output format, boundaries, and effort budget were followed.
 
 ## Route Rules
 

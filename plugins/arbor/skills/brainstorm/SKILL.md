@@ -66,6 +66,7 @@ Confirm route
 14. Always emit a user-visible checkpoint that stops automatic continuation before implementation.
 15. For an Arbor-managed engineering planning continuation, do not stop with only chat prose. If the request is broad enough to be Arbor-managed and the workspace is writable, create a durable brainstorm checkpoint even when one blocking question remains. Missing details become an explicit pending question and a blocked or pending feature status, not a reason to skip `.arbor/workflow/features.json` and the review Context/Test Plan.
 16. For ready Arbor-managed work, include a Decision Trace Handoff: key decisions, rejected options, allowed implementation discretion, and decision invariants. This trace is not a default multi-agent orchestration requirement and must not require subagents or worktrees.
+17. When optional delegation would help separable evidence gathering, write a Delegation Packet And Effort Budget with objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions. Do not require delegation for direct answers, simple edits, tightly coupled coding, or tightly coupled workflow changes.
 
 ## Anti-Patterns
 
@@ -184,6 +185,14 @@ Rules:
 For ready Arbor-managed work, `brainstorm` starts the decision trace handoff. Record the key decisions that define scope, the rejected options that should not be reopened silently, the allowed implementation discretion that preserves developer judgment, and the decision invariants that must remain true unless the workflow returns to planning.
 
 Keep the trace compact and evidence-oriented. It should improve downstream handoff quality without requiring subagents, worktrees, fan-out execution, or a fixed implementation strategy.
+
+### Delegation Packet And Effort Budget
+
+For broad evidence work, `brainstorm` may define an optional delegation packet and effort budget. Use it only when the work is separable enough that bounded outside investigation improves coverage without losing shared context.
+
+The packet should name the objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions. It should also state when not to delegate. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default.
+
+This guidance is advisory. It must not require subagents or worktrees, fan-out execution, parallel coding, fixed tool-call counts, or fixed implementation strategy.
 
 ### After The Plan
 

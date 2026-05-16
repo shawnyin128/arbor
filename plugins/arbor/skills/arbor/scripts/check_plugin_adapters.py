@@ -960,6 +960,134 @@ def validate_decision_trace_handoff_contract(plugin_root: Path, errors: list[str
             check(errors, term in text, f"{rel_path} missing decision trace handoff term `{term}`")
 
 
+def validate_delegation_packet_effort_budget_contract(plugin_root: Path, errors: list[str]) -> None:
+    reference = plugin_root / "skills" / "arbor" / "references" / "delegation-packet-effort-budget.md"
+    check(errors, reference.is_file(), "delegation packet and effort budget reference must exist")
+    if reference.is_file():
+        text = reference.read_text(encoding="utf-8")
+        for term in (
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "context pointers",
+            "stop conditions",
+            "when not to delegate",
+            "Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default",
+            "must not require subagents or worktrees",
+            "must not require fan-out execution",
+        ):
+            check(errors, term in text, f"delegation packet reference missing term `{term}`")
+
+    required = {
+        "skills/arbor/SKILL.md": [
+            "Delegation Packet And Effort Budget",
+            "references/delegation-packet-effort-budget.md",
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "stop conditions",
+            "Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default",
+            "must not require subagents or worktrees",
+        ],
+        "skills/brainstorm/SKILL.md": [
+            "Delegation Packet And Effort Budget",
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "when not to delegate",
+            "must not require subagents or worktrees",
+        ],
+        "skills/brainstorm/references/brainstorm-boundary.md": [
+            "Delegation Packet And Effort Budget",
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "when not to delegate",
+            "must not require subagents or worktrees",
+        ],
+        "skills/develop/SKILL.md": [
+            "Delegation Packet And Effort Budget",
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "single-threaded by default",
+            "must not require subagents or worktrees",
+        ],
+        "skills/develop/references/develop-boundary.md": [
+            "Delegation Packet And Effort Budget",
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "single-threaded by default",
+            "must not require subagents or worktrees",
+        ],
+        "skills/evaluate/SKILL.md": [
+            "optional delegation packet",
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "Do not require delegation for acceptance",
+            "tightly coupled workflow changes remain single-threaded by default",
+        ],
+        "skills/evaluate/references/evaluate-boundary.md": [
+            "optional delegation packet",
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "Do not require delegation",
+            "tightly coupled workflow changes",
+        ],
+        "skills/converge/SKILL.md": [
+            "Do not require delegation to mark work done",
+            "optional delegation packet",
+            "objective",
+            "output format",
+            "boundaries",
+            "effort budget",
+        ],
+        "skills/converge/references/converge-boundary.md": [
+            "optional delegation packet and effort budget",
+            "when delegation was used",
+        ],
+    }
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is not None:
+        required["README.md"] = [
+            "delegation packet and effort budget",
+            "objective",
+            "output format",
+            "tools/sources",
+            "boundaries",
+            "effort budget",
+            "context pointers",
+            "stop conditions",
+            "does not require subagents or worktrees",
+            "single-threaded by default",
+        ]
+
+    for rel_path, terms in required.items():
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing delegation packet term `{term}`")
+
+
 def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
@@ -1070,6 +1198,7 @@ def main() -> int:
     validate_done_when_verification_thread_contract(plugin_root, errors)
     validate_loop_health_advisory_contract(plugin_root, errors)
     validate_decision_trace_handoff_contract(plugin_root, errors)
+    validate_delegation_packet_effort_budget_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 

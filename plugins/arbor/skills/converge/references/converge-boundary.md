@@ -121,6 +121,7 @@ Use when:
 - evaluator evidence maps to done-when criteria when present;
 - evaluator evidence checks decision drift and hidden decision conflict when a decision trace handoff is present;
 - developer evidence records implementation-time decisions and decision deviations against decision invariants when material;
+- evaluator evidence checks optional delegation packet and effort budget results when delegation was used;
 - round limit has not been reached.
 
 Action:

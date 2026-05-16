@@ -177,6 +177,7 @@ The initial review document should include:
 - problem summary, goals, non-goals, and constraints;
 - hidden decisions and resolved assumptions;
 - decision trace handoff with key decisions, rejected options, allowed implementation discretion, and decision invariants;
+- optional delegation packet and effort budget when separable evidence gathering would help, including objective, output format, tools/sources, boundaries, effort budget, context pointers, stop conditions, and when not to delegate;
 - selected approach and rejected alternatives when relevant;
 - acceptance criteria;
 - done-when criteria and the artifact-appropriate verification method for each criterion;
@@ -213,6 +214,12 @@ Do not force one test type. A feature may need unit tests, scenario replay, cont
 For ready Arbor-managed implementation work, `brainstorm` also starts the decision trace handoff. The Context/Test Plan should record key decisions, rejected options, allowed implementation discretion, and decision invariants so `develop`, `evaluate`, and `converge` do not lose or rewrite upstream intent.
 
 This is workflow evidence, not a default multi-agent orchestration model. The trace must not require subagents or worktrees, fixed fan-out, or a fixed implementation strategy, and it must not pull small direct tasks into Arbor.
+
+### Delegation Packet And Effort Budget
+
+For ready Arbor-managed work, `brainstorm` may include optional delegation packet and effort budget guidance when the planned evidence work is separable. The packet should include objective, output format, tools/sources, boundaries, effort budget, context pointers, stop conditions, and when not to delegate.
+
+Use the packet to reduce duplicated work and missing coverage, not to force fan-out. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default. The guidance must not require subagents or worktrees, parallel coding, fixed tool-call counts, or a fixed implementation strategy.
 
 Do not write durable artifacts when:
 

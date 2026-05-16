@@ -32,6 +32,7 @@ Use `evaluate` for:
 - running additional unit, scenario, edge, negative, mutation, static, compile, lint, schema, or coverage checks;
 - checking whether implementation matches brainstorm acceptance criteria, done-when criteria, and test plan;
 - checking decision drift, hidden decision conflict, implementation-time decisions, and decision deviations against the brainstorm decision trace handoff;
+- checking optional delegation packet evidence when delegation was used, including objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions;
 - finding defects, missing test coverage, scope drift, and adjacent regressions;
 - marking loop-health risks when evidence conflicts, weak replay evidence, context contamination, or repeated same-class failures make the next correction unreliable;
 - appending evaluator evidence to `docs/review/`;
@@ -95,6 +96,7 @@ The review document must contain:
 - acceptance criteria;
 - done-when criteria when present;
 - decision trace handoff when present, including key decisions, rejected options, allowed implementation discretion, and decision invariants;
+- optional delegation packet and effort budget evidence when delegation was used;
 - required unit tests;
 - required scenario tests;
 - edge cases and negative cases;
@@ -144,6 +146,8 @@ For workflow, process-control, routing, plugin, prompt-routing, or output-layer 
 For Arbor-managed features with done-when criteria, acceptance also requires a visible mapping from evaluator evidence to those criteria. A completed evaluation must not hide weak substitutes for live trigger behavior, rendered output, external models, connectors, or publish paths; label the substitute as a weak pass and name the exact proof that remains unverified.
 
 For Arbor-managed features with a decision trace handoff, acceptance also requires checking decision drift and hidden decision conflict. If developer evidence omits implementation-time decisions or decision deviations for material choices, request a developer handoff correction instead of accepting by artifact inspection alone. Evaluate does not fix implementation directly.
+
+For Arbor-managed features with optional delegation packet and effort budget evidence, acceptance requires checking whether the packet's objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions were followed. Do not require delegation for direct answers, simple edits, tightly coupled coding, or tightly coupled workflow changes.
 
 ## Loop Health Advisory
 

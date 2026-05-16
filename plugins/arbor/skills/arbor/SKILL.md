@@ -108,6 +108,12 @@ Use `references/decision-trace-handoff.md` to preserve decision continuity acros
 
 This is not a default multi-agent orchestration layer. It must not require subagents or worktrees, fan-out execution, fixed implementation strategy, or heavy workflow for direct tasks. The trace narrows only workflow evidence: it helps later stages understand the decisions that matter while preserving normal agent judgment inside the accepted scope.
 
+### Delegation Packet And Effort Budget
+
+Use `references/delegation-packet-effort-budget.md` only when optional delegation is useful for separable evidence gathering. A delegation packet names the objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions for a bounded investigation.
+
+This is advisory, not a default multi-agent orchestration layer. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default. The guidance must not require subagents or worktrees, fan-out execution, parallel coding, fixed tool-call counts, or a fixed implementation strategy.
+
 ### Loop Health Advisory
 
 Use `references/loop-health-advisory.md` when a develop/evaluate correction loop shows repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination. The advisory helps `evaluate` and `converge` recommend a narrower correction, re-brainstorming, stronger runtime replay, or a fresh-session handoff when the loop is becoming unreliable.
@@ -154,6 +160,7 @@ Claude Code does not have an equivalent project-level hook intent file. It ships
 - `references/guidance-placement-guard.md`: placement rubric for startup guidance, memory, skills, review evidence, and external context
 - `references/done-when-verification-thread.md`: cross-skill done-when criteria and verification evidence thread
 - `references/decision-trace-handoff.md`: decision trace handoff for key decisions, implementation-time decisions, decision drift checks, and optional delegation boundaries
+- `references/delegation-packet-effort-budget.md`: optional delegation packet and effort budget guidance for bounded evidence gathering
 - `references/loop-health-advisory.md`: advisory for repeated failures, evidence conflicts, weak replay, context contamination, and fresh-session handoff recommendations
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order

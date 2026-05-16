@@ -80,6 +80,7 @@ Only completed evaluation states (`accepted`, `changes_requested`, `needs_brains
 11. Do not accept by replay alone. Accepted evaluations require independent evaluator evidence across multiple useful dimensions.
 12. Loop-health advisories are evidence labels and recommendations, not implementation fixes. Mark repeated evidence conflicts, weak replay evidence, or context contamination when found, then route the next owner instead of fixing implementation directly.
 13. For brainstorm-backed work with a decision trace handoff, check decision drift, hidden decision conflict, missing implementation-time decisions, and unresolved decision deviations. Evaluate does not fix implementation directly.
+14. If developer evidence used an optional delegation packet, evaluate whether the objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions were followed. If no delegation was used, do not penalize single-threaded work when the task was direct, simple, tightly coupled, or otherwise not separable.
 
 ## Anti-Patterns
 
@@ -143,6 +144,12 @@ No. `accepted` only means independent evaluation did not find a blocking issue. 
 - Add adversarial probes for contract-critical behavior, negative cases, boundary cases, schema drift, or route mistakes.
 - For documentation or managed artifacts, use content, structure, and workflow scenario checks instead of pretending code tests are required.
 - If a check cannot run, record the command, blocker, and residual risk.
+
+### Delegation Packet And Effort Budget
+
+When developer evidence includes a delegation packet, evaluate the packet as evidence: objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions should be clear enough to prevent duplicated work, missing coverage, and context loss.
+
+Do not require delegation for acceptance. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default. Evaluation should flag delegation only when it violated boundaries, exceeded effort without justification, duplicated work, missed the requested output format, or hid decisions from the review evidence.
 
 ### Strict Acceptance Gate
 

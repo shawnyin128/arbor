@@ -137,6 +137,7 @@ Primary inputs from `brainstorm`:
 - feature registry path with the selected feature entry;
 - hidden decisions already resolved by the user or plan;
 - decision trace handoff, including key decisions, rejected options, allowed implementation discretion, and decision invariants;
+- optional delegation packet and effort budget, when present, including objective, output format, tools/sources, boundaries, effort budget, context pointers, stop conditions, and when not to delegate;
 - unresolved assumptions and risks;
 - loaded evidence and source pointers;
 - execution authorization state;
@@ -165,6 +166,14 @@ For brainstorm-backed work, `develop` consumes the decision trace handoff before
 The Developer Round should record implementation-time decisions, decision deviations, and whether decision invariants still hold. When a necessary change would violate decision invariants, reopen rejected options, or make a product/design choice not settled by the plan, return `needs_brainstorm` or record a blocker instead of hiding the drift inside implementation.
 
 This handoff must not require subagents or worktrees, fan-out execution, fixed file order, fixed implementation strategy, or a fixed test type.
+
+### Delegation Packet And Effort Budget
+
+When a brainstorm handoff includes optional delegation packet and effort budget guidance, `develop` may use it for bounded investigation or evidence gathering. It should not treat delegation as required. The packet must include objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions.
+
+Implementation remains owned by the main developer unless the user explicitly assigned work elsewhere. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default. The guidance must not require subagents or worktrees, fan-out execution, parallel coding, fixed tool-call counts, or fixed implementation strategy.
+
+If delegation is used, the Developer Round should record the packet, the returned evidence, whether the output format was followed, and any evidence gaps. If delegation is skipped because the work is not separable, record the single-threaded decision only when it materially affects review.
 
 ## Execution Basis Contract
 
@@ -383,6 +392,7 @@ The review entry must include:
 - done-when criteria;
 - mapping from brainstorm planned verification scope to developer self-tests;
 - implementation-time decisions and decision deviations against the decision trace handoff;
+- delegation packet result or single-threaded rationale when optional delegation guidance materially affected implementation;
 - a detailed self-test table with category, check, evidence, expected, actual, result, and covers;
 - developer self-test commands and results;
 - scenario tests and results;

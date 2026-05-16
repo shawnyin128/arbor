@@ -102,6 +102,14 @@ For brainstorm-backed work, consume the decision trace before editing. The trace
 
 If implementation would violate decision invariants, reopen rejected options, or materially change product intent, return `needs_brainstorm` or record a blocker instead of silently changing the plan. The trace must not be used to require subagents, worktrees, or a fixed implementation strategy.
 
+### Delegation Packet And Effort Budget
+
+If the upstream plan includes an optional delegation packet, `develop` may use it for bounded investigation or evidence gathering. The packet should specify objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions.
+
+Implementation remains owned by the main developer unless the user explicitly assigned work elsewhere. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default. Delegation guidance must not require subagents or worktrees, fan-out execution, parallel coding, fixed tool-call counts, or a fixed implementation strategy.
+
+When delegation is used, record the packet, result, and any evidence gaps in the Developer Round. When delegation is skipped because the work is tightly coupled or unnecessary, record that decision only if it affects review.
+
 ## Done-When Verification Thread
 
 For Arbor-managed features, `develop` continues the done-when verification thread without turning it into a coding constraint. Implement normally inside the accepted scope, then map self-tests to done-when criteria and planned verification items.
