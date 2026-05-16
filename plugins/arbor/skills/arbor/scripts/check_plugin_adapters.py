@@ -679,6 +679,82 @@ def validate_guidance_placement_contract(plugin_root: Path, errors: list[str]) -
             check(errors, term in text, f"{rel_path} missing guidance placement term `{term}`")
 
 
+def validate_done_when_verification_thread_contract(plugin_root: Path, errors: list[str]) -> None:
+    reference = plugin_root / "skills" / "arbor" / "references" / "done-when-verification-thread.md"
+    check(errors, reference.is_file(), "done-when verification thread reference must exist")
+    if reference.is_file():
+        text = reference.read_text(encoding="utf-8")
+        for term in (
+            "done-when criteria",
+            "artifact-appropriate verification",
+            "label weak pass evidence",
+            "Check that required verification evidence exists before finalization or publish",
+            "Do not force one test type",
+            "route small direct tasks into Arbor",
+        ):
+            check(errors, term in text, f"done-when verification thread missing term `{term}`")
+
+    required = {
+        "skills/arbor/SKILL.md": [
+            "Done-When Verification Thread",
+            "references/done-when-verification-thread.md",
+            "task-appropriate done-when criteria",
+            "mapping self-tests to those criteria",
+            "evidence existence rather than correctness re-evaluation",
+            "must not force one test type",
+        ],
+        "skills/brainstorm/SKILL.md": [
+            "Done-When Verification Thread",
+            "done-when criteria",
+            "artifact-appropriate verification",
+            "do not force one test type",
+            "Keep small direct tasks outside the managed verification thread",
+        ],
+        "skills/develop/SKILL.md": [
+            "Done-When Verification Thread",
+            "map self-tests to done-when criteria",
+            "verification gap",
+            "do not force one test type",
+            "no uncovered done-when criteria",
+        ],
+        "skills/evaluate/SKILL.md": [
+            "done-when criteria",
+            "independently challenge the done-when criteria",
+            "visible mapping from evaluator evidence",
+            "weak pass",
+            "exact runtime proof",
+        ],
+        "skills/converge/SKILL.md": [
+            "Done-When Verification Thread",
+            "done-when criteria remain satisfied",
+            "weak pass",
+            "return the appropriate evidence or planning route",
+        ],
+        "skills/release/SKILL.md": [
+            "done-when criteria when present",
+            "verification evidence exists before finalization or publish",
+            "without re-evaluating correctness",
+            "verification_evidence",
+        ],
+    }
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is not None:
+        required["README.md"] = [
+            "done-when verification thread",
+            "done-when criteria",
+            "labels weak pass substitutes",
+            "checks that verification evidence exists before finalization or publish",
+            "does not force one test type",
+            "small direct tasks",
+        ]
+
+    for rel_path, terms in required.items():
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing done-when verification term `{term}`")
+
+
 def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
@@ -785,6 +861,7 @@ def main() -> int:
     validate_in_flight_memory_contract(plugin_root, errors)
     validate_rendered_checkpoint_contract(plugin_root, errors)
     validate_guidance_placement_contract(plugin_root, errors)
+    validate_done_when_verification_thread_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 

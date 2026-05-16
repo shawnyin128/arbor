@@ -25,7 +25,7 @@ Follow this normal sequence for brainstorm runs. Stop early with the correct ter
 4. **Clarify only blockers**: ask one material question at a time. Do not ask for facts the repo/docs can answer cheaply.
 5. **Expose hidden decisions**: surface defaults the user did not specify but that affect implementation, testing, persistence, or user experience.
 6. **Split scope**: reduce broad work into small independently testable features.
-7. **Plan acceptance and verification**: define acceptance criteria and artifact-appropriate verification scope before routing onward.
+7. **Plan acceptance and verification**: define acceptance criteria, done-when criteria, and artifact-appropriate verification scope before routing onward.
 8. **Create feature registry**: for ready broad or implementation work, create or update `.arbor/workflow/features.json` with all split features, their statuses, active feature, and review document paths.
 9. **Create review context**: for the selected ready feature, create `docs/review/<feature>-review.md` with the Context/Test Plan section unless the request is read-only.
 10. **Self-review**: check for missing evidence, hidden assumptions, oversized features, weak test scope, missing registry state, and accidental implementation.
@@ -57,7 +57,7 @@ Confirm route
 5. Prefer one pending user question over a questionnaire.
 6. Surface hidden decisions explicitly instead of silently choosing defaults.
 7. Split large requests into incremental features before implementation planning.
-8. Include acceptance criteria and artifact-appropriate review verification for every ready feature.
+8. Include acceptance criteria, done-when criteria, and artifact-appropriate review verification for every ready feature.
 9. Maintain `features.json` as the feature queue/status index; do not make downstream skills infer progress by scanning review files.
 10. Require user approval before `develop` unless the user already clearly approved a narrow low-risk plan.
 11. For ready implementation work, create the review Context/Test Plan artifact that `develop` and `evaluate` will append to.
@@ -160,11 +160,23 @@ For detailed boundary rationale, read `references/brainstorm-boundary.md`.
 ### Present The Plan
 
 - Scale detail to complexity.
-- Cover problem, goals, non-goals, constraints, hidden decisions, features, acceptance criteria, verification scope, risks, and route.
+- Cover problem, goals, non-goals, constraints, hidden decisions, features, acceptance criteria, done-when criteria, verification scope, risks, and route.
 - Make each feature independently understandable and testable.
 - Create or update the feature registry so every planned feature has a status and review document path.
 - Create the review document Context/Test Plan section for ready implementation work.
 - Ask for user approval before `develop` unless approval was already explicit and the task is narrow.
+
+### Done-When Verification Thread
+
+For Arbor-managed work, `brainstorm` starts the done-when verification thread. The thread is the compact statement of what must be true before the feature can be considered complete, and which artifact-appropriate verification will be strong enough to prove it.
+
+Rules:
+
+- Write done-when criteria in user-level outcome language before `develop`.
+- Map each criterion to at least one verification method, such as a unit test, scenario replay, content/structure check, static/schema check, rendered-output inspection, mutation probe, or explicitly justified manual review.
+- Use artifact-appropriate verification and do not force one test type across code, documentation, workflow, routing, release, or output-layer work.
+- Keep small direct tasks outside the managed verification thread; do not route simple direct answers into Arbor just to create criteria.
+- Record known weak spots up front when exact live verification is unavailable so `develop`, `evaluate`, `converge`, and `release` can label the evidence honestly.
 
 ### After The Plan
 
@@ -232,6 +244,14 @@ Produce this structure for internal workflow handoff:
     }
   },
   "acceptance_criteria": [],
+  "done_when_criteria": [
+    {
+      "criterion": "",
+      "verification_method": "",
+      "evidence_owner": "develop|evaluate|release",
+      "weak_evidence_risk": null
+    }
+  ],
   "test_plan": {
     "strategy": "",
     "required_unit_tests": [],
@@ -243,7 +263,7 @@ Produce this structure for internal workflow handoff:
   "review_doc": {
     "status": "created",
     "path": "docs/review/<feature>-review.md",
-    "context_sections": ["Context", "Plan", "Acceptance Criteria", "Test Plan", "Risks"],
+    "context_sections": ["Context", "Plan", "Acceptance Criteria", "Done-When Criteria", "Test Plan", "Risks"],
     "test_scope_summary": ""
   },
   "risks": [],

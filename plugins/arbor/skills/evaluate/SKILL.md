@@ -31,8 +31,8 @@ You MUST complete these steps in order:
 2. **Load workflow state**: read the shared review document and, when present, `.arbor/workflow/features.json` for the selected feature status.
 3. **Load review context**: the review document named by the develop handoff must contain brainstorm Context/Test Plan and a Developer Round.
 4. **Inspect implementation evidence**: review changed files/artifacts, developer self-tests, planned test coverage, uncovered planned tests, known risks, and replay targets.
-5. **Plan adversarial evaluation**: map brainstorm acceptance criteria, required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus to concrete checks.
-6. **Run evaluation**: replay developer tests when useful, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, and record blocked checks.
+5. **Plan adversarial evaluation**: map brainstorm acceptance criteria, done-when criteria, required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus to concrete checks.
+6. **Run evaluation**: replay developer tests when useful, independently challenge the done-when criteria, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, and record blocked checks.
 7. **Find bugs, not confirmation**: prioritize behavioral regressions, missing tests, contract drift, scope creep, and untested edge cases.
 8. **Append evaluator evidence**: append an Evaluator Round to the same review document. Do not overwrite brainstorm or developer rounds.
 9. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the evaluated feature/artifact, changed evidence paths, evaluator result, unresolved findings or risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
@@ -72,11 +72,12 @@ Only completed evaluation states (`accepted`, `changes_requested`, `needs_brains
 3. Temporary probes are allowed when they do not become product changes; clean them up or record them as blocked/residual risk.
 4. Append only to the existing review document named by `source.review_doc_path`.
 5. Treat brainstorm's test plan as the minimum required scope, not the maximum.
-6. Add adversarial unit, scenario, edge, negative, mutation, or static probes when they materially improve confidence.
-7. Non-blocking recommendations do not become acceptance unless the evidence supports it.
-8. Do not decide final convergence; `converge` owns that decision.
-9. Do not mark a feature `done` or update final feature status. `evaluate` emits a feature-registry signal for `converge`.
-10. Do not accept by replay alone. Accepted evaluations require independent evaluator evidence across multiple useful dimensions.
+6. Challenge the done-when criteria instead of only confirming that commands passed.
+7. Add adversarial unit, scenario, edge, negative, mutation, or static probes when they materially improve confidence.
+8. Non-blocking recommendations do not become acceptance unless the evidence supports it.
+9. Do not decide final convergence; `converge` owns that decision.
+10. Do not mark a feature `done` or update final feature status. `evaluate` emits a feature-registry signal for `converge`.
+11. Do not accept by replay alone. Accepted evaluations require independent evaluator evidence across multiple useful dimensions.
 
 ## Anti-Patterns
 
@@ -128,6 +129,7 @@ No. `accepted` only means independent evaluation did not find a blocking issue. 
 - Treat the brainstorm test plan as the minimum scope.
 - Inspect changed files/artifacts before deciding what to test.
 - Compare developer self-tests against required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus.
+- Compare developer self-tests against done-when criteria and identify any verification gap before choosing an acceptance verdict.
 - Look for nearby behavior that could regress even if the direct happy path works.
 - Decide which developer checks to replay and which independent checks to add.
 
@@ -150,6 +152,8 @@ For workflow, skill, router, plugin, or prompt-routing changes, include at least
 For workflow, process-control, routing, plugin, prompt-routing, or output-layer changes, accepted evaluation must be stronger than a normal documentation check: replay the developer evidence, inspect the relevant runtime output or strongest available substitute, add a checker or harness negative probe that would fail under a broken contract, and explicitly state whether any result is a weak pass because exact runtime telemetry was unavailable.
 
 Every accepted evaluation should include a negative control, mutation probe, static contract probe, or equivalent adversarial check that is expected to catch a purposeful broken input. If no meaningful adversarial probe is possible, record why and treat that as residual risk before deciding whether acceptance is justified.
+
+For Arbor-managed features with done-when criteria, acceptance also requires a visible mapping from evaluator evidence to those criteria. If the evaluator uses a deterministic substitute for a live runtime trigger, rendered output, external model, connector, or publish path, label the result as a weak pass and explain what exact proof remains unverified.
 
 ### Write Findings
 
@@ -334,6 +338,7 @@ Produce this structure for internal workflow handoff:
     "brainstorm_context_loaded": true,
     "developer_round_loaded": true,
     "acceptance_criteria": [],
+    "done_when_criteria": [],
     "planned_unit_tests": [],
     "planned_scenario_tests": [],
     "edge_cases": [],
@@ -459,19 +464,20 @@ Before returning:
 4. Did I inspect changed files/artifacts instead of trusting developer prose?
 5. Did I replay or explicitly decline developer tests with a reason?
 6. Did I add independent adversarial unit/scenario/edge/negative checks where relevant?
-7. Did I map evaluation checks to the planned test scope?
-8. Did I append an Evaluator Round to `source.review_doc_path` without overwriting prior rounds?
-9. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
-10. Did I route only completed evaluation states to `release`, with `route.next_skill_context.release_mode=checkpoint_evaluate` and `next_after_release=converge`?
-11. Did I include a user-visible checkpoint that prevents silent continuation into convergence?
-12. Did I emit a feature-registry signal without marking the feature done?
-13. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
-14. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
-15. For accepted evaluations, did I add at least two independent evaluator check categories plus a negative control, mutation probe, static contract probe, or equivalent adversarial check?
-16. For workflow, skill, router, plugin, or prompt-routing changes, did I replay a realistic workflow/user scenario or record the live replay gap?
-17. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
-18. Did `user_response` make clear that convergence remains pending instead of implying final completion?
-19. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+7. Did I map evaluation checks to the planned test scope and done-when criteria?
+8. Did I challenge the done-when criteria and label weak pass evidence when exact runtime proof was unavailable?
+9. Did I append an Evaluator Round to `source.review_doc_path` without overwriting prior rounds?
+10. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
+11. Did I route only completed evaluation states to `release`, with `route.next_skill_context.release_mode=checkpoint_evaluate` and `next_after_release=converge`?
+12. Did I include a user-visible checkpoint that prevents silent continuation into convergence?
+13. Did I emit a feature-registry signal without marking the feature done?
+14. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
+15. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
+16. For accepted evaluations, did I add at least two independent evaluator check categories plus a negative control, mutation probe, static contract probe, or equivalent adversarial check?
+17. For workflow, skill, router, plugin, or prompt-routing changes, did I replay a realistic workflow/user scenario or record the live replay gap?
+18. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+19. Did `user_response` make clear that convergence remains pending instead of implying final completion?
+20. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

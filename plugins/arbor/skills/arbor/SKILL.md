@@ -96,6 +96,12 @@ The protocol applies only to Arbor workflow checkpoints and decision points. It 
 
 Before claiming a workflow-facing change is validated, inspect the final rendered response when feasible. The tracked real-chain runner captures `final-response.md`; use it to reject raw schema leaks, route labels, terminal-state labels, unexplained internal ids, and missing required visible sections. Static fixture checks are preflight, not a substitute for real final-response inspection.
 
+### Done-When Verification Thread
+
+Use `references/done-when-verification-thread.md` as the shared cross-skill contract for proving Arbor-managed work. The thread starts in `brainstorm` with task-appropriate done-when criteria, continues in `develop` by mapping self-tests to those criteria, is challenged independently by `evaluate`, is checked for agreement by `converge`, and is confirmed by `release` as evidence existence rather than correctness re-evaluation.
+
+The thread is evidence discipline, not a fixed testing strategy. It must not force one test type, full test suite, live runtime replay, subagent use, or plan-first behavior for direct tasks. Small direct answers and simple edits stay outside the managed verification thread.
+
 ## Runtime Entrypoints
 
 Arbor runs the same workflow on Codex and Claude Code, but each runtime carries it through a different entrypoint surface. The shared project state is always `AGENTS.md` plus `.arbor/memory.md`; everything else is adapter-side.
@@ -134,6 +140,7 @@ Claude Code does not have an equivalent project-level hook intent file. It ships
 - `references/process-state-authority.md`: source-of-truth map for Arbor workflow state
 - `references/rendered-checkpoint-protocol.md`: shared user-visible checkpoint rendering contract
 - `references/guidance-placement-guard.md`: placement rubric for startup guidance, memory, skills, review evidence, and external context
+- `references/done-when-verification-thread.md`: cross-skill done-when criteria and verification evidence thread
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order
 - `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments

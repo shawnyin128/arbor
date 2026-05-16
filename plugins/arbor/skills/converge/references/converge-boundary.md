@@ -20,7 +20,7 @@ Minimum evidence:
 - brainstorm Context/Test Plan;
 - latest Developer Round;
 - latest Evaluator Round;
-- loaded brainstorm acceptance criteria and goals;
+- loaded brainstorm acceptance criteria, done-when criteria when present, and goals;
 - evaluator terminal state and findings;
 - evaluator `feature_registry_signal`;
 - loop round count and round limit.
@@ -30,7 +30,7 @@ If this evidence is missing, return `needs_evidence` rather than guessing.
 ## Two Required Questions
 
 1. Do `develop` and `evaluate` agree?
-2. Does the latest result still satisfy brainstorm goals, acceptance criteria, non-goals, and test scope?
+2. Does the latest result still satisfy brainstorm goals, acceptance criteria, done-when criteria, non-goals, and test scope?
 
 Both must be true to return `converged`.
 
@@ -103,6 +103,7 @@ Use when:
 - evaluator signal current status is `in_evaluate` and recommended next status is `done`;
 - registry update finalizes the same feature from `in_evaluate` to `done`;
 - evaluator evidence maps to brainstorm acceptance criteria;
+- evaluator evidence maps to done-when criteria when present;
 - round limit has not been reached.
 
 Action:

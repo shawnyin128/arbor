@@ -26,7 +26,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 3. **Load loop evidence**: identify brainstorm Context/Test Plan, latest Developer Round, latest Evaluator Round, evaluator findings, feature-registry signal, and round count.
 4. **Check identity**: confirm feature id, review document, registry row, and evaluator signal all point to the same feature.
 5. **Check agreement**: decide whether develop and evaluate agree, or whether evaluator findings require another round.
-6. **Check brainstorm alignment**: decide whether the accepted result still satisfies brainstorm goals, acceptance criteria, non-goals, and test scope.
+6. **Check brainstorm alignment**: decide whether the accepted result still satisfies brainstorm goals, acceptance criteria, done-when criteria, non-goals, and test scope.
 7. **Apply loop policy**: route automatically while under the round limit; escalate when the limit is reached or a user/product decision is required.
 8. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature.
 9. **Append convergence evidence**: append a Convergence Round to the same review document without rewriting prior rounds.
@@ -50,7 +50,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 2. Do not implement fixes. Route selected findings to `develop`.
 3. Do not ask the user when an automatic correction route is clear and below the round limit.
 4. Do ask the user when the correction would change brainstorm scope, hidden decisions, or product behavior.
-5. Do not mark a feature done unless evaluator accepted and brainstorm goals remain satisfied.
+5. Do not mark a feature done unless evaluator accepted and brainstorm goals plus done-when criteria remain satisfied.
 6. Do not update a different feature than the one selected by registry, review document, and evaluator signal.
 7. Do not infer convergence from prose alone; require explicit evaluator verdict, findings, and registry signal.
 8. Append convergence evidence to the same review document.
@@ -110,6 +110,12 @@ Do not include a "What Will Be Preserved" section in the visible response. Persi
 
 `Agreement Check` and `Remaining Issues` must be Markdown tables with natural-language cells. Do not expose field names, route assignments, terminal-state strings, fixture ids, synthetic feature ids, finding ids, or unexplained shorthand. Describe the user-visible situation instead, such as "the reviewer found a blocking regression" rather than a finding id.
 
+## Done-When Verification Thread
+
+`converge` closes the loop only when the developer and evaluator evidence agrees with the brainstorm done-when criteria. It does not rerun evaluation or invent missing proof; it checks whether the evidence already appended by `develop` and `evaluate` is strong enough to justify completion.
+
+If done-when evidence is absent, generic, or only a weak pass for a criterion that required live proof, return the appropriate evidence or planning route instead of marking the feature done. If the weak pass was explicitly accepted by the brainstorm plan or by evaluator judgment with a visible residual risk, convergence may proceed only when that residual risk does not block the stated criteria.
+
 ## Structured Output Contract
 
 Produce this structure for internal workflow handoff:
@@ -136,6 +142,7 @@ Produce this structure for internal workflow handoff:
     "latest_developer_round_loaded": true,
     "latest_evaluator_round_loaded": true,
     "acceptance_criteria": [],
+    "done_when_criteria": [],
     "brainstorm_goals": [],
     "non_goals": [],
     "round_count": 1,
@@ -223,7 +230,7 @@ Use these enums:
 - `ui.checkpoint.resume_after`: `user_acknowledgement`, `auto_policy`, `user_decision`, `evidence_loaded`, or `blocker_resolved`
 - `ui.workflow_automation.policy`: `develop_evaluate_converge` or `none`
 
-For `converged`, `brainstorm_context_loaded`, `latest_developer_round_loaded`, `latest_evaluator_round_loaded`, `develop_evaluate_agree`, `brainstorm_goals_satisfied`, and `feature_identity_consistent` must all be true; `round_limit_reached` must be false; loaded acceptance criteria and brainstorm goals must be present; the evaluator signal must report `current_status=in_evaluate` and `recommended_next_status=done`; the registry update must move only the selected feature from `in_evaluate` to `done`; and `route.next_skill` must be `release`. If the evaluator accepted but brainstorm acceptance criteria or goals are missing, return `needs_evidence` and route to `brainstorm` instead of marking the feature done.
+For `converged`, `brainstorm_context_loaded`, `latest_developer_round_loaded`, `latest_evaluator_round_loaded`, `develop_evaluate_agree`, `brainstorm_goals_satisfied`, and `feature_identity_consistent` must all be true; `round_limit_reached` must be false; loaded acceptance criteria, done-when criteria when present, and brainstorm goals must be present; the evaluator signal must report `current_status=in_evaluate` and `recommended_next_status=done`; the registry update must move only the selected feature from `in_evaluate` to `done`; and `route.next_skill` must be `release`. If the evaluator accepted but brainstorm acceptance criteria, done-when criteria, or goals are missing, return `needs_evidence` and route to `brainstorm` instead of marking the feature done.
 
 Keep `route` focused on the current feature's convergence result. `converge` must not advertise next-feature continuation; `workflow_continuation.status` stays `none`, with no next feature id and `next_skill=none`. Release owns next-feature continuation after finalization.
 

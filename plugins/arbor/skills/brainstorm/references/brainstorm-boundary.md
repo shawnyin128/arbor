@@ -178,6 +178,7 @@ The initial review document should include:
 - hidden decisions and resolved assumptions;
 - selected approach and rejected alternatives when relevant;
 - acceptance criteria;
+- done-when criteria and the artifact-appropriate verification method for each criterion;
 - verification scope appropriate to the artifact, such as unit tests, scenario checks, edge/negative cases, content checks, structure checks, dry runs, schema checks, or evaluator focus;
 - known risks and remaining assumptions;
 - approval state and next route.
@@ -199,6 +200,12 @@ Choose artifact targets by purpose:
 - feature plan or supplementary design reference: `docs/features/*` or equivalent project convention;
 - project map or context entrypoint: `AGENTS.md` with concise pointers;
 - detailed durable reference: `docs/*` linked from `AGENTS.md`.
+
+### Done-When Verification Thread
+
+For ready Arbor-managed implementation work, `brainstorm` starts the done-when verification thread. It should describe what completion means in outcome language, map each criterion to artifact-appropriate verification, and name any weak evidence risk when exact live proof may not be available.
+
+Do not force one test type. A feature may need unit tests, scenario replay, content/structure checks, rendered-output inspection, static/schema checks, mutation probes, or live runtime evidence depending on what the feature changes. Small direct tasks stay outside this thread.
 
 Do not write durable artifacts when:
 
@@ -329,6 +336,14 @@ When approaches are useful, include:
     }
   },
   "acceptance_criteria": [],
+  "done_when_criteria": [
+    {
+      "criterion": "",
+      "verification_method": "",
+      "evidence_owner": "develop|evaluate|release",
+      "weak_evidence_risk": null
+    }
+  ],
   "test_plan": {
     "strategy": "",
     "required_unit_tests": [],
@@ -340,7 +355,7 @@ When approaches are useful, include:
   "review_doc": {
     "status": "created",
     "path": "docs/review/<feature>-review.md",
-    "context_sections": ["Context", "Plan", "Acceptance Criteria", "Test Plan", "Risks"],
+    "context_sections": ["Context", "Plan", "Acceptance Criteria", "Done-When Criteria", "Test Plan", "Risks"],
     "test_scope_summary": ""
   },
   "risks": [],

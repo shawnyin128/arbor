@@ -25,7 +25,7 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 
 1. **Confirm source**: accept `develop.ready_for_evaluate` for `checkpoint_develop`, completed `evaluate` states for `checkpoint_evaluate`, and `converge.converged` or equivalent evidence for `finalize_feature`.
 2. **Load state**: read `.arbor/workflow/features.json`, the selected feature's registry row, the selected review document, git status, and relevant diff/branch state.
-3. **Verify mode evidence**: for develop checkpoints, confirm Context/Test Plan and Developer Round; for evaluate checkpoints, confirm Context/Test Plan, Developer Round, and Evaluator Round; for finalization, confirm the selected source feature exists in the registry, its registry status is `done`, and the review document has Context/Test Plan, Developer Round, Evaluator Round, and Convergence Round.
+3. **Verify mode evidence**: for develop checkpoints, confirm Context/Test Plan, done-when criteria when present, and Developer Round; for evaluate checkpoints, confirm Context/Test Plan, done-when criteria when present, Developer Round, and Evaluator Round; for finalization, confirm the selected source feature exists in the registry, its registry status is `done`, and the review document has Context/Test Plan, done-when criteria when present, Developer Round, Evaluator Round, and Convergence Round.
 4. **Classify requested action**: local summary, stage, commit, push, PR, tag, publish, or route correction.
 5. **Run readiness checks**: replay requested or policy-required checks when feasible; record blocked checks and residual risk.
 6. **Prepare commit convention**: use `<type>[optional scope]: <description>` with optional body/footer.
@@ -55,20 +55,21 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 3. Do not plan feature scope.
 4. Do not change implementation files.
 5. Do not re-run develop/evaluate logic except for release-readiness checks.
-6. Keep local preparation separate from finalization commit, push, PR, tag, and publish; do not treat the internal checkpoint commit as final release.
-7. Use the commit convention exactly: `<type>[optional scope]: <description>`.
-8. Reject commit subjects whose description is empty after trimming whitespace.
-9. Append release evidence to the same review document.
-10. Preserve unrelated dirty work and stage only selected files when staging is authorized.
-11. For commit or public release success, record performed action evidence and action-specific metadata.
-12. For public action success, require `release_action.external_effect == release_context.release_action`.
-13. Do not treat standalone `stage` as a completed release terminal; stage can be prepared or folded into an authorized finalization commit.
-14. When continuation is available, `workflow_continuation.next_feature_id` must not equal `source.feature_id`.
-15. For finalize-feature release-ready states, the selected source feature must exist in `source.feature_registry_path`; the source feature status must match `release_context.feature_status` and must be `done`. Checkpoint states must prove the selected source feature exists when a registry is available, but they do not require status `done`.
-16. When continuation is available, include registry evidence: `registry_path` must match `source.feature_registry_path`, `registry_index` must identify the selected row, the row id must match `next_feature_id`, and the row status must match `next_feature_status`.
-17. Keep user-facing release output status-only; detailed handoff, authorization, and evidence fields are for structured state, review documents, or debug views.
-18. Emit a checkpoint policy that distinguishes safe internal continuation from user-stopping external actions.
-19. Do not leave unresolved uncommitted Arbor workflow state without an up-to-date `.arbor/memory.md`; do not leave resolved memory entries after a successful commit or publish makes git history authoritative.
+6. Do not re-evaluate correctness; only check that required verification evidence exists before finalization or publish.
+7. Keep local preparation separate from finalization commit, push, PR, tag, and publish; do not treat the internal checkpoint commit as final release.
+8. Use the commit convention exactly: `<type>[optional scope]: <description>`.
+9. Reject commit subjects whose description is empty after trimming whitespace.
+10. Append release evidence to the same review document.
+11. Preserve unrelated dirty work and stage only selected files when staging is authorized.
+12. For commit or public release success, record performed action evidence and action-specific metadata.
+13. For public action success, require `release_action.external_effect == release_context.release_action`.
+14. Do not treat standalone `stage` as a completed release terminal; stage can be prepared or folded into an authorized finalization commit.
+15. When continuation is available, `workflow_continuation.next_feature_id` must not equal `source.feature_id`.
+16. For finalize-feature release-ready states, the selected source feature must exist in `source.feature_registry_path`; the source feature status must match `release_context.feature_status` and must be `done`. Checkpoint states must prove the selected source feature exists when a registry is available, but they do not require status `done`.
+17. When continuation is available, include registry evidence: `registry_path` must match `source.feature_registry_path`, `registry_index` must identify the selected row, the row id must match `next_feature_id`, and the row status must match `next_feature_status`.
+18. Keep user-facing release output status-only; detailed handoff, authorization, and evidence fields are for structured state, review documents, or debug views.
+19. Emit a checkpoint policy that distinguishes safe internal continuation from user-stopping external actions.
+20. Do not leave unresolved uncommitted Arbor workflow state without an up-to-date `.arbor/memory.md`; do not leave resolved memory entries after a successful commit or publish makes git history authoritative.
 
 ## Route Rules
 
@@ -135,6 +136,7 @@ The structured `release.v1` object is an internal workflow/runtime packet. Produ
   "readiness": {
     "checks": [],
     "blocked_checks": [],
+    "verification_evidence": [],
     "risks": []
   },
   "commit_plan": {
@@ -239,15 +241,16 @@ Before returning:
 
 1. Did I load registry, the selected source feature row, review doc, mode-specific review evidence, and git state?
 2. Did I avoid implementation changes and convergence decisions?
-3. Did I verify the selected release action and whether it is externally visible?
-4. Did I require explicit confirmation before finalization commit, push, PR, tag, or publish while allowing policy-authorized checkpoint commits?
-5. Did I keep unrelated dirty work out of selected files and record `dirty_scope`?
-6. Did I build a valid convention commit message with a non-empty trimmed description?
-7. Did successful commit/push/PR/tag/publish output include performed evidence and metadata?
-8. Did public action success match the requested action and safe dirty scope?
-9. Did I append release evidence or a blocker packet to the review document?
-10. If release reached a checkpoint state, did I route the same feature to the next stage without selecting a new feature?
-11. If release reached a final state, did I select a different unfinished feature from the registry row data or explicitly report that none remains?
-12. Did I keep user-visible release output status-only while preserving detailed evidence in structured fields?
-13. Did I create or refresh `.arbor/memory.md` when unresolved uncommitted Arbor workflow state remains, or clear resolved entries after a successful commit/publish?
-14. Did I set checkpoint policy so internal checkpoints may continue automatically but external actions and finalization decisions stop for the user?
+3. Did I check that done-when verification evidence exists without re-evaluating correctness?
+4. Did I verify the selected release action and whether it is externally visible?
+5. Did I require explicit confirmation before finalization commit, push, PR, tag, or publish while allowing policy-authorized checkpoint commits?
+6. Did I keep unrelated dirty work out of selected files and record `dirty_scope`?
+7. Did I build a valid convention commit message with a non-empty trimmed description?
+8. Did successful commit/push/PR/tag/publish output include performed evidence and metadata?
+9. Did public action success match the requested action and safe dirty scope?
+10. Did I append release evidence or a blocker packet to the review document?
+11. If release reached a checkpoint state, did I route the same feature to the next stage without selecting a new feature?
+12. If release reached a final state, did I select a different unfinished feature from the registry row data or explicitly report that none remains?
+13. Did I keep user-visible release output status-only while preserving detailed evidence in structured fields?
+14. Did I create or refresh `.arbor/memory.md` when unresolved uncommitted Arbor workflow state remains, or clear resolved entries after a successful commit/publish?
+15. Did I set checkpoint policy so internal checkpoints may continue automatically but external actions and finalization decisions stop for the user?

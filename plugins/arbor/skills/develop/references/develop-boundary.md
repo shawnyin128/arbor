@@ -6,7 +6,7 @@
 
 The skill combines implementation, developer self-test, and developer review handoff. It does not independently validate like `evaluate`, decide convergence like `converge`, create the brainstorm Context/Test Plan section, or perform git checkpoint/release gates like `release`.
 
-`develop` is intentionally light on how the agent writes code. It should not constrain implementation strategy beyond the upstream contract and the repository's own conventions. Its core value is handoff discipline: consume upstream cleanly, cover the brainstorm test scope with self-tests, append developer evidence, and give downstream `release` a checkpoint packet that authorizes an automatic local developer checkpoint commit before `evaluate` attacks the work.
+`develop` is intentionally light on how the agent writes code. It should not constrain implementation strategy beyond the upstream contract and the repository's own conventions. Its core value is handoff discipline: consume upstream cleanly, cover the brainstorm test scope and done-when criteria with self-tests, append developer evidence, and give downstream `release` a checkpoint packet that authorizes an automatic local developer checkpoint commit before `evaluate` attacks the work.
 
 ## Position In The Workflow
 
@@ -31,7 +31,7 @@ The existing Arbor development flow is:
 
 1. Receive one scoped feature or managed artifact.
 2. Implement the change.
-3. Self-test the change with artifact-appropriate checks, such as unit, integration, scenario, content, structure, dry-run, compile, lint, type, schema, or coverage checks.
+3. Self-test the change against done-when criteria with artifact-appropriate checks, such as unit, integration, scenario, content, structure, dry-run, compile, lint, type, schema, or coverage checks.
 4. Append a structured Developer Round to the same existing review document named by `source.review_doc_path` for downstream evaluation.
 5. Update the selected feature status in `.arbor/workflow/features.json`.
 6. Route to `release` with enough evidence and policy authorization for a local developer checkpoint commit; release then routes the same feature to `evaluate`.
@@ -68,6 +68,7 @@ Do not limit `develop` to those three sources. Every source, known or fallback, 
 - identify one executable feature or managed artifact scope;
 - record execution basis or authorization evidence;
 - extract acceptance criteria or equivalent success conditions;
+- extract done-when criteria or equivalent completion conditions when available;
 - extract constraints, non-goals, risks, and test expectations when available;
 - identify `.arbor/workflow/features.json` or equivalent feature registry when work belongs to a split feature plan;
 - identify the review document path and existing Context/Test Plan section for planned Arbor features;
@@ -154,7 +155,7 @@ If implementation reveals missing requirements, major scope changes, or invalid 
 
 If the brainstorm handoff lacks `.arbor/workflow/features.json`, `docs/review/<feature>-review.md`, or equivalent feature/review context with test scope, return `needs_brainstorm`; do not create the missing brainstorm-owned context inside `develop`.
 
-In the review handoff, record that the source was `brainstorm`, include the selected feature id/title, link or summarize the review context when available, and map implementation/tests back to the upstream acceptance criteria and planned test scope.
+In the review handoff, record that the source was `brainstorm`, include the selected feature id/title, link or summarize the review context when available, and map implementation/tests back to the upstream acceptance criteria, done-when criteria, and planned test scope.
 
 ## Execution Basis Contract
 
@@ -232,7 +233,7 @@ This matrix captures common upstream examples, not every possible valid source.
 
 | Source | Main purpose | Must consume | Missing input response | Review handoff emphasis |
 | --- | --- | --- | --- | --- |
-| `brainstorm` | Implement a user-approved or ready feature plan | selected feature, approach, goals/non-goals, acceptance criteria, review doc path, planned test scope, risks, authorization state | `needs_selection` for no selected feature; `needs_brainstorm` for unresolved design, missing review context, or missing approval | map implementation and self-tests to acceptance criteria and planned test scope |
+| `brainstorm` | Implement a user-approved or ready feature plan | selected feature, approach, goals/non-goals, acceptance criteria, done-when criteria, review doc path, planned test scope, risks, authorization state | `needs_selection` for no selected feature; `needs_brainstorm` for unresolved design, missing review context, or missing approval | map implementation and self-tests to acceptance criteria, done-when criteria, and planned test scope |
 | `intake` | Direct managed artifact or narrow active implementation | raw request, classification, target artifact/implementation target, persistence/write permission, existing review context, route reason | infer only narrow obvious scope when review context exists; otherwise `needs_brainstorm` or `route_correction` | explain inferred scope from raw request and append to existing review context |
 | `converge` | Apply evaluator-requested corrections | review path, evaluator findings, requested correction scope, replay targets, prior rounds | `blocked` if review/finding evidence is missing; `needs_brainstorm` if requirements changed | append new developer round and reference evaluator finding ids |
 | fallback source | Execute a valid handoff from another source | raw handoff, scope, authorization evidence, success conditions, constraints, test expectations | `blocked` for missing authorization; `needs_selection` for missing scope; `needs_brainstorm` for missing success conditions or design decisions | explain source identity, inferred contract, and evidence pointers |
@@ -245,6 +246,7 @@ The develop unit should be clear enough for downstream evaluation:
 
 - intended outcome;
 - upstream acceptance criteria or equivalent success conditions;
+- upstream done-when criteria or equivalent completion conditions;
 - changed files or artifacts after implementation;
 - developer self-test evidence;
 - evaluator focus.
@@ -284,9 +286,11 @@ If a test cannot run, record:
 - residual risk;
 - recommended evaluator replay.
 
+The done-when verification thread is coverage evidence, not a fixed testing recipe. Map each self-test row to a planned check, acceptance criterion, done-when criterion, evaluator finding, or replay target. If a done-when criterion cannot be covered by developer evidence, record the verification gap and keep the handoff out of `ready_for_evaluate` unless the brainstorm plan explicitly assigns that proof to independent evaluation or release.
+
 Developer self-test is not independent validation. Passing self-tests should route to `release` for a developer checkpoint, not directly to `evaluate`, `converge`, or finalization release.
 
-For `ready_for_evaluate`, `planned_test_coverage` must be non-empty, concrete passing check evidence must be present, and `uncovered_planned_tests` must be empty. Concrete result evidence comes from passed self-test table rows or passed `verification_checks` for content checks, structure checks, dry runs, schema checks, compile/lint/type checks, or other checks appropriate to the artifact. Raw command, unit-test, and scenario fields identify targets; they do not prove results by themselves.
+For `ready_for_evaluate`, `planned_test_coverage` must be non-empty, done-when criteria must be covered or explicitly assigned to later evaluation/release evidence, concrete passing check evidence must be present, and `uncovered_planned_tests` must be empty. Concrete result evidence comes from passed self-test table rows or passed `verification_checks` for content checks, structure checks, dry runs, schema checks, compile/lint/type checks, or other checks appropriate to the artifact. Raw command, unit-test, and scenario fields identify targets; they do not prove results by themselves.
 
 Each `verification_checks` item must be replayable evidence, not a vague claim. Record the inspected `artifact`, the `check` performed, the `expected_result`, the `actual_result`, and the pass/fail `result`. Avoid entries such as `looks good`, `manual review passed`, or `checked output`; they do not tell `evaluate` what to attack.
 
@@ -367,6 +371,7 @@ The review entry must include:
 - behavioral impact;
 - likely affected adjacent features;
 - acceptance criteria;
+- done-when criteria;
 - mapping from brainstorm planned verification scope to developer self-tests;
 - a detailed self-test table with category, check, evidence, expected, actual, result, and covers;
 - developer self-test commands and results;
@@ -587,14 +592,15 @@ Before returning:
 3. Did I record any material deviation from the upstream plan?
 4. Did I preserve unrelated user work?
 5. Did I run appropriate developer self-tests or record why not?
-6. Did I append the developer review handoff under `docs/review/` when the run reached handoff state?
-7. Did the appended Developer Round include a detailed self-test table for `evaluate`?
-8. Did I avoid unapproved case-specific defensive programming, or document a generalized fallback chain at the lowest appropriate layer?
-9. Did every self-test table row use specific `covers`, and did raw self-test fields stay as identifiers instead of result summaries?
-10. Did the output statuses match the terminal-state matrix?
-11. Did I list changed files, impact, tests, risks, and evaluator focus?
-12. Did I route to `release` only from `ready_for_evaluate`, with machine-readable checkpoint intent before `evaluate`?
-13. Did the visible response expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
-14. Did the visible response explain the result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
+6. Did I map self-tests to done-when criteria or record the verification gap?
+7. Did I append the developer review handoff under `docs/review/` when the run reached handoff state?
+8. Did the appended Developer Round include a detailed self-test table for `evaluate`?
+9. Did I avoid unapproved case-specific defensive programming, or document a generalized fallback chain at the lowest appropriate layer?
+10. Did every self-test table row use specific `covers`, and did raw self-test fields stay as identifiers instead of result summaries?
+11. Did the output statuses match the terminal-state matrix?
+12. Did I list changed files, impact, tests, risks, and evaluator focus?
+13. Did I route to `release` only from `ready_for_evaluate`, with machine-readable checkpoint intent before `evaluate`?
+14. Did the visible response expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
+15. Did the visible response explain the result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.

@@ -21,6 +21,7 @@ Minimum evidence:
   - `checkpoint_develop`: Context/Test Plan and latest Developer Round;
   - `checkpoint_evaluate`: Context/Test Plan, latest Developer Round, latest Evaluator Round, evaluator terminal state, feature registry signal, and blocking finding count;
   - `finalize_feature`: Convergence Round or equivalent convergence packet plus latest Developer Round and Evaluator Round references;
+- verification evidence for done-when criteria when the brainstorm review context defines them;
 - requested release action;
 - git status, selected files, dirty scope, and branch/remotes when relevant;
 - replayable `checkpoint_authorization` evidence for local checkpoint commits, with `source=user` or `source=policy`;
@@ -35,6 +36,7 @@ Safe local preparation:
 
 - inspect git status and diffs;
 - run release-readiness checks;
+- check that verification evidence exists for done-when criteria without re-evaluating correctness;
 - prepare selected file list;
 - classify dirty scope as `clean`, `selected_only`, `unrelated`, or `unknown`;
 - draft commit message;

@@ -30,7 +30,7 @@ Use `evaluate` for:
 - independent validation of implemented Arbor features or managed artifacts;
 - replaying developer self-tests;
 - running additional unit, scenario, edge, negative, mutation, static, compile, lint, schema, or coverage checks;
-- checking whether implementation matches brainstorm acceptance criteria and test plan;
+- checking whether implementation matches brainstorm acceptance criteria, done-when criteria, and test plan;
 - finding defects, missing test coverage, scope drift, and adjacent regressions;
 - appending evaluator evidence to `docs/review/`;
 - producing structured findings for `converge`.
@@ -91,6 +91,7 @@ The review document must contain:
 
 - brainstorm Context/Test Plan section;
 - acceptance criteria;
+- done-when criteria when present;
 - required unit tests;
 - required scenario tests;
 - edge cases and negative cases;
@@ -101,7 +102,7 @@ If the review document is missing or lacks brainstorm/developer context, return 
 
 When `review_append.status=appended`, `review_append.path` must match `source.review_doc_path`.
 
-For completed evaluation states, the loaded review context must include acceptance criteria and at least one planned test or evaluator-focus dimension: unit tests, scenario tests, edge cases, negative cases, or evaluator focus. `planned_scope_coverage` must map evaluation work back to that loaded scope.
+For completed evaluation states, the loaded review context must include acceptance criteria, done-when criteria when present, and at least one planned test or evaluator-focus dimension: unit tests, scenario tests, edge cases, negative cases, or evaluator focus. `planned_scope_coverage` must map evaluation work back to that loaded scope.
 
 `planned_scope_coverage` entries must name the specific loaded planned item they cover using a stable mapping such as `acceptance:<criterion>`, `unit:<planned test>`, `scenario:<planned scenario>`, `edge:<edge case>`, `negative:<negative case>`, `focus:<evaluator focus>`, `replay:<target>`, or `developer_replay:<target>`. The text after the prefix must match the loaded review scope or replay target. Generic or unrelated entries such as `covered`, `acceptance:covered`, `unit:checked`, or `acceptance:unrelated payment behavior` are not auditable.
 
@@ -114,6 +115,7 @@ Minimum evaluation surface:
 - replay important developer commands or explain why they were not replayed;
 - inspect changed files/artifacts;
 - map checks to brainstorm acceptance criteria;
+- map checks to done-when criteria when present;
 - cover required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus;
 - add at least one independent check for completed evaluation unless the change is documentation-only and the review plan justifies content/scenario checks instead;
 - for accepted evaluations, add at least two independent evaluator check categories;
@@ -134,6 +136,8 @@ If planned scope includes unit-level behavior, acceptance needs an independent u
 For workflow, skill, router, plugin, prompt-routing, or UI-facing changes, acceptance should include a realistic workflow or user scenario replay. If a live `codex exec`, Claude Code, browser, connector, or external model replay is too costly or unavailable, use the strongest deterministic substitute and record the live gap in the visible risks.
 
 For workflow, process-control, routing, plugin, prompt-routing, or output-layer changes, acceptance must also include a checker or harness negative probe that would fail under a broken contract. If the evidence is only an observable substitute because exact runtime telemetry was unavailable, label it as a weak pass in the evaluator evidence instead of presenting it as a fully proven route.
+
+For Arbor-managed features with done-when criteria, acceptance also requires a visible mapping from evaluator evidence to those criteria. A completed evaluation must not hide weak substitutes for live trigger behavior, rendered output, external models, connectors, or publish paths; label the substitute as a weak pass and name the exact proof that remains unverified.
 
 ## Findings
 
@@ -256,6 +260,7 @@ The structured `evaluate.v1` object is an internal workflow/runtime packet. `eva
     "brainstorm_context_loaded": true,
     "developer_round_loaded": true,
     "acceptance_criteria": [],
+    "done_when_criteria": [],
     "planned_unit_tests": [],
     "planned_scenario_tests": [],
     "edge_cases": [],
@@ -356,10 +361,11 @@ Before returning:
 4. Did I inspect actual files/artifacts when available?
 5. Did I replay or explicitly decline developer checks with reason?
 6. Did I add independent adversarial checks?
-7. Did I map checks to planned scope?
-8. Did I append an Evaluator Round to the same review document?
-9. Did I route completed evaluation states only to `release`, with machine-readable checkpoint intent before `converge`?
-10. Did I emit a feature-registry signal instead of directly finalizing status?
-11. Did every test-matrix row include a concrete representative example and every scenario row start with a human workflow situation instead of a synthetic id?
-12. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
-13. Did the visible response lead with verdict and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+7. Did I map checks to planned scope and done-when criteria?
+8. Did I label weak pass evidence when exact runtime proof was unavailable?
+9. Did I append an Evaluator Round to the same review document?
+10. Did I route completed evaluation states only to `release`, with machine-readable checkpoint intent before `converge`?
+11. Did I emit a feature-registry signal instead of directly finalizing status?
+12. Did every test-matrix row include a concrete representative example and every scenario row start with a human workflow situation instead of a synthetic id?
+13. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+14. Did the visible response lead with verdict and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?

@@ -99,12 +99,14 @@ intake -> brainstorm -> develop -> release(checkpoint_develop: local commit)
 -> converge -> release(finalize_feature)
 ```
 
-`intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry. After a successful `develop`, `release(checkpoint_develop)` creates an automatic local checkpoint commit before `evaluate`.
+`intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, done-when criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry. After a successful `develop`, `release(checkpoint_develop)` creates an automatic local checkpoint commit before `evaluate`.
 
 Two workflow artifacts carry state between skills:
 
 - `.arbor/workflow/features.json` is the feature queue and status index.
 - `docs/review/<feature>-review.md` is the shared evidence document for one feature, starting with the brainstorm Context/Test Plan and then accumulating Developer, Evaluator, Convergence, and Release rounds.
+
+Managed features also carry a done-when verification thread. `brainstorm` states what completion means, `develop` maps self-tests to those criteria, `evaluate` challenges them and labels weak pass substitutes, `converge` checks agreement against the original goal, and `release` checks that verification evidence exists before finalization or publish. This thread uses artifact-appropriate verification and does not force one test type or pull small direct tasks into Arbor.
 
 ### `arbor`
 
@@ -122,6 +124,7 @@ What it does well:
 - preparing `AGENTS.md` updates when the project guide or map needs to point the agent at changed durable context. The drift packet includes top-level project structure, mapped path validation, and `Project Map Drift Candidates`; when it reports `update-needed`, update the `Project Map` before handoff or release unless the missing or stale path is intentionally excluded (auto via `arbor.goal_constraint_drift` hook intent on Codex; user-invoked on Claude Code).
 - validating process-state facts before handoff, checkpoint, release, or publish. `scripts/check_process_state.py` is read-only and checks the feature registry, review document links, phase evidence, short-term memory, and optional Release Round evidence without choosing implementation or test strategy.
 - guarding rendered workflow checkpoints so normal users see readable status, findings, decisions, and next steps instead of raw `*.v1` packets, route labels, terminal-state labels, or unexplained internal ids. `references/rendered-checkpoint-protocol.md` defines this output boundary for workflow checkpoints only; it is not a template for direct answers or a constraint on implementation strategy.
+- carrying done-when verification from planning through release so managed features show what completion means, how developer evidence covers it, how evaluation challenged it, and whether release has enough proof to finalize. `references/done-when-verification-thread.md` defines this evidence thread without prescribing implementation strategy or a single test type.
 
 On Codex, `AGENTS.md` is the reliable native startup bootstrap. `.codex/hooks.json` records project hook intents, but a fresh Codex prompt should not assume those intents already injected Arbor context. The generated `AGENTS.md` includes a Startup Protocol that tells the agent to load `AGENTS.md`, recent formatted git history, `.arbor/memory.md`, and `git status --short` before answering fresh-session, resumed-session, or project-overview prompts.
 
@@ -185,6 +188,7 @@ What it does well:
 - comparing approaches when there are real alternatives;
 - splitting broad work into independently testable features;
 - producing acceptance criteria and a shared review test plan before development;
+- defining done-when criteria so downstream evidence can prove the requested outcome;
 - creating `docs/review/<feature>-review.md` with the Context/Test Plan section for ready implementation work;
 - returning `route_correction` when a request is too direct or belongs to another skill.
 
@@ -205,6 +209,7 @@ What it does well:
 - recording why execution is authorized without owning the approval process;
 - giving the agent implementation freedom inside the accepted scope;
 - running developer self-tests against the brainstorm review test scope or recording why they could not run;
+- mapping developer self-tests to accepted done-when criteria;
 - appending developer review handoff evidence to the existing review document;
 - routing only completed developer handoffs to `release` for an automatic local checkpoint commit before `evaluate`.
 
@@ -225,6 +230,7 @@ What it does well:
 - loading the shared review document with brainstorm Context/Test Plan and Developer Round;
 - replaying developer self-tests when useful;
 - adding independent adversarial unit, scenario, edge, negative, mutation, static, schema, or coverage checks;
+- challenging done-when criteria and labeling weak pass evidence when exact runtime proof was unavailable;
 - appending Evaluator Round evidence to the same review document;
 - routing completed evaluation results to `converge`.
 
@@ -245,6 +251,7 @@ What it does well:
 
 - deciding whether develop and evaluate agree;
 - checking whether the accepted result still satisfies brainstorm goals, acceptance criteria, non-goals, and test scope;
+- checking whether developer and evaluator evidence satisfies the done-when criteria;
 - routing implementation/test findings back to `develop`;
 - routing planning contradictions or missing brainstorm evidence back to `brainstorm`;
 - routing missing developer/evaluator evidence to the owner of that evidence;
@@ -266,6 +273,7 @@ What it does well:
 
 - checkpointing developer and evaluator evidence before the next workflow skill runs, including a local checkpoint commit after successful `develop`;
 - verifying convergence evidence and release readiness for the current feature;
+- checking that required done-when verification evidence exists before finalization or publish;
 - enforcing the git convention `<type>[optional scope]: <description>` with optional body and footers;
 - gating finalization commit, push, PR, tag, and publish behind explicit user authorization;
 - appending Release Round evidence to the review document;
@@ -415,6 +423,13 @@ startup guidance concise, move task-specific methods into skills or referenced
 docs, keep unresolved state in `.arbor/memory.md`, keep review evidence in
 `docs/review/`, and fetch volatile external context through tools or links. This
 guard is about where context lives, not how the agent must reason or implement.
+
+Done-when verification follows
+`plugins/arbor/skills/arbor/references/done-when-verification-thread.md`.
+Managed work should state task-appropriate done-when criteria, map developer and
+evaluator evidence back to those criteria, label weak pass substitutes, and let
+release check evidence existence without re-evaluating correctness. This thread
+does not force one test type or route small direct tasks into Arbor.
 
 Real routing replay reports include user-level scenario metadata and
 classification counts for stable pass, weak pass, wrong route,

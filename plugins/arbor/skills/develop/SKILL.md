@@ -29,8 +29,8 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
 3. **Select scope**: identify the selected feature or managed artifact. If multiple independent units exist with no selection, stop with `needs_selection`.
 4. **Review upstream critically**: verify acceptance criteria, constraints, risks, feature registry path, review document path, and brainstorm test expectations are usable. If not, stop with `needs_brainstorm`.
 5. **Implement freely within scope**: use repo conventions and senior engineering judgment. Record material deviations.
-6. **Self-test against the plan**: design and run developer checks that cover the artifact-appropriate verification scope from the brainstorm review document. Record any uncovered planned checks. When using `verification_checks`, make each item replayable: name the inspected artifact, the check performed, the expected result, the actual result, and the result. For `ready_for_evaluate`, only `passed` verification checks count as completed evidence; skipped, failed, blocked, or not-run checks must be reflected in `uncovered_planned_tests`, `not_run`, or a non-ready terminal state.
-7. **Append handoff**: append a Developer Round to the same existing review document named by `source.review_doc_path`. Do not create the Context/Test Plan section. Include a detailed self-test table so `evaluate` can see what was tested, what passed or failed, what was skipped, and which planned checks each row covers.
+6. **Self-test against the plan**: design and run developer checks that cover the artifact-appropriate verification scope and done-when criteria from the brainstorm review document. Record any uncovered planned checks. When using `verification_checks`, make each item replayable: name the inspected artifact, the check performed, the expected result, the actual result, and the result. For `ready_for_evaluate`, only `passed` verification checks count as completed evidence; skipped, failed, blocked, or not-run checks must be reflected in `uncovered_planned_tests`, `not_run`, or a non-ready terminal state.
+7. **Append handoff**: append a Developer Round to the same existing review document named by `source.review_doc_path`. Do not create the Context/Test Plan section. Include a detailed self-test table so `evaluate` can see what was tested, what passed or failed, what was skipped, and which planned checks or done-when criteria each row covers.
 8. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the selected feature/artifact, changed paths, current developer checkpoint, unresolved risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
 9. **Set checkpoint policy**: default to `must_stop`; use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no material decisions, deviations, skipped checks, or risks need user review.
 10. **Guard continuation semantics**: if implementation reaches `ready_for_evaluate`, make the next independent evaluation step explicit and do not use final-completion language.
@@ -78,6 +78,7 @@ For any upstream source, known or fallback, consume the same minimum contract:
 - executable scope;
 - execution authorization evidence;
 - acceptance criteria or equivalent success conditions;
+- done-when criteria or equivalent completion conditions, when available;
 - constraints, non-goals, risks, and test expectations when available;
 - review document path with brainstorm-owned Context/Test Plan when the source is a planned Arbor feature;
 - feature registry path, normally `.arbor/workflow/features.json`, when the source is part of a split feature plan;
@@ -89,11 +90,23 @@ Set `source.from_skill` to the known skill name when the source is `brainstorm`,
 
 ### `brainstorm`
 
-Consume the selected feature, recommended approach, goals, non-goals, constraints, acceptance criteria, feature registry path, review document path, brainstorm verification scope, risks, evidence pointers, and execution basis.
+Consume the selected feature, recommended approach, goals, non-goals, constraints, acceptance criteria, done-when criteria, feature registry path, review document path, brainstorm verification scope, risks, evidence pointers, and execution basis.
 
 If `brainstorm` ended in `ready_for_user_review`, require user approval evidence. If it ended in `ready_for_develop`, record that terminal state as the authorization source.
 
 If the brainstorm handoff lacks `docs/review/<feature>-review.md` or an equivalent review context with test scope, return `needs_brainstorm` instead of creating it inside `develop`.
+
+## Done-When Verification Thread
+
+For Arbor-managed features, `develop` continues the done-when verification thread without turning it into a coding constraint. Implement normally inside the accepted scope, then map self-tests to done-when criteria and planned verification items.
+
+Rules:
+
+- Each successful self-test table row must name the planned check, acceptance criterion, done-when criterion, evaluator finding, or replay target it covers.
+- A row that only says the code was inspected, looks good, or generally covers the plan is not enough.
+- If a done-when criterion cannot be covered by developer self-test, record the verification gap in `uncovered_planned_tests`, `not_run`, risks, and the Developer Round.
+- Use the strongest artifact-appropriate check available; do not force one test type when content, structure, rendered output, static contract, or scenario evidence is the correct proof.
+- `ready_for_evaluate` requires no uncovered done-when criteria unless the brainstorm plan explicitly assigned that proof to independent evaluation or release.
 
 ### `intake`
 
@@ -357,7 +370,7 @@ Before returning:
 2. Did I record execution authorization evidence or correctly mark authorization as not required?
 3. Did I record material deviations from the upstream plan?
 4. Did I preserve unrelated user work?
-5. Did I map developer self-tests to the brainstorm review verification scope?
+5. Did I map developer self-tests to the brainstorm review verification scope and done-when criteria?
 6. Did I record any planned checks I could not cover?
 7. Did I append developer review handoff evidence, including the detailed self-test table, to the same existing review document named by `source.review_doc_path` when the run reached handoff state?
 8. Did I avoid unapproved case-specific defensive programming, or document a generalized fallback chain at the lowest appropriate layer?
