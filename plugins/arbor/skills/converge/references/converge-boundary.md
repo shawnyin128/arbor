@@ -122,6 +122,7 @@ Use when:
 - evaluator evidence checks decision drift and hidden decision conflict when a decision trace handoff is present;
 - developer evidence records implementation-time decisions and decision deviations against decision invariants when material;
 - evaluator evidence checks optional delegation packet and effort budget results when delegation was used;
+- evaluator evidence checks final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, trace evidence, and weak-pass gaps for workflow-facing changes;
 - round limit has not been reached.
 
 Action:
@@ -190,6 +191,12 @@ Action:
 - append a Convergence Round or blocker packet explaining which evidence owner must run next.
 
 The evidence route must match the missing owner. Do not send missing Developer Round evidence to `brainstorm`, and do not send missing brainstorm criteria or goals to `evaluate`.
+
+## Outcome Evidence
+
+Convergence is outcome-first. Use evaluator evidence to decide whether final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, and trace evidence agree with the brainstorm goal. Do not require fixed path matching, exact turn-by-turn replay, LLM judges, subagents, worktrees, fan-out execution, or one universal test type by default.
+
+If evaluator evidence explicitly marks a deterministic substitute as a weak pass, check whether the remaining proof is required by the brainstorm goal. Exact path evidence should block convergence only when route, checkpoint order, startup behavior, release policy, or trace behavior is the claimed outcome.
 
 ## Next Feature Selection
 

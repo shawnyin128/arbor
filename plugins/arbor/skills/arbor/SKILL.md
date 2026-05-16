@@ -114,6 +114,12 @@ Use `references/delegation-packet-effort-budget.md` only when optional delegatio
 
 This is advisory, not a default multi-agent orchestration layer. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default. The guidance must not require subagents or worktrees, fan-out execution, parallel coding, fixed tool-call counts, or a fixed implementation strategy.
 
+### Outcome Evaluation And Observability
+
+Use `references/outcome-eval-observability.md` to keep workflow validation outcome-first. Evaluate final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, real workflow replay, and trace evidence before arguing about exact path matching.
+
+This guidance must not require LLM judges, fixed path matching, exact turn-by-turn replay, subagents, worktrees, fan-out execution, or one universal test type by default. When exact runtime telemetry or live proof is unavailable, label the strongest deterministic substitute as a weak pass and name the remaining proof.
+
 ### Loop Health Advisory
 
 Use `references/loop-health-advisory.md` when a develop/evaluate correction loop shows repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination. The advisory helps `evaluate` and `converge` recommend a narrower correction, re-brainstorming, stronger runtime replay, or a fresh-session handoff when the loop is becoming unreliable.
@@ -161,6 +167,7 @@ Claude Code does not have an equivalent project-level hook intent file. It ships
 - `references/done-when-verification-thread.md`: cross-skill done-when criteria and verification evidence thread
 - `references/decision-trace-handoff.md`: decision trace handoff for key decisions, implementation-time decisions, decision drift checks, and optional delegation boundaries
 - `references/delegation-packet-effort-budget.md`: optional delegation packet and effort budget guidance for bounded evidence gathering
+- `references/outcome-eval-observability.md`: outcome-first evaluation and observable proof guidance for workflow changes
 - `references/loop-health-advisory.md`: advisory for repeated failures, evidence conflicts, weak replay, context contamination, and fresh-session handoff recommendations
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order

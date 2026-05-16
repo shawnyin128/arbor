@@ -1088,6 +1088,193 @@ def validate_delegation_packet_effort_budget_contract(plugin_root: Path, errors:
             check(errors, term in text, f"{rel_path} missing delegation packet term `{term}`")
 
 
+def validate_outcome_eval_observability_contract(plugin_root: Path, errors: list[str]) -> None:
+    reference = plugin_root / "skills" / "arbor" / "references" / "outcome-eval-observability.md"
+    check(errors, reference.is_file(), "outcome eval observability reference must exist")
+    if reference.is_file():
+        text = reference.read_text(encoding="utf-8")
+        for term in (
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process-state checks",
+            "git commits, file side effects",
+            "real runtime replay",
+            "trace evidence",
+            "weak pass",
+            "must not require LLM judges",
+            "fixed path matching",
+            "exact turn-by-turn path",
+            "one universal test type",
+        ):
+            check(errors, term in text, f"outcome eval observability reference missing term `{term}`")
+
+    required = {
+        "skills/arbor/SKILL.md": [
+            "Outcome Evaluation And Observability",
+            "references/outcome-eval-observability.md",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "trace evidence",
+            "must not require LLM judges",
+            "fixed path matching",
+            "exact turn-by-turn replay",
+            "weak pass",
+        ],
+        "skills/evaluate/SKILL.md": [
+            "Outcome Evaluation And Observability",
+            "outcome-first",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "trace evidence",
+            "Do not require LLM judges",
+            "fixed path matching",
+            "exact turn-by-turn replay",
+            "weak pass",
+        ],
+        "skills/develop/SKILL.md": [
+            "observable outcomes",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "trace evidence",
+            "weak-pass gap",
+            "Do not require LLM judges",
+            "fixed path matching",
+            "exact turn-by-turn replay",
+        ],
+        "skills/develop/references/develop-boundary.md": [
+            "observable outcome coverage",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "trace evidence",
+            "deferred weak-pass gaps",
+        ],
+        "skills/evaluate/references/evaluate-boundary.md": [
+            "Outcome Evaluation And Observability",
+            "outcome-first",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process-state checks",
+            "git commits, file side effects",
+            "realistic replay",
+            "trace evidence",
+            "Do not require fixed path matching",
+            "LLM judges",
+            "weak pass",
+        ],
+        "skills/converge/SKILL.md": [
+            "Outcome Evaluation And Observability",
+            "outcome evidence",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "trace evidence",
+            "fixed path matching",
+            "weak-pass gaps",
+        ],
+        "skills/converge/references/converge-boundary.md": [
+            "Outcome Evidence",
+            "outcome-first",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "trace evidence",
+            "fixed path matching",
+            "weak pass",
+        ],
+        "skills/release/SKILL.md": [
+            "outcome and observability evidence",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "weak-pass gap",
+            "trace evidence",
+            "Do not require LLM judges",
+            "fixed path matching",
+            "exact turn-by-turn replay",
+        ],
+        "skills/release/references/release-boundary.md": [
+            "Outcome And Observability Evidence",
+            "outcome and observability evidence",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "weak-pass gap",
+            "trace evidence",
+            "fixed path matching",
+            "LLM judges",
+        ],
+        "skills/arbor/references/real-workflow-chain-review.md": [
+            "Outcome evaluation",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "trace evidence",
+            "weak-pass gaps",
+            "fixed path matching",
+            "LLM judges",
+        ],
+    }
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is not None:
+        required["README.md"] = [
+            "outcome-first",
+            "final state",
+            "checkpoint outcomes",
+            "rendered output",
+            "review evidence",
+            "process state",
+            "git/file side effects",
+            "realistic replay",
+            "trace evidence",
+            "weak-pass gaps",
+            "outcome-eval-observability.md",
+            "does not require LLM judges",
+            "fixed path matching",
+        ]
+
+    for rel_path, terms in required.items():
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing outcome eval observability term `{term}`")
+
+
 def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
@@ -1199,6 +1386,7 @@ def main() -> int:
     validate_loop_health_advisory_contract(plugin_root, errors)
     validate_decision_trace_handoff_contract(plugin_root, errors)
     validate_delegation_packet_effort_budget_contract(plugin_root, errors)
+    validate_outcome_eval_observability_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 

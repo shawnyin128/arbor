@@ -27,6 +27,13 @@ captured `final-response.md`. These checks protect workflow readability; they do
 not prescribe implementation approach or apply to direct answers that correctly
 stay outside Arbor workflow.
 
+Outcome evaluation should inspect final state, checkpoint outcomes, rendered
+output, review evidence, process state, git/file side effects, realistic replay,
+trace evidence, and weak-pass gaps before demanding exact path matching. Exact
+route or turn-by-turn evidence is required only when the case's expected
+behavior is the route, checkpoint order, startup behavior, release policy, or
+trace surface itself. The runtime review does not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
+
 Routing replay reports must classify the observable result instead of hiding
 boundary uncertainty behind a single pass/fail label:
 

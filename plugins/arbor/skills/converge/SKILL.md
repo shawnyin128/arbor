@@ -59,6 +59,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 11. A loop-health advisory may recommend narrowing scope, re-brainstorming, exact runtime replay, or a fresh-session handoff, but it must not automatically clear context, spawn subagents, create worktrees, or require fan-out execution.
 12. Check decision trace consistency before marking work done. Unresolved decision drift, hidden decision conflict, or violated decision invariants must return the appropriate evidence or planning route.
 13. Do not require delegation to mark work done. When optional delegation packet evidence exists, use evaluator evidence to decide whether the objective, output format, boundaries, and effort budget were followed.
+14. Check outcome evidence before exact path matching. Mark work done only when developer and evaluator evidence agree on final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, trace evidence, and any weak-pass gaps relevant to the brainstorm goal.
 
 ## Route Rules
 
@@ -129,6 +130,12 @@ Before returning, self-check the captured visible response for the exact heading
 `converge` closes the loop only when the developer and evaluator evidence agrees with the brainstorm done-when criteria. It does not rerun evaluation or invent missing proof; it checks whether the evidence already appended by `develop` and `evaluate` is strong enough to justify completion.
 
 If done-when evidence is absent, generic, or only a weak pass for a criterion that required live proof, return the appropriate evidence or planning route instead of marking the feature done. If the weak pass was explicitly accepted by the brainstorm plan or by evaluator judgment with a visible residual risk, convergence may proceed only when that residual risk does not block the stated criteria.
+
+### Outcome Evaluation And Observability
+
+`converge` should compare the outcome evidence already produced by `develop` and `evaluate`: final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, and trace evidence. Do not require fixed path matching, exact turn-by-turn replay, LLM judges, subagents, worktrees, fan-out execution, or one universal test type by default.
+
+If evaluator evidence labels a deterministic substitute as a weak pass, decide whether the named remaining proof blocks the brainstorm goal. Weak-pass gaps block convergence only when exact runtime telemetry, rendered final output, publish behavior, or trace proof was part of the required outcome.
 
 ### Decision Trace Handoff
 

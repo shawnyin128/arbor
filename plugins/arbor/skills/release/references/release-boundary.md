@@ -22,6 +22,7 @@ Minimum evidence:
   - `checkpoint_evaluate`: Context/Test Plan, latest Developer Round, latest Evaluator Round, evaluator terminal state, feature registry signal, and blocking finding count;
   - `finalize_feature`: Convergence Round or equivalent convergence packet plus latest Developer Round and Evaluator Round references;
 - verification evidence for done-when criteria when the brainstorm review context defines them;
+- outcome and observability evidence for workflow-facing finalization or publish: rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof;
 - requested release action;
 - git status, selected files, dirty scope, and branch/remotes when relevant;
 - replayable `checkpoint_authorization` evidence for local checkpoint commits, with `source=user` or `source=policy`;
@@ -37,6 +38,7 @@ Safe local preparation:
 - inspect git status and diffs;
 - run release-readiness checks;
 - check that verification evidence exists for done-when criteria without re-evaluating correctness;
+- check that outcome and observability evidence exists for workflow-facing release gates without re-evaluating correctness;
 - prepare selected file list;
 - classify dirty scope as `clean`, `selected_only`, `unrelated`, or `unknown`;
 - draft commit message;
@@ -136,6 +138,12 @@ Commit, stage, push, PR, tag, or publish success must not proceed from `unrelate
 For public action success, the requested action and recorded effect must match. For example, a `push` request cannot report `external_effect=tag`, even if tag metadata is present.
 
 ## Route Decisions
+
+### Outcome And Observability Evidence
+
+For workflow-facing finalization or publish, `release` checks evidence existence rather than correctness re-evaluation. Required evidence may include rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof.
+
+Release must not require LLM judges, fixed path matching, exact turn-by-turn replay, subagents, worktrees, fan-out execution, or one universal test type by default. If evaluator or convergence evidence names a weak-pass gap, release should preserve that risk in release evidence instead of silently presenting the feature as fully live-proven.
 
 ### Checkpointed
 

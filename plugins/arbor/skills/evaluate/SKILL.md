@@ -81,6 +81,7 @@ Only completed evaluation states (`accepted`, `changes_requested`, `needs_brains
 12. Loop-health advisories are evidence labels and recommendations, not implementation fixes. Mark repeated evidence conflicts, weak replay evidence, or context contamination when found, then route the next owner instead of fixing implementation directly.
 13. For brainstorm-backed work with a decision trace handoff, check decision drift, hidden decision conflict, missing implementation-time decisions, and unresolved decision deviations. Evaluate does not fix implementation directly.
 14. If developer evidence used an optional delegation packet, evaluate whether the objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions were followed. If no delegation was used, do not penalize single-threaded work when the task was direct, simple, tightly coupled, or otherwise not separable.
+15. Keep workflow validation outcome-first: inspect final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, and trace evidence before requiring exact path matching. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
 
 ## Anti-Patterns
 
@@ -150,6 +151,12 @@ No. `accepted` only means independent evaluation did not find a blocking issue. 
 When developer evidence includes a delegation packet, evaluate the packet as evidence: objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions should be clear enough to prevent duplicated work, missing coverage, and context loss.
 
 Do not require delegation for acceptance. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default. Evaluation should flag delegation only when it violated boundaries, exceeded effort without justification, duplicated work, missed the requested output format, or hid decisions from the review evidence.
+
+### Outcome Evaluation And Observability
+
+For workflow-facing changes, evaluate the outcome and the observable evidence before arguing about the exact path. Start from the final state the user or workflow can inspect: rendered output, review rounds, feature registry status, session memory, git commits, file side effects, real workflow replay, and trace evidence when available.
+
+Exact route or sequence proof still matters when the feature changes routing, checkpoint order, release policy, or startup behavior. When exact runtime telemetry or live proof is unavailable, use the strongest deterministic substitute, label it as a weak pass, and name the remaining proof. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, subagents, worktrees, fan-out execution, or one universal test type by default.
 
 ### Strict Acceptance Gate
 

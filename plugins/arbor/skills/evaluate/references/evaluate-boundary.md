@@ -33,6 +33,7 @@ Use `evaluate` for:
 - checking whether implementation matches brainstorm acceptance criteria, done-when criteria, and test plan;
 - checking decision drift, hidden decision conflict, implementation-time decisions, and decision deviations against the brainstorm decision trace handoff;
 - checking optional delegation packet evidence when delegation was used, including objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions;
+- checking final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, and trace evidence for workflow-facing changes;
 - finding defects, missing test coverage, scope drift, and adjacent regressions;
 - marking loop-health risks when evidence conflicts, weak replay evidence, context contamination, or repeated same-class failures make the next correction unreliable;
 - appending evaluator evidence to `docs/review/`;
@@ -148,6 +149,12 @@ For Arbor-managed features with done-when criteria, acceptance also requires a v
 For Arbor-managed features with a decision trace handoff, acceptance also requires checking decision drift and hidden decision conflict. If developer evidence omits implementation-time decisions or decision deviations for material choices, request a developer handoff correction instead of accepting by artifact inspection alone. Evaluate does not fix implementation directly.
 
 For Arbor-managed features with optional delegation packet and effort budget evidence, acceptance requires checking whether the packet's objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions were followed. Do not require delegation for direct answers, simple edits, tightly coupled coding, or tightly coupled workflow changes.
+
+### Outcome Evaluation And Observability
+
+For workflow-facing changes, acceptance should be outcome-first. Inspect final state and checkpoint outcomes first: rendered output, review document rounds, feature registry status, session memory, process-state checks, git commits, file side effects, realistic replay, and trace evidence when available.
+
+Do not require fixed path matching, exact turn-by-turn replay, LLM judges, subagents, worktrees, fan-out execution, or one universal test type by default. Exact route or sequence proof is required only when the feature claims that route, checkpoint order, release policy, startup behavior, or trace surface as the behavior under test. If exact runtime telemetry, rendered final output, external connector behavior, or publish behavior is unavailable, label the strongest deterministic substitute as a weak pass and name the remaining proof.
 
 ## Loop Health Advisory
 

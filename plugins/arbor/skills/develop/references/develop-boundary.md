@@ -393,6 +393,7 @@ The review entry must include:
 - mapping from brainstorm planned verification scope to developer self-tests;
 - implementation-time decisions and decision deviations against the decision trace handoff;
 - delegation packet result or single-threaded rationale when optional delegation guidance materially affected implementation;
+- observable outcome coverage for workflow-facing changes, including final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, trace evidence, and deferred weak-pass gaps when exact live proof is unavailable;
 - a detailed self-test table with category, check, evidence, expected, actual, result, and covers;
 - developer self-test commands and results;
 - scenario tests and results;

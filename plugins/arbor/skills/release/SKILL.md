@@ -70,6 +70,7 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 18. Keep user-facing release output status-only; detailed handoff, authorization, and evidence fields are for structured state, review documents, or debug views.
 19. Emit a checkpoint policy that distinguishes safe internal continuation from user-stopping external actions.
 20. Do not leave unresolved uncommitted Arbor workflow state without an up-to-date `.arbor/memory.md`; do not leave resolved memory entries after a successful commit or publish makes git history authoritative.
+21. For workflow-facing finalization or publish, check that outcome and observability evidence exists: rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
 
 ## Route Rules
 

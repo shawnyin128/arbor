@@ -122,6 +122,8 @@ Rules:
 - Use the strongest artifact-appropriate check available; do not force one test type when content, structure, rendered output, static contract, or scenario evidence is the correct proof.
 - `ready_for_evaluate` requires no uncovered done-when criteria unless the brainstorm plan explicitly assigned that proof to independent evaluation or release.
 
+For workflow-facing changes, record which observable outcomes the developer checks cover: final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, and trace evidence when available. If exact runtime telemetry or live proof is deferred to `evaluate` or `release`, record the deferred proof or weak-pass gap instead of hiding it. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
+
 ### `intake`
 
 Use only for clear managed artifacts or narrow active implementation. Consume raw request, classification, target artifact or implementation target, persistence/write permission, active context, warnings, and route reason.
