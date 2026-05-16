@@ -854,7 +854,11 @@ def make_cases() -> dict[str, CaseSpec]:
             "converge loop routing",
             agent_prompt("R09", "$converge decide whether the review loop in docs/review/F-review.md has converged."),
             setup_review_context,
-            [*common_assertions, assert_any_contains("converge", "develop", "release", "blocking")],
+            [
+                *common_assertions,
+                assert_any_contains("converge", "develop", "release", "blocking"),
+                assert_rendered_table("Convergence Decision", "Why This Decision", "Agreement Check", "Goal Alignment", "Remaining Issues", "Next Step"),
+            ],
         ),
         CaseSpec(
             "R10",
@@ -981,7 +985,11 @@ def make_cases() -> dict[str, CaseSpec]:
             "review loop does not close from developer self-test alone",
             agent_prompt("R26", "$converge decide whether F-review can close. Do not accept from developer self-test alone."),
             setup_review_context,
-            [*common_assertions, assert_any_contains("evaluate", "evaluator", "missing", "cannot", "not")],
+            [
+                *common_assertions,
+                assert_any_contains("evaluate", "evaluator", "missing", "cannot", "not"),
+                assert_rendered_table("Convergence Decision", "Why This Decision", "Agreement Check", "Goal Alignment", "Remaining Issues", "Next Step"),
+            ],
         ),
         CaseSpec(
             "R27",

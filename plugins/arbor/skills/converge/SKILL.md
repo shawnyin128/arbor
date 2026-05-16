@@ -111,6 +111,17 @@ Do not include a "What Will Be Preserved" section in the visible response. Persi
 
 `Agreement Check` and `Remaining Issues` must be Markdown tables with natural-language cells. Do not expose field names, route assignments, terminal-state strings, fixture ids, synthetic feature ids, finding ids, or unexplained shorthand. Describe the user-visible situation instead, such as "the reviewer found a blocking regression" rather than a finding id.
 
+The normal visible final response MUST include these exact Markdown headings, in this order, even when a section has only one sentence or a not-applicable table:
+
+- `**Convergence Decision**`
+- `**Why This Decision**`
+- `**Agreement Check**`
+- `**Goal Alignment**`
+- `**Remaining Issues**`
+- `**Next Step**`
+
+Before returning, self-check the captured visible response for the exact headings above and for Markdown tables under `Agreement Check` and `Remaining Issues`. If any heading or required table is missing, rewrite the visible response before finishing. A shorter prose-only convergence checkpoint is not acceptable.
+
 ## Done-When Verification Thread
 
 `converge` closes the loop only when the developer and evaluator evidence agrees with the brainstorm done-when criteria. It does not rerun evaluation or invent missing proof; it checks whether the evidence already appended by `develop` and `evaluate` is strong enough to justify completion.

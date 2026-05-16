@@ -597,6 +597,23 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "checker or harness negative probe",
             "weak pass",
         ],
+        "skills/converge/SKILL.md": [
+            "The normal visible final response MUST include these exact Markdown headings",
+            "`**Convergence Decision**`",
+            "`**Why This Decision**`",
+            "`**Agreement Check**`",
+            "`**Goal Alignment**`",
+            "`**Remaining Issues**`",
+            "`**Next Step**`",
+            "A shorter prose-only convergence checkpoint is not acceptable",
+        ],
+        "skills/converge/references/converge-boundary.md": [
+            "The normal visible final response MUST include these exact Markdown headings",
+            "`**Convergence Decision**`",
+            "`**Goal Alignment**`",
+            "Markdown tables under `Agreement Check` and `Remaining Issues`",
+            "A shorter prose-only convergence checkpoint is not acceptable",
+        ],
     }
     repo_root = repo_root_from_plugin(plugin_root)
     if repo_root is not None:
@@ -921,6 +938,7 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "CLASS_WRONG_ROUTE",
         "CLASS_FLAKY_AMBIGUOUS",
         "CLASS_BLOCKED_RUNTIME",
+        'assert_rendered_table("Convergence Decision", "Why This Decision", "Agreement Check", "Goal Alignment", "Remaining Issues", "Next Step")',
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
     for category in (

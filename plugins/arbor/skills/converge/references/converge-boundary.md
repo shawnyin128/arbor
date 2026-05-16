@@ -55,6 +55,20 @@ Do not include a "What Will Be Preserved" section. Persistence and checkpoint de
 
 `Agreement Check` and `Remaining Issues` must be tables with user-readable cells. Keep internal ids, field names, terminal-state strings, route assignments, and finding ids out of primary visible text.
 
+The normal visible final response MUST include these exact Markdown headings, in
+this order:
+
+- `**Convergence Decision**`
+- `**Why This Decision**`
+- `**Agreement Check**`
+- `**Goal Alignment**`
+- `**Remaining Issues**`
+- `**Next Step**`
+
+Before returning, self-check that the visible response contains those exact
+headings and Markdown tables under `Agreement Check` and `Remaining Issues`.
+A shorter prose-only convergence checkpoint is not acceptable.
+
 ## Checkpoint And Automation Policy
 
 `converge` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint` and `ui.workflow_automation`:
