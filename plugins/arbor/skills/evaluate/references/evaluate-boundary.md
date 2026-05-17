@@ -314,6 +314,7 @@ The structured `evaluate.v1` object is an internal workflow/runtime packet. `eva
     "edge_negative_tests": [],
     "mutation_or_static_probes": [],
     "coverage": null,
+    "replay_conditions": [],
     "planned_scope_coverage": [],
     "blocked_checks": [],
     "findings": []
@@ -389,6 +390,21 @@ The only allowed automatic continuation is the explicit `develop_evaluate_conver
 
 `ui.workflow_automation` records whether that policy is enabled and eligible. Missing developer handoff, blocked evaluation, route correction, plan contradiction, or a finding that needs user judgment must keep the checkpoint at `must_stop`.
 
+## Replay Conditions Evidence
+
+When evaluation confidence depends on how evidence was replayed, evaluator
+evidence should preserve replay conditions instead of collapsing them into a
+generic pass/fail claim. Record the runtime target, source path or published
+cache, relevant command, environment blocker, infrastructure/environment versus
+workflow-contract classification, and weak-pass gap when those facts affect
+confidence.
+
+This is scoped evidence, not ceremony. Do not require heavyweight environment
+metadata for small direct tasks or artifact-only checks where the replay
+conditions do not affect the judgment. Use the strongest deterministic
+substitute when live telemetry is unavailable, label it as a weak pass, and
+name the remaining proof.
+
 ## Self-Review Checklist
 
 Before returning:
@@ -401,9 +417,10 @@ Before returning:
 6. Did I add independent adversarial checks?
 7. Did I map checks to planned scope and done-when criteria?
 8. Did I label weak pass evidence when exact runtime proof was unavailable?
-9. Did I append an Evaluator Round to the same review document?
-10. Did I route completed evaluation states only to `release`, with machine-readable checkpoint intent before `converge`?
-11. Did I emit a feature-registry signal instead of directly finalizing status?
-12. Did every test-matrix row include a concrete representative example and every scenario row start with a human workflow situation instead of a synthetic id?
-13. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
-14. Did the visible response lead with verdict and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+9. Did I record replay conditions when runtime target, source path or published cache, command, environment blocker, infrastructure failure, or weak-pass gap affected confidence?
+10. Did I append an Evaluator Round to the same review document?
+11. Did I route completed evaluation states only to `release`, with machine-readable checkpoint intent before `converge`?
+12. Did I emit a feature-registry signal instead of directly finalizing status?
+13. Did every test-matrix row include a concrete representative example and every scenario row start with a human workflow situation instead of a synthetic id?
+14. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+15. Did the visible response lead with verdict and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?

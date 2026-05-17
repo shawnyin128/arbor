@@ -23,9 +23,10 @@ Complete these steps in order:
 2. **Split intents**: separate compound user input when parts have different workflow boundaries.
 3. **Decide Arbor boundary**: classify each intent as Arbor-managed, outside Arbor, or context-dependent.
 4. **Decide persistence**: determine whether this creates backlog work, updates active state, writes an artifact, or writes nothing.
-5. **Choose route**: select only one declared workflow skill, `none`, or report a route gap.
-6. **Run self-check**: verify the decision does not hit an intake anti-pattern.
-7. **Return structured internal output**: emit the JSON-shaped decision for runtime handoff; do not produce primary user-facing prose.
+5. **Check authorization scope**: identify the blast radius the user actually authorized before routing or persistence.
+6. **Choose route**: select only one declared workflow skill, `none`, or report a route gap.
+7. **Run self-check**: verify the decision does not hit an intake anti-pattern.
+8. **Return structured internal output**: emit the JSON-shaped decision for runtime handoff; do not produce primary user-facing prose.
 
 ## Declared Workflow Skills
 
@@ -86,7 +87,8 @@ The terminal state is a structured intake decision that must immediately hand of
 9. Do not route every file edit into Arbor.
 10. Do not use `evaluate` for generic assessment.
 11. Do not route generic code review to `evaluate` unless it is attached to an Arbor develop handoff, current Arbor feature, or review packet.
-12. Do not produce primary user-facing prose; downstream output is the user-facing response.
+12. Do not treat permission for a small action as permission for a broader action.
+13. Do not produce primary user-facing prose; downstream output is the user-facing response.
 
 ## Visibility
 
@@ -164,6 +166,30 @@ The deciding factor is whether the task needs Arbor workflow control, not whethe
 - Context patch: do not create todo; attach to current context if possible.
 
 If the user says "do not modify anything", do not write workflow metadata without explicit permission.
+
+## Authorization Scope
+
+Before routing, classify the largest action the user actually authorized. This
+is a blast-radius check, not a sandbox implementation:
+
+- direct answer only;
+- project-local read or inspection;
+- project-local file edit;
+- Arbor workflow state mutation such as `.arbor/memory.md` or feature registry
+  updates;
+- internal checkpoint commit under an active Arbor checkpoint policy;
+- finalization commit;
+- public or externally visible action such as push, PR, tag, publish, network
+  write, or connector mutation.
+
+Do not infer a broader scope from a narrower one. "Look at this" does not
+authorize file edits; "make the local change" does not authorize finalization
+commit, push, PR, tag, publish, or connector side effects; and "release this"
+can authorize release preparation but not every public action unless the prompt
+clearly names it. If the requested action exceeds the authorized scope, route to
+`release` for release/public actions, route to `brainstorm` when product scope
+needs clarification, or keep the task direct and ask for permission through the
+normal assistant path when Arbor workflow control is unnecessary.
 
 ## Context Rules
 

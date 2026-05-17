@@ -56,6 +56,8 @@ If no declared skill fits, `intake` must return a route gap instead of inventing
 - classify the user input;
 - decide whether it is Arbor-managed;
 - split compound requests into multiple intents when needed;
+- identify the authorization scope and blast radius before routing or
+  persistence;
 - preserve the raw user request;
 - distinguish future backlog work from immediate active work;
 - decide whether workflow metadata should be written;
@@ -67,6 +69,8 @@ If no declared skill fits, `intake` must return a route gap instead of inventing
 `intake` must not:
 
 - turn all technical requests into Arbor workflow;
+- treat permission for a direct answer, local edit, workflow-state mutation, or
+  checkpoint as permission for a broader finalization/public action;
 - require complete requirements before capturing a future idea;
 - treat all repo file edits as Arbor-managed;
 - treat generic assessment as `evaluate`;
@@ -225,6 +229,25 @@ Clarification enriches an existing item; it does not replace the raw captured id
 - Existing backlog review: do not create new todo.
 
 If the user says "do not modify anything", `intake` must not write workflow metadata without explicit permission. In that case, preserve progress in conversation unless the user allows Arbor checkpoint files.
+
+## Authorization Scope
+
+`intake` should classify the largest action the user actually authorized before
+deciding route and persistence:
+
+| Scope | Examples | Intake Handling |
+| --- | --- | --- |
+| Direct answer | Explain, summarize, inspect without changes. | Usually outside Arbor unless the answer drives managed engineering work. |
+| Project-local read or edit | Read files, patch a local doc, update a small local artifact. | Direct or `develop` depending on workflow impact. |
+| Arbor workflow state mutation | Update `.arbor/memory.md`, `.arbor/workflow/features.json`, review docs, or managed workflow artifacts. | Arbor-managed when the mutation controls workflow state. |
+| Internal checkpoint commit | Save a develop/evaluate handoff under active checkpoint policy. | Route through `release` only when checkpoint evidence exists. |
+| Finalization commit | Commit the converged feature as a final user-visible repo change. | Route through `release` and require explicit authorization. |
+| Public or external action | Push, PR, tag, publish, network write, connector mutation, or marketplace sync. | Route through `release` or the relevant connector path and require explicit authorization for that exact action. |
+
+Do not infer a broader blast radius from a narrower phrase. "Go ahead" only
+inherits the active scope; it does not add push, PR, tag, publish, or connector
+side effects. "Release this" can authorize preparation, but the concrete
+external step still needs to be named or confirmed.
 
 ## Context Patches
 

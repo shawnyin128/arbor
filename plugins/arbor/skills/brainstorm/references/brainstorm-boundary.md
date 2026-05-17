@@ -207,6 +207,12 @@ Choose artifact targets by purpose:
 
 For ready Arbor-managed implementation work, `brainstorm` starts the done-when verification thread. It should describe what completion means in outcome language, map each criterion to artifact-appropriate verification, and name any weak evidence risk when exact live proof may not be available.
 
+Each done-when criterion should name the user-visible or workflow-visible
+outcome, the minimum acceptable proof, and the evidence owner when proof belongs
+to `develop`, `evaluate`, or `release`. Avoid vague placeholders such as "tests
+pass", "looks good", "verify it", or "coverage" unless the criterion also names
+the concrete artifact, command, scenario, expected result, and owner.
+
 Do not force one test type. A feature may need unit tests, scenario replay, content/structure checks, rendered-output inspection, static/schema checks, mutation probes, or live runtime evidence depending on what the feature changes. Small direct tasks stay outside this thread.
 
 ### Decision Trace Handoff

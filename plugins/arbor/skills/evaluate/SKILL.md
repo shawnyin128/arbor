@@ -32,7 +32,7 @@ You MUST complete these steps in order:
 3. **Load review context**: the review document named by the develop handoff must contain brainstorm Context/Test Plan and a Developer Round.
 4. **Inspect implementation evidence**: review changed files/artifacts, developer self-tests, planned test coverage, decision trace handoff, implementation-time decisions, decision deviations, uncovered planned tests, known risks, and replay targets.
 5. **Plan adversarial evaluation**: map brainstorm acceptance criteria, done-when criteria, decision invariants, required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus to concrete checks.
-6. **Run evaluation**: replay developer tests when useful, independently challenge the done-when criteria, check for decision drift and hidden decision conflict, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, mark loop-health risks when evidence conflicts, weak replay evidence, or context contamination appear, and record blocked checks.
+6. **Run evaluation**: replay developer tests when useful, independently challenge the done-when criteria, check for decision drift and hidden decision conflict, add independent unit/scenario/edge/negative checks, run coverage or static checks when the blast radius justifies it, include a negative control or mutation/static/contract probe for acceptance decisions, record replay conditions when runtime target, source path or published cache, command, environment blocker, infrastructure failure, or weak-pass gap affects confidence, mark loop-health risks when evidence conflicts, weak replay evidence, or context contamination appear, and record blocked checks.
 7. **Find bugs, not confirmation**: prioritize behavioral regressions, missing tests, contract drift, scope creep, and untested edge cases.
 8. **Append evaluator evidence**: append an Evaluator Round to the same review document. Do not overwrite brainstorm or developer rounds.
 9. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the evaluated feature/artifact, changed evidence paths, evaluator result, unresolved findings or risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
@@ -145,6 +145,21 @@ No. `accepted` only means independent evaluation did not find a blocking issue. 
 - Add adversarial probes for contract-critical behavior, negative cases, boundary cases, schema drift, or route mistakes.
 - For documentation or managed artifacts, use content, structure, and workflow scenario checks instead of pretending code tests are required.
 - If a check cannot run, record the command, blocker, and residual risk.
+
+### Replay Conditions Evidence
+
+When evaluation confidence depends on how evidence was replayed, record the
+replay conditions alongside the check instead of hiding them in prose. Useful
+facts include the runtime target, source path or published cache, relevant
+command, environment blocker, whether a failure is infrastructure/environment
+versus workflow contract, and any weak-pass gap left by using a deterministic
+substitute instead of exact live runtime telemetry.
+
+Do not require heavyweight environment metadata for small direct tasks or
+artifact-only checks where replay conditions do not affect confidence. The
+requirement applies when command/runtime/cache/source-path/environment facts
+would change the evaluator's judgment or a later reviewer needs them to replay
+the result.
 
 ### Delegation Packet And Effort Budget
 
@@ -326,6 +341,9 @@ Append an Evaluator Round to the same review document. Include:
 - additional evaluator checks and result;
 - planned test scope coverage;
 - blocked or skipped checks and residual risk;
+- replay conditions that affect confidence, including runtime target, source
+  path or published cache, command, environment blocker, infrastructure versus
+  workflow-contract classification, and weak-pass gap when relevant;
 - findings with id, priority, location, evidence, recommendation, and whether they block acceptance;
 - acceptance verdict;
 - recommended next route for `release` checkpoint and downstream `converge`.
@@ -391,6 +409,7 @@ Produce this structure for internal workflow handoff:
     "edge_negative_tests": [],
     "mutation_or_static_probes": [],
     "coverage": null,
+    "replay_conditions": [],
     "planned_scope_coverage": [],
     "blocked_checks": [],
     "findings": []
@@ -491,6 +510,11 @@ For `accepted`, `developer_replay` must be non-empty, at least two independent e
 
 Evaluator evidence lists such as `developer_replay`, `additional_unit_tests`, `additional_scenario_tests`, `edge_negative_tests`, and `mutation_or_static_probes` must contain replayable commands, checks, scenarios, or inspection targets plus an observed result. Do not use vague entries such as `checked output`, `checked parser output`, `manually reviewed UI`, `looks good`, or `good enough`.
 
+When runtime, cache/source path, command, environment, infrastructure failure,
+or weak-pass substitution affects confidence, `replay_conditions` must name the
+condition and explain how it affects replayability. Do not treat weak-pass or
+blocked-environment notes as full live proof.
+
 ## Self-Check
 
 Before returning:
@@ -503,18 +527,19 @@ Before returning:
 6. Did I add independent adversarial unit/scenario/edge/negative checks where relevant?
 7. Did I map evaluation checks to the planned test scope and done-when criteria?
 8. Did I challenge the done-when criteria and label weak pass evidence when exact runtime proof was unavailable?
-9. Did I append an Evaluator Round to `source.review_doc_path` without overwriting prior rounds?
-10. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
-11. Did I route only completed evaluation states to `release`, with `route.next_skill_context.release_mode=checkpoint_evaluate` and `next_after_release=converge`?
-12. Did I include a user-visible checkpoint that prevents silent continuation into convergence?
-13. Did I emit a feature-registry signal without marking the feature done?
-14. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
-15. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
-16. For accepted evaluations, did I add at least two independent evaluator check categories plus a negative control, mutation probe, static contract probe, or equivalent adversarial check?
-17. For workflow, skill, router, plugin, or prompt-routing changes, did I replay a realistic workflow/user scenario or record the live replay gap?
-18. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
-19. Did `user_response` make clear that convergence remains pending instead of implying final completion?
-20. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+9. Did I record replay conditions when runtime target, source path or published cache, command, environment blocker, infrastructure failure, or weak-pass gap affected confidence?
+10. Did I append an Evaluator Round to `source.review_doc_path` without overwriting prior rounds?
+11. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
+12. Did I route only completed evaluation states to `release`, with `route.next_skill_context.release_mode=checkpoint_evaluate` and `next_after_release=converge`?
+13. Did I include a user-visible checkpoint that prevents silent continuation into convergence?
+14. Did I emit a feature-registry signal without marking the feature done?
+15. Did I include user-readable scenario summaries that explain the real workflow situation, risk, result, and evidence without leading with internal field names or synthetic ids such as `F2`, `ABC-123`, or `feature-001`?
+16. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
+17. For accepted evaluations, did I add at least two independent evaluator check categories plus a negative control, mutation probe, static contract probe, or equivalent adversarial check?
+18. For workflow, skill, router, plugin, or prompt-routing changes, did I replay a realistic workflow/user scenario or record the live replay gap?
+19. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+20. Did `user_response` make clear that convergence remains pending instead of implying final completion?
+21. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

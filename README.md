@@ -510,7 +510,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-0.4.2
+0.4.4
 ```
 
 Version files:

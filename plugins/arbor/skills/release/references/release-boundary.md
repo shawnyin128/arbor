@@ -23,6 +23,10 @@ Minimum evidence:
   - `finalize_feature`: Convergence Round or equivalent convergence packet plus latest Developer Round and Evaluator Round references;
 - verification evidence for done-when criteria when the brainstorm review context defines them;
 - outcome and observability evidence for workflow-facing finalization or publish: rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof;
+- replay conditions that affect release confidence, including runtime target,
+  source path or published cache, relevant command, environment blocker,
+  infrastructure/environment versus workflow-contract classification, and
+  weak-pass gap when relevant;
 - version-management evidence when the project has a versioned release artifact: version source files, current version, target_version, bump type, changed version files, and the actual version management method used to choose the bump;
 - requested release action;
 - git status, selected files, dirty scope, and branch/remotes when relevant;
@@ -40,6 +44,9 @@ Safe local preparation:
 - run release-readiness checks;
 - check that verification evidence exists for done-when criteria without re-evaluating correctness;
 - check that outcome and observability evidence exists for workflow-facing release gates without re-evaluating correctness;
+- preserve replay conditions when runtime target, cache/source path, command,
+  environment blocker, infrastructure failure, or weak-pass gap changes release
+  confidence;
 - prepare selected file list;
 - classify dirty scope as `clean`, `selected_only`, `unrelated`, or `unknown`;
 - draft commit message;
@@ -61,6 +68,21 @@ Confirmation-gated actions:
 The user must authorize the specific public or finalization action. "Release this" can authorize preparation, but not every external action unless the prompt clearly asks for it. For Arbor-managed checkpoint mode, local git commits are internal workflow actions authorized by active workflow checkpoint policy; public actions and finalization commits still require explicit user authorization. Checkpoint authorization must be machine-readable through `checkpoint_authorization.source`, `checkpoint_authorization.ref`, `checkpoint_authorization.scope`, and `allows_local_commit`.
 
 Standalone `stage` has no completed release terminal. `release` may prepare an exact stage file list, and staging may happen as part of an explicitly authorized finalization commit, but a stage-only request should not be reported as completed release delivery.
+
+## Authorization Scope Ladder
+
+`release` should treat authorization as a ladder with non-transitive steps:
+
+| Scope | Allowed Without Extra Confirmation | Requires Explicit User Authorization |
+| --- | --- | --- |
+| Local summary or readiness check | Inspect state, report blockers, draft a commit plan. | Staging, commit, push, PR, tag, publish. |
+| Staging plan | Prepare the exact selected file list. | Running `git add` unless folded into an explicitly authorized finalization commit. |
+| Internal checkpoint commit | Create a local checkpoint commit only under active Arbor checkpoint policy and selected-only dirty scope. | Finalization commit or any public action. |
+| Finalization commit | Commit selected files only when explicitly authorized. | Push, PR, tag, publish, marketplace sync, connector mutation. |
+| Public or external action | Nothing beyond the exact authorized action. | Any additional public/external effect not named in the prompt. |
+
+Broad wording such as "go ahead" inherits only the active scope. It does not
+upgrade a local preparation request into a finalization commit or public action.
 
 ## User-Visible Boundary
 
@@ -163,6 +185,14 @@ For workflow-facing finalization or publish, `release` checks evidence existence
 
 Release must not require LLM judges, fixed path matching, exact turn-by-turn replay, subagents, worktrees, fan-out execution, or one universal test type by default. If evaluator or convergence evidence names a weak-pass gap, release should preserve that risk in release evidence instead of silently presenting the feature as fully live-proven.
 
+Release should also preserve replay conditions that affect finalization or
+publish confidence. These facts are scoped to meaningful replayability: runtime
+target, source path or published cache, relevant command, environment blocker,
+infrastructure/environment versus workflow-contract classification, and
+weak-pass gap. Do not require heavyweight environment metadata when a small
+direct task, documentation-only change, or artifact-only check does not depend
+on those facts.
+
 ### Checkpointed
 
 Use when a developer or evaluator checkpoint has mode-specific review evidence, safe selected files, and local checkpoint authorization through user approval or workflow checkpoint policy. For `checkpoint_develop`, successful developer handoff plus workflow checkpoint policy is enough authorization to create the local checkpoint commit before evaluation.
@@ -256,6 +286,7 @@ Append a Release Round to the same review document with:
 - checkpoint handoff preservation evidence;
 - selected release action;
 - readiness checks and results;
+- replay conditions that affect confidence;
 - selected files;
 - dirty scope;
 - version-management method, target_version, bump type, and changed version files or blocker;

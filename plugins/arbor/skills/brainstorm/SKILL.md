@@ -175,7 +175,13 @@ For Arbor-managed work, `brainstorm` starts the done-when verification thread. T
 Rules:
 
 - Write done-when criteria in user-level outcome language before `develop`.
+- Each criterion must name the user-visible or workflow-visible outcome, the
+  minimum acceptable proof, and the evidence owner when proof belongs to
+  `develop`, `evaluate`, or `release`.
 - Map each criterion to at least one verification method, such as a unit test, scenario replay, content/structure check, static/schema check, rendered-output inspection, mutation probe, or explicitly justified manual review.
+- Reject vague placeholders such as "tests pass", "looks good", "verify it",
+  or "coverage" unless they are paired with a concrete artifact, command,
+  scenario, expected result, and owner.
 - Use artifact-appropriate verification and do not force one test type across code, documentation, workflow, routing, release, or output-layer work.
 - Keep small direct tasks outside the managed verification thread; do not route simple direct answers into Arbor just to create criteria.
 - Record known weak spots up front when exact live verification is unavailable so `develop`, `evaluate`, `converge`, and `release` can label the evidence honestly.
