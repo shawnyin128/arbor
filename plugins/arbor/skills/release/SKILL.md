@@ -9,7 +9,7 @@ description: Internally checkpoint or finalize an Arbor feature by verifying rev
 
 Use `release` after `develop`, after `evaluate`, and after `converge` for Arbor-managed work. It is primarily an internal checkpoint/finalization skill in the Arbor pipeline, not the main user-facing entrypoint; finalization mode is the internal finalization gate for converged features.
 
-`release` is a workflow gate for state tracking and current-feature finalization. In checkpoint mode, it records the latest developer or evaluator state before the next skill runs. For `checkpoint_develop`, that means creating a local checkpoint commit after a successful developer handoff before `evaluate` runs. In finalization mode, it verifies that the selected feature is converged, prepares safe local release evidence, enforces the commit convention, blocks push, PR, tag, or publish actions unless the user explicitly authorized that action, then reports the next unfinished feature through `workflow_continuation`.
+`release` is a workflow gate for state tracking and current-feature finalization. In checkpoint mode, it records the latest developer or evaluator state before the next skill runs. For `checkpoint_develop`, that means creating a local checkpoint commit after a successful developer handoff before `evaluate` runs. In finalization mode, it verifies that the selected feature is converged, prepares safe local release evidence, enforces the commit convention, checks the project's actual version management method when one exists, blocks push, PR, tag, or publish actions unless the user explicitly authorized that action, then reports the next unfinished feature through `workflow_continuation`.
 
 It does not plan, implement, evaluate, or decide convergence.
 
@@ -29,12 +29,13 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 4. **Classify requested action**: local summary, stage, commit, push, PR, tag, publish, or route correction.
 5. **Run readiness checks**: replay requested or policy-required checks when feasible; record blocked checks and residual risk.
 6. **Prepare commit convention**: use `<type>[optional scope]: <description>` with optional body/footer.
-7. **Gate external actions**: for `checkpoint_develop`, create the local checkpoint commit when Arbor workflow checkpoint policy authorizes it and readiness checks pass. Treat checkpoint commits as internal workflow actions; push, PR, tag, publish, finalization commits, or other public/external actions always require explicit user authorization.
-8. **Append release evidence**: append a Release Round to the same review document when release reaches a meaningful terminal state.
-9. **Select continuation**: after a checkpoint state, route to the next stage for the same feature; after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json` or report that none remains.
-10. **Update registry when justified**: update release metadata/status only for the selected feature.
-11. **Update session memory**: before stopping with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records unresolved in-flight state. After a successful commit/push/publish that resolves the current Arbor work, remove or shrink resolved memory entries so committed history becomes the source of truth.
-12. **Return rendered checkpoint and runtime packet**: produce `release.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` status checkpoint, not raw JSON.
+7. **Check version management**: if the current project has a version-managed release artifact, identify the actual version management method before finalization or publish, such as plugin manifests, `package.json`, `pyproject.toml`, git tags, or a documented custom policy. Choose the target version from that method and the release scope. If a required bump is missing or the method is unclear, block release instead of publishing under the old version.
+8. **Gate external actions**: for `checkpoint_develop`, create the local checkpoint commit when Arbor workflow checkpoint policy authorizes it and readiness checks pass. Treat checkpoint commits as internal workflow actions; push, PR, tag, publish, finalization commits, or other public/external actions always require explicit user authorization.
+9. **Append release evidence**: append a Release Round to the same review document when release reaches a meaningful terminal state.
+10. **Select continuation**: after a checkpoint state, route to the next stage for the same feature; after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json` or report that none remains.
+11. **Update registry when justified**: update release metadata/status only for the selected feature.
+12. **Update session memory**: before stopping with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records unresolved in-flight state. After a successful commit/push/publish that resolves the current Arbor work, remove or shrink resolved entries so committed history becomes the source of truth.
+13. **Return rendered checkpoint and runtime packet**: produce `release.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` status checkpoint, not raw JSON.
 
 ## Terminal States
 
@@ -71,6 +72,7 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 19. Emit a checkpoint policy that distinguishes safe internal continuation from user-stopping external actions.
 20. Do not leave unresolved uncommitted Arbor workflow state without an up-to-date `.arbor/memory.md`; do not leave resolved memory entries after a successful commit or publish makes git history authoritative.
 21. For workflow-facing finalization or publish, check that outcome and observability evidence exists: rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
+22. If the current project has version management, release must reason from the actual version management method before finalization or publish. A plugin should follow its plugin manifests, a JavaScript package should follow `package.json`, a Python package should follow `pyproject.toml` or the documented package metadata, and a tag-driven project should follow its tag convention. Do not reuse a stale version or invent a bump without citing the method and selected target version.
 
 ## Route Rules
 
@@ -139,6 +141,17 @@ The structured `release.v1` object is an internal workflow/runtime packet. Produ
     "blocked_checks": [],
     "verification_evidence": [],
     "risks": []
+  },
+  "version_management": {
+    "status": "not_detected",
+    "method": "none",
+    "version_sources": [],
+    "current_version": "",
+    "target_version": "",
+    "bump_type": "none",
+    "policy_source": "",
+    "changed_version_files": [],
+    "reason": ""
   },
   "commit_plan": {
     "type": "feat",
@@ -212,6 +225,9 @@ Use these enums:
 - `release_context.dirty_scope`: `clean`, `selected_only`, `unrelated`, or `unknown`
 - `release_action.status`: `not_run`, `prepared`, `completed`, `blocked`
 - `release_action.external_effect`: `none`, `stage`, `commit`, `push`, `pr`, `tag`, or `publish`
+- `version_management.status`: `not_detected`, `not_required`, `up_to_date`, `bump_required`, or `blocked`
+- `version_management.method`: `none`, `plugin_manifest_semver`, `package_json`, `pyproject_pep440`, `git_tag`, `custom`, or `unknown`
+- `version_management.bump_type`: `none`, `patch`, `minor`, `major`, `prerelease`, `custom`, or `unknown`
 - `feature_registry_update.status`: `updated`, `not_required`, or `blocked`
 - `review_append.status`: `appended`, `blocker_packet`, or `not_required`
 - `workflow_continuation.status`: `available`, `none`, or `blocked`
@@ -255,3 +271,4 @@ Before returning:
 13. Did I keep user-visible release output status-only while preserving detailed evidence in structured fields?
 14. Did I create or refresh `.arbor/memory.md` when unresolved uncommitted Arbor workflow state remains, or clear resolved entries after a successful commit/publish?
 15. Did I set checkpoint policy so internal checkpoints may continue automatically but external actions and finalization decisions stop for the user?
+16. If the project has version management, did I identify the actual method, choose the target version from that method, include the version files in the selected release scope when needed, and block the release when the bump is required but absent?

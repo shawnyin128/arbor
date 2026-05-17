@@ -120,8 +120,20 @@ REQUIRED_ROUTING_CATEGORIES = {
 ROOT = Path(__file__).resolve().parents[3]
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = PLUGIN_ROOT.parent.parent if PLUGIN_ROOT.parent.name == "plugins" else PLUGIN_ROOT
-CODEX_CACHE = Path.home() / ".codex/plugins/cache/arbor/arbor/0.4.2"
-CLAUDE_CACHE = Path.home() / ".claude/plugins/cache/arbor/arbor/0.4.2"
+
+
+def plugin_version_from_manifest() -> str:
+    manifest = PLUGIN_ROOT / ".codex-plugin" / "plugin.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    version = data.get("version")
+    if not isinstance(version, str) or not version.strip():
+        raise ValueError(f"plugin manifest has no usable version: {manifest}")
+    return version
+
+
+PLUGIN_VERSION = plugin_version_from_manifest()
+CODEX_CACHE = Path.home() / ".codex/plugins/cache/arbor/arbor" / PLUGIN_VERSION
+CLAUDE_CACHE = Path.home() / ".claude/plugins/cache/arbor/arbor" / PLUGIN_VERSION
 RAW_CHECKPOINT_LEAK_RE = re.compile(
     r"schema_version|```json|\"(?:source|route|ui|evaluation|review_context|release_context)\"\s*:|"
     r"\b(?:brainstorm|develop|evaluate|converge|release)\.v1\b|"

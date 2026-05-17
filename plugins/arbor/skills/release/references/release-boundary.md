@@ -23,6 +23,7 @@ Minimum evidence:
   - `finalize_feature`: Convergence Round or equivalent convergence packet plus latest Developer Round and Evaluator Round references;
 - verification evidence for done-when criteria when the brainstorm review context defines them;
 - outcome and observability evidence for workflow-facing finalization or publish: rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof;
+- version-management evidence when the project has a versioned release artifact: version source files, current version, target_version, bump type, changed version files, and the actual version management method used to choose the bump;
 - requested release action;
 - git status, selected files, dirty scope, and branch/remotes when relevant;
 - replayable `checkpoint_authorization` evidence for local checkpoint commits, with `source=user` or `source=policy`;
@@ -42,6 +43,7 @@ Safe local preparation:
 - prepare selected file list;
 - classify dirty scope as `clean`, `selected_only`, `unrelated`, or `unknown`;
 - draft commit message;
+- inspect version-management sources and select the target version from the project's actual method;
 - append Release Round or blocker packet.
 - create a local checkpoint commit after `develop.ready_for_evaluate` when workflow checkpoint policy authorizes it and readiness checks pass;
 - route the same feature to the next stage after a checkpoint state;
@@ -136,6 +138,22 @@ The subject description after the colon must be non-empty after trimming whitesp
 Commit, stage, push, PR, tag, or publish success must not proceed from `unrelated` or `unknown` dirty scope. Block or ask for explicit scope resolution instead.
 
 For public action success, the requested action and recorded effect must match. For example, a `push` request cannot report `external_effect=tag`, even if tag metadata is present.
+
+## Version Management
+
+Before finalization or publish, `release` must check whether the current project has version management. It should inspect the project’s actual source of version truth instead of assuming a universal policy:
+
+- Codex or Claude plugins: `.codex-plugin/plugin.json` and `.claude-plugin/plugin.json`, using the shared SemVer value when both manifests exist.
+- JavaScript or TypeScript packages: `package.json`, and lockfile or workspace policy when present.
+- Python packages: `pyproject.toml`, setup metadata, or the documented package source when present.
+- Tag-driven projects: the established git tag pattern, such as `v1.2.3`.
+- Custom projects: the project’s documented release notes, manifest, or release script contract.
+
+When a versioned release artifact is affected, `release` records `version_management` evidence: `status`, `method`, `version_sources`, `current_version`, `target_version`, `bump_type`, `policy_source`, `changed_version_files`, and `reason`. The target version must come from the detected method and the release scope. For SemVer sources, use the smallest accurate bump: patch for bug fixes and release-gate hardening, minor for new user-facing capability, major only for breaking behavior, and prerelease/custom only when the project’s existing method uses it.
+
+If source changes require a version bump but the version source files do not reflect the selected `target_version`, release must return a blocked state with `version_management.status=bump_required`. It must not commit, push, tag, publish, or sync package/plugin caches under the stale version. If the method is detected but ambiguous, use `version_management.status=blocked` and ask for the exact version policy instead of inventing a bump.
+
+For successful publish or tag actions on versioned projects, the release action metadata must reflect the selected target version, such as `artifact_target=arbor-plugin@0.4.3` or `tag_name=v0.4.3`. Cache verification must compare the cache path derived from the manifest version, not a hard-coded old version directory.
 
 ## Route Decisions
 
@@ -240,6 +258,7 @@ Append a Release Round to the same review document with:
 - readiness checks and results;
 - selected files;
 - dirty scope;
+- version-management method, target_version, bump type, and changed version files or blocker;
 - commit message plan;
 - actions performed or explicitly not performed;
 - action-specific metadata for push, PR, tag, or publish;

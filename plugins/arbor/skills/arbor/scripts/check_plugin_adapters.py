@@ -1314,6 +1314,48 @@ def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[
             check(errors, term in text, f"{rel_path} missing develop checkpoint commit term `{term}`")
 
 
+def validate_release_version_management_contract(plugin_root: Path, errors: list[str]) -> None:
+    repo_root = repo_root_from_plugin(plugin_root)
+    required = {
+        "skills/release/SKILL.md": [
+            "version_management",
+            "actual version management method",
+            "bump_required",
+            "target_version",
+            "plugin_manifest_semver",
+            "package_json",
+            "pyproject_pep440",
+            "git_tag",
+        ],
+        "skills/release/references/release-boundary.md": [
+            "## Version Management",
+            "actual version management method",
+            "target_version",
+            "bump_required",
+            "Cache verification must compare the cache path derived from the manifest version",
+        ],
+        "skills/arbor/scripts/check_real_workflow_chains.py": [
+            "plugin_version_from_manifest",
+            "PLUGIN_VERSION",
+            'Path.home() / ".codex/plugins/cache/arbor/arbor" / PLUGIN_VERSION',
+            'Path.home() / ".claude/plugins/cache/arbor/arbor" / PLUGIN_VERSION',
+        ],
+    }
+    if repo_root is not None:
+        required["README.md"] = [
+            "actual version management method",
+            "target version",
+            "versioned artifact changed",
+            "cache sync",
+        ]
+
+    for rel_path, terms in required.items():
+        base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
+        text = (base / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, term in text, f"{rel_path} missing release version management term `{term}`")
+
+
 def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list[str]) -> None:
     real_review = plugin_root / "skills" / "arbor" / "references" / "real-workflow-chain-review.md"
     real_runner = plugin_root / "skills" / "arbor" / "scripts" / "check_real_workflow_chains.py"
@@ -1388,6 +1430,7 @@ def main() -> int:
     validate_delegation_packet_effort_budget_contract(plugin_root, errors)
     validate_outcome_eval_observability_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
+    validate_release_version_management_contract(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 
     if errors:
