@@ -569,10 +569,15 @@ The visible response should include:
 | Next Step | Say the next workflow step in plain language. For success this is saving a local checkpoint commit before independent evaluation; for blockers this is planning, selection, approval, or stop. |
 
 The normal visible final response must keep these sections as exact Markdown
-headings in the order above. Final response preflight must run on the exact
-final assistant message, not only on the internal `user_response` draft. If any
-heading is missing, out of order, or collapsed into a prose-only summary,
-rewrite the visible response before finishing.
+headings in the order above for English prompts. When the user's active chat
+language is not English, render localized heading equivalents in the same order
+with the same section meaning; do not fall back to English headings only because
+this reference is written in English. Final response preflight must run on the
+exact final assistant message, not only on the internal `user_response` draft.
+If any required English heading is missing for an English prompt, any localized
+heading equivalent is missing for a non-English prompt, headings are out of
+order, or the checkpoint is collapsed into a prose-only summary, rewrite the
+visible response before finishing.
 
 For tables, every row and column must be written for a human reviewer. Translate internal sources, route reasons, status codes, check identifiers, and feature registry state into ordinary language.
 

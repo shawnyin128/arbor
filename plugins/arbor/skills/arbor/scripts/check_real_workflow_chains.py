@@ -101,6 +101,11 @@ ROUTING_REPLAY_CASES = {
         "situation": "A misspelled or informal evaluate request attached to an active handoff should still render the full evaluation checkpoint instead of a prose-only summary.",
         "expected_chain": "intake -> evaluate",
     },
+    "R30": {
+        "category": "active_review_evaluate",
+        "situation": "A non-English evaluate request should render the visible checkpoint in the user's language while preserving the evaluation structure.",
+        "expected_chain": "evaluate",
+    },
     "R27": {
         "category": "planning_continuation",
         "situation": "A split-context engineering planning continuation should still become brainstorm.",
@@ -144,10 +149,12 @@ RAW_CHECKPOINT_LEAK_RE = re.compile(
     r"\b(?:brainstorm|develop|evaluate|converge|release)\.v1\b|"
     r"\b(?:terminal_state|next_skill|feature_id|review_doc_path)\b|"
     r"\b(?:ready_for_evaluate|needs_develop_handoff|route_correction|checkpointed)\b|"
+    r"\bR\d{2}\b|\bCase\s+\d+\b|"
     r"^\s*(?:route|terminal state|next route|next skill)\s*:",
     re.IGNORECASE | re.MULTILINE,
 )
 TABLE_SEPARATOR_RE = re.compile(r"^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$", re.MULTILINE)
+CJK_RE = re.compile(r"[\u3400-\u9fff]")
 SKILL_RENDER_CONTRACTS = {
     "brainstorm": {
         "headings": (
@@ -205,6 +212,15 @@ SKILL_RENDER_CONTRACTS = {
         "table_sections": ("Agreement Check", "Remaining Issues"),
     },
 }
+CJK_EVALUATE_PROMPT = (
+    "$evaluate "
+    "\u8bf7\u72ec\u7acb\u8bc4\u4f30 docs/review/F-review.md "
+    "\u91cc\u7684\u5f00\u53d1\u4ea4\u63a5\u3002"
+    "\u7528\u4e2d\u6587\u8f93\u51fa\u7528\u6237\u53ef\u89c1\u7684"
+    "\u8bc4\u4f30\u68c0\u67e5\u70b9\uff0c"
+    "\u4e0d\u8981\u628a\u82f1\u6587\u6807\u9898\u5f53\u4f5c"
+    "\u6700\u7ec8\u8f93\u51fa\u3002"
+)
 
 
 class CaseFailure(AssertionError):
@@ -765,6 +781,24 @@ def assert_skill_rendered_checkpoint(skill: str) -> Callable[[CaseContext, Runti
     return _assert
 
 
+def assert_response_language_cjk(skill: str) -> Callable[[CaseContext, RuntimeResult | None], None]:
+    contract = SKILL_RENDER_CONTRACTS[skill]
+    english_markers = [f"**{heading}**" for heading in contract["headings"]]
+
+    def _assert(_: CaseContext, result: RuntimeResult | None) -> None:
+        text = final_text(result)
+        cjk_count = sum(1 for char in text if 0x3400 <= ord(char) <= 0x9FFF)
+        require(cjk_count >= 20 and CJK_RE.search(text) is not None, "final response should use visible CJK prose")
+        leaked_headings = [marker for marker in english_markers if marker in text]
+        require(not leaked_headings, f"non-English final response used canonical English headings: {leaked_headings}")
+        require(
+            len(TABLE_SEPARATOR_RE.findall(text)) >= 2,
+            "localized evaluation response must preserve required Markdown table sections",
+        )
+
+    return _assert
+
+
 def assert_release_status_checkpoint(_: CaseContext, result: RuntimeResult | None) -> None:
     text = final_text(result)
     lowered = text.lower()
@@ -871,6 +905,7 @@ def prompt_header(case_id: str) -> str:
         "Use the actual Arbor skill when the prompt names one or when the request matches Arbor. "
         "Keep the final response concise inside each required skill-specific rendered heading and required table; "
         "do not replace the checkpoint with a status paragraph. Do not print raw workflow JSON. "
+        "Do not mention review case ids, trace ids, or fixture ids in the final response. "
         "If you perform an Arbor workflow action, append a compact trace line to .arbor/e2e-trace.jsonl. "
     )
 
@@ -1154,6 +1189,17 @@ def make_cases() -> dict[str, CaseSpec]:
                 *common_assertions,
                 assert_file_contains("docs/review/F-review.md", "Evaluator"),
                 assert_skill_rendered_checkpoint("evaluate"),
+            ],
+        ),
+        CaseSpec(
+            "R30",
+            "non-English evaluate output follows user language",
+            agent_prompt("R30", CJK_EVALUATE_PROMPT),
+            setup_review_context,
+            [
+                *common_assertions,
+                assert_file_contains("docs/review/F-review.md", "Evaluator"),
+                assert_response_language_cjk("evaluate"),
             ],
         ),
         CaseSpec(

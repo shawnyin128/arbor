@@ -95,13 +95,20 @@ upgrade a local preparation request into a finalization commit or public action.
 
 The structured `release.v1` object is an internal workflow/runtime packet. Normal user-facing output should render the compact status from `user_response` and `ui`, not print the raw JSON unless explicit debug output is requested.
 
+Render this compact status in the user's active chat language unless the user
+explicitly requests a different output language. Keep commit hashes, commands,
+paths, branch names, tags, package names, and structured debug values literal.
+Do not fall back to English status prose only because this reference is written
+in English.
+
 Do not show `checkpoint_handoff`, `feature_registry_signal`, dirty-scope analysis, selected-file reasoning, or authorization internals as primary UI. These remain machine-readable for the workflow and available in review/debug views.
 
 Final response preflight must run on the exact final assistant message, not only
 on the internal `user_response` draft. The final message must render a concrete
 release status from summary, status items, warnings, and next actions; it must
 not collapse into a generic done sentence, imply unauthorized public actions
-happened, or expose internal status fields.
+happened, or expose internal status fields. It must follow the user's active
+chat language for user-facing prose or the user's explicit output language.
 
 ## Checkpoint Policy
 

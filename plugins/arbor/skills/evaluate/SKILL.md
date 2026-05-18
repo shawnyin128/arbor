@@ -273,8 +273,12 @@ Write each section in natural language. For `Findings First`, say clearly whethe
 
 `Unit Tests` and `Scenario Tests` must be shown as Markdown tables, not bullets or loose prose. Use natural-language columns such as `Check`, `Behavior Covered`, `Expected`, `Actual`, and `Result`. Do not list only command names or test ids. Explain what each unit test or scenario test actually proved, what behavior it exercised, and whether it passed, failed, was blocked, or was not applicable. If no unit or scenario tests were appropriate, still include the table with a row explaining why the category was not applicable.
 
-The normal visible final response MUST include these exact Markdown headings, in this
-order, even when a section has only one sentence or a not-applicable table:
+The normal visible final response MUST include these exact Markdown headings for
+English prompts, in this order, even when a section has only one sentence or a
+not-applicable table. When the user's active chat language is not English,
+render localized heading equivalents in the same order with the same section
+meaning and required table sections. Do not fall back to English headings only
+because this skill file is written in English:
 
 - `**Evaluation Verdict**`
 - `**Findings First**`
@@ -290,11 +294,13 @@ order, even when a section has only one sentence or a not-applicable table:
 
 Final response preflight: before returning, self-check the exact final assistant
 message that will be sent to the user, not just the internal `user_response`
-draft or fixture row. It must contain the exact headings above in order and
-Markdown tables under `Unit Tests` and `Scenario Tests`. If any heading or table
-is missing, rewrite the visible response before finishing. A shorter prose-only
-evaluation is not an acceptable `evaluate` checkpoint, even when the evaluation
-is blocked, missing a develop handoff, or attached to an informal review request.
+draft or fixture row. It must contain the exact English headings above in order
+for English prompts, or localized equivalents in the same order for non-English
+prompts. It must include Markdown tables under the unit-test and scenario-test
+sections. If any required heading or table is missing, rewrite the visible
+response before finishing. A shorter prose-only evaluation is not an acceptable
+`evaluate` checkpoint, even when the evaluation is blocked, missing a develop
+handoff, or attached to an informal review request.
 
 Do not expose machine-oriented labels in visible text. Avoid schema field names, route assignments, terminal-state strings, fixture ids, synthetic feature ids, and shorthand such as `dev/eval`. Internal evidence may stay in structured fields; the visible text should explain the situation a user cares about.
 

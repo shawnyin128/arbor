@@ -56,8 +56,11 @@ Do not include a "What Will Be Preserved" section. Persistence and checkpoint de
 
 `Agreement Check` and `Remaining Issues` must be tables with user-readable cells. Keep internal ids, field names, terminal-state strings, route assignments, and finding ids out of primary visible text.
 
-The normal visible final response MUST include these exact Markdown headings, in
-this order:
+The normal visible final response MUST include these exact Markdown headings for
+English prompts, in this order. When the user's active chat language is not
+English, render localized heading equivalents in the same order with the same
+section meaning and required table sections. Do not fall back to English
+headings only because this reference is written in English:
 
 - `**Convergence Decision**`
 - `**Why This Decision**`
@@ -68,10 +71,13 @@ this order:
 
 Final response preflight must run on the exact final assistant message, not only
 on the internal `user_response` draft. The final message must contain those
-exact headings and Markdown tables under `Agreement Check` and `Remaining
-Issues`. A shorter prose-only convergence checkpoint is not acceptable.
-Markdown tables under `Agreement Check` and `Remaining Issues` are required in
-both fixture output and the captured final response.
+exact headings for English prompts, or localized equivalents in the same order
+for non-English prompts. It must include Markdown tables under the
+agreement-check and remaining-issues sections. A shorter prose-only convergence
+checkpoint is not acceptable. Markdown tables under `Agreement Check` and
+`Remaining Issues` remain the canonical English section requirement; localized
+equivalent sections must keep the same tables. Markdown tables for those
+sections are required in both fixture output and the captured final response.
 
 ## Checkpoint And Automation Policy
 

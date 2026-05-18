@@ -342,7 +342,14 @@ The tables in `user_response` must be human-readable. Do not copy structured lab
 
 Do not expose internal shorthand in visible text. Avoid status codes like `ready_for_develop`, assignments like `next_skill=develop`, feature ids like `F1`, fixture labels like `Case 2`, and unexplained abbreviations like `RFD` or `dev/eval`. Translate them into user-level language such as "the plan is approved and can move into implementation", "the first step", or "the implementation and review loop".
 
-Use the following section headings exactly for every normal user-visible brainstorm checkpoint. Do not rename them to alternatives such as "Planning Checkpoint", "Goal", "Recommended Plan", or "Acceptance Criteria"; those concepts belong inside the fixed sections so live rendered output stays predictable.
+Use the following section headings exactly for every normal English
+user-visible brainstorm checkpoint. Do not rename them to alternatives such as
+"Planning Checkpoint", "Goal", "Recommended Plan", or "Acceptance Criteria";
+those concepts belong inside the fixed sections so live rendered output stays
+predictable. When the user's active chat language is not English, render
+localized heading equivalents in the same order with the same section meaning
+and required table sections. Do not fall back to English headings only because
+this skill file is written in English.
 
 Default format:
 
@@ -376,11 +383,12 @@ Default format:
 
 Final response preflight: before sending the actual final assistant message,
 check the captured final text, not just the internal `user_response` draft. The
-final message must contain the exact headings above in order, must keep the
-three table sections as Markdown tables, must ask the current blocking,
-approval, or correction question under `Next`, and must not collapse into a
-plan-only, artifact-list, status-paragraph, or prose-only summary. If the final
-text fails this check, rewrite it before finishing.
+final message must contain the exact English headings above in order for English
+prompts, or localized equivalents in the same order for non-English prompts. It
+must keep the three table sections as Markdown tables, ask the current blocking,
+approval, or correction question under the final next-step section, and must not
+collapse into a plan-only, artifact-list, status-paragraph, or prose-only
+summary. If the final text fails this check, rewrite it before finishing.
 
 Adapt the content to the terminal state:
 

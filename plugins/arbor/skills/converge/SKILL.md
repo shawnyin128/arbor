@@ -114,7 +114,12 @@ Do not include a "What Will Be Preserved" section in the visible response. Persi
 
 `Agreement Check` and `Remaining Issues` must be Markdown tables with natural-language cells. Do not expose field names, route assignments, terminal-state strings, fixture ids, synthetic feature ids, finding ids, or unexplained shorthand. Describe the user-visible situation instead, such as "the reviewer found a blocking regression" rather than a finding id.
 
-The normal visible final response MUST include these exact Markdown headings, in this order, even when a section has only one sentence or a not-applicable table:
+The normal visible final response MUST include these exact Markdown headings for
+English prompts, in this order, even when a section has only one sentence or a
+not-applicable table. When the user's active chat language is not English,
+render localized heading equivalents in the same order with the same section
+meaning and required table sections. Do not fall back to English headings only
+because this skill file is written in English:
 
 - `**Convergence Decision**`
 - `**Why This Decision**`
@@ -125,10 +130,12 @@ The normal visible final response MUST include these exact Markdown headings, in
 
 Final response preflight: before returning, self-check the exact final assistant
 message that will be sent to the user, not just the internal `user_response`
-draft or fixture row. It must contain the exact headings above in order and
-Markdown tables under `Agreement Check` and `Remaining Issues`. If any heading
-or required table is missing, rewrite the visible response before finishing. A
-shorter prose-only convergence checkpoint is not acceptable.
+draft or fixture row. It must contain the exact English headings above in order
+for English prompts, or localized equivalents in the same order for non-English
+prompts. It must include Markdown tables under the agreement-check and
+remaining-issues sections. If any heading or required table is missing, rewrite
+the visible response before finishing. A shorter prose-only convergence
+checkpoint is not acceptable.
 
 ## Done-When Verification Thread
 

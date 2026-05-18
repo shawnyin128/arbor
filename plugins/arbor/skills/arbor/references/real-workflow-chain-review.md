@@ -92,6 +92,7 @@ Arbor regressions should be added here before the fix is accepted.
 | R27 | Active planning continuation was only protected when the current task was embedded in the same prompt. | Split-context prompt: prior turn establishes active code cleanup requirements, current turn says "Okay. Based on my requirements, let's think through what to do and design a plan." | `intake -> brainstorm` | Rendered brainstorm checkpoint persists `.arbor/workflow/features.json` and review Context/Test Plan; implementation files do not change; the paired non-engineering fixture remains direct in intake baselines. |
 | R28 | `AGENTS.md` Project Map drift was not surfaced or updated after durable project entrypoints changed. | A new top-level `tools/` directory exists but `AGENTS.md` only maps `src/`; user asks Arbor to update the map before release. | `arbor.goal_constraint_drift` -> AGENTS Project Map update | The drift packet exposes project-map candidates, final rendered text is readable, and `AGENTS.md` Project Map mentions `tools/` without adding transient session progress. |
 | R29 | Informal or misspelled evaluate requests could bypass the structured evaluation packet and collapse into a prose-only summary. | Natural prompt with a misspelled verb such as "evalute this active developer handoff" in a repo with active Developer Round and review doc. | `intake -> evaluate` | Evaluator Round is appended and the captured `final-response.md` contains the complete evaluate checkpoint: exact headings, unit/scenario tables, findings, judgments, risks, and next step. |
+| R30 | Non-English workflow prompts could still render canonical English headings because the skill package is English-only. | Non-English prompt explicitly invoking evaluation in a repo with active Developer Round and review doc. | `evaluate` | Evaluator Round is appended, captured `final-response.md` uses the user's non-English language for visible checkpoint prose and localized headings, preserves required unit/scenario Markdown tables, and does not use the canonical English headings as the final visible headings. |
 
 ## Runtime Assertions
 
@@ -118,6 +119,8 @@ Every real case must define assertions in four groups.
 - final response saved as `final-response.md`;
 - raw `*.v1` JSON is not the primary UI unless debug output was explicitly requested;
 - skill-specific headings and tables are present;
+- non-English prompts use localized visible headings in the user's language while
+  preserving the same section order and required tables;
 - internal field names and fixture ids are not the main user-facing explanation;
 - release output stays status-only;
 - evaluate output has readable verdict, findings, challenge plan, test tables, judgments, risks, and next step.
@@ -139,6 +142,7 @@ A release may say "real workflow chain review passed" only when these cases pass
 - R01, R04, R05, R07, R10, R11, R12, R15, R17, R21, R22, R24 on Codex;
 - R27 on Codex for split-context planning continuation changes;
 - R29 on Codex for workflow rendered-output or evaluate-routing changes;
+- R30 on Codex for visible language or localized checkpoint rendering changes;
 - R14 and R25 for shared Codex/Claude changes;
 - R20 for Claude hook changes;
 - the directly affected case for every bug fixed in the release.

@@ -268,6 +268,12 @@ Use `ui.summary`, `ui.status_items`, `ui.warnings`, and `ui.next_actions` for co
 - finalization mode: commit message, commit hash, push/PR/tag/publish status when performed, and next feature;
 - blocked or confirmation mode: blocker or exact confirmation needed.
 
+Render this compact status in the user's active chat language unless the user
+explicitly requests a different output language. Keep commit hashes, commands,
+paths, branch names, tags, package names, and structured debug values literal.
+Do not fall back to English status prose only because this skill file is written
+in English.
+
 Do not make the primary UI display `checkpoint_handoff`, `feature_registry_signal`, `dirty_scope`, selected-file reasoning, or authorization internals. Those fields remain available for review documents and debug traces.
 
 Final response preflight: before sending the actual final assistant message,
@@ -275,8 +281,9 @@ check the captured final text, not just the internal `user_response` draft. The
 final message must render the compact release status from `ui.summary`,
 `ui.status_items`, `ui.warnings`, and `ui.next_actions`; it must not collapse
 into a generic "done" sentence, imply unauthorized public actions happened, or
-expose internal status fields. If the final text fails this check, rewrite it
-before finishing.
+expose internal status fields. It must follow the user's active chat language
+for user-facing prose or the user's explicit output language. If the final text
+fails this check, rewrite it before finishing.
 
 ## Self-Check
 

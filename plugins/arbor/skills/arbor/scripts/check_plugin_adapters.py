@@ -20,6 +20,10 @@ def check(errors: list[str], condition: bool, message: str) -> None:
         add_error(errors, message)
 
 
+def contains_term(text: str, term: str) -> bool:
+    return term in text or " ".join(term.split()) in " ".join(text.split())
+
+
 def load_json(path: Path, errors: list[str]) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -560,10 +564,13 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "final rendered response text",
             "preflight only",
             "Final Response Preflight",
+            "Visible Response Language",
+            "user's active chat language",
+            "localized heading equivalents",
             "exact text it is about to send",
             "Static fixture checks are not a substitute",
         ):
-            check(errors, term in protocol_text, f"rendered checkpoint protocol missing term `{term}`")
+            check(errors, contains_term(protocol_text, term), f"rendered checkpoint protocol missing term `{term}`")
 
     required = {
         "skills/arbor/SKILL.md": [
@@ -581,6 +588,8 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "Suggested Small Steps",
             "How I Would Validate Each Step",
             "Expected Delivery",
+            "localized heading equivalents",
+            "user's active chat language",
             "Final response preflight",
             "captured final text",
             "status-paragraph",
@@ -590,6 +599,8 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "The normal visible final response MUST include these exact Markdown headings",
             "`**What I Completed**`",
             "`**How I Self-Tested**`",
+            "localized heading equivalents",
+            "user's active chat language",
             "Final response preflight",
             "captured final text",
             "prose-only summary",
@@ -601,11 +612,15 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "Suggested Small Steps",
             "How I Would Validate Each Step",
             "Expected Delivery",
+            "localized heading equivalents",
+            "user's active chat language",
         ],
         "skills/evaluate/SKILL.md": [
             "The normal visible final response MUST include these exact Markdown headings",
             "`**Findings First**`",
             "`**Scenario Tests**`",
+            "localized heading equivalents",
+            "user's active chat language",
             "A shorter prose-only",
             "evaluation is not an acceptable `evaluate` checkpoint",
             "Final response preflight",
@@ -622,6 +637,8 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "`**Goal Alignment**`",
             "`**Remaining Issues**`",
             "`**Next Step**`",
+            "localized heading equivalents",
+            "user's active chat language",
             "Final response preflight",
             "exact final assistant",
             "shorter prose-only convergence checkpoint is not acceptable",
@@ -631,11 +648,14 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "`**Convergence Decision**`",
             "`**Goal Alignment**`",
             "Markdown tables under `Agreement Check` and `Remaining Issues`",
+            "localized heading equivalents",
+            "user's active chat language",
             "Final response preflight",
             "A shorter prose-only convergence checkpoint is not acceptable",
         ],
         "skills/release/SKILL.md": [
             "User-Visible Status",
+            "user's active chat language",
             "Final response preflight",
             "captured final text",
             "generic",
@@ -646,6 +666,8 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
         required["README.md"] = [
             "rendered workflow checkpoints",
             "references/rendered-checkpoint-protocol.md",
+            "user's active chat language",
+            "localized heading equivalents",
             "real runtime replay",
             "static fixture checks and JSON schema checks",
         ]
@@ -653,7 +675,7 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
         base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
         text = (base / rel_path).read_text(encoding="utf-8")
         for term in terms:
-            check(errors, term in text, f"{rel_path} missing rendered checkpoint contract term `{term}`")
+            check(errors, contains_term(text, term), f"{rel_path} missing rendered checkpoint contract term `{term}`")
 
 
 def validate_guidance_placement_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -1420,7 +1442,9 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "CLASS_BLOCKED_RUNTIME",
         "SKILL_RENDER_CONTRACTS",
         'assert_skill_rendered_checkpoint("converge")',
+        "assert_response_language_cjk",
         "R29",
+        "R30",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
     for category in (

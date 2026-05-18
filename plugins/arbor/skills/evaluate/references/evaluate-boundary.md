@@ -242,9 +242,13 @@ Put `How I Challenged The Work` and `Plan Coverage` before `What I Checked`. The
 
 Final response preflight must run on the exact final assistant message, not only
 on the internal `user_response` draft. The final message must keep every
-evaluation heading in order, include Markdown tables under `Unit Tests` and
-`Scenario Tests`, and avoid collapsing blocked or informal review requests into
-a prose-only summary.
+evaluation heading in order for English prompts. When the user's active chat
+language is not English, render localized heading equivalents in the same order
+with the same section meaning and required table sections. It must include
+Markdown tables under the unit-test and scenario-test sections and avoid
+collapsing blocked or informal review requests into a prose-only summary. Do
+not fall back to English headings only because this reference is written in
+English.
 
 The visible text must not require the user to know the structured schema. Do not expose field names, assignment-style routes, terminal-state strings, fixture ids, synthetic feature ids, or unexplained shorthand. Keep internal evidence in structured fields or secondary evidence lists; primary prose should explain the workflow situation and user-visible risk.
 

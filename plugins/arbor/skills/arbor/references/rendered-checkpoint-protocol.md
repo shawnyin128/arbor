@@ -24,6 +24,24 @@ Skill-specific section headings remain owned by each skill. This protocol does
 not replace those sections; it defines the minimum readable content they must
 carry.
 
+## Visible Response Language
+
+Render user-facing checkpoint prose in the user's active chat language unless
+the user explicitly requests a different output language. The skill package,
+internal schema fields, enum values, code identifiers, command names, file
+paths, and stable technical names may remain English or literal.
+
+The English section headings documented in each skill are canonical for English
+prompts. For non-English prompts, use localized heading equivalents in the same
+order, with the same required section meaning and table requirements. Do not
+fall back to English headings only because the skill source file is written in
+English.
+
+For mixed-language prompts, use the user's dominant request language for visible
+checkpoint prose unless the user names an explicit output language. Keep quoted
+error text, commands, paths, APIs, package names, and code symbols in their
+original language.
+
 ## Final Response Preflight
 
 The final assistant message is part of the workflow artifact. Before returning
@@ -35,10 +53,15 @@ The preflight must verify:
 
 - the final message renders the skill-specific checkpoint rather than a compact
   prose-only summary;
-- required skill-specific headings appear exactly and in order;
+- for English prompts, required skill-specific headings appear exactly and in
+  order;
+- for non-English prompts, localized heading equivalents appear in the same
+  order;
 - required table sections contain Markdown tables;
 - raw workflow schema, route labels, terminal-state labels, fixture ids, and
   unexplained internal ids are not the primary visible output;
+- user-facing prose follows the user's active chat language or explicit output
+  language;
 - the next step is described in user-facing language and does not imply that a
   later checkpoint already happened.
 

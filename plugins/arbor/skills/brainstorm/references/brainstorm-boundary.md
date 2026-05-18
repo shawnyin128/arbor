@@ -439,7 +439,14 @@ Do not replace that request with a statement of the next action. If the user
 answers with a new uncertainty, continue the clarification loop instead of
 treating the first answer as enough.
 
-Use these section headings exactly for every normal user-visible brainstorm checkpoint. Do not rename them to alternatives such as "Planning Checkpoint", "Goal", "Recommended Plan", or "Acceptance Criteria"; those concepts belong inside the fixed sections so live rendered output stays predictable.
+Use these section headings exactly for every normal English user-visible
+brainstorm checkpoint. Do not rename them to alternatives such as "Planning
+Checkpoint", "Goal", "Recommended Plan", or "Acceptance Criteria"; those
+concepts belong inside the fixed sections so live rendered output stays
+predictable. When the user's active chat language is not English, render
+localized heading equivalents in the same order with the same section meaning
+and required table sections. Do not fall back to English headings only because
+this reference is written in English.
 
 Use this natural-language shape by default:
 
@@ -473,11 +480,13 @@ Do not show internal shorthand in the primary inline text. Status strings such a
 
 Final response preflight must run on the exact final assistant message, not only
 on the internal `user_response` draft. The final message must keep the standard
-brainstorm headings in order, preserve the table sections as Markdown tables,
-ask the current blocking, approval, or correction question, and avoid collapsing
-into a plan-only, artifact-list, status-paragraph, or prose-only summary. Even
-blocked, needs-evidence, and needs-clarification outcomes must render the full
-checkpoint shape with blocked or not-applicable table rows.
+brainstorm headings in order for English prompts, or localized equivalents in
+the same order for non-English prompts. It must preserve the table sections as
+Markdown tables, ask the current blocking, approval, or correction question, and
+avoid collapsing into a plan-only, artifact-list, status-paragraph, or
+prose-only summary. Even blocked, needs-evidence, and needs-clarification
+outcomes must render the full checkpoint shape with blocked or not-applicable
+table rows.
 
 ## Terminal States
 

@@ -431,7 +431,10 @@ Rendered checkpoint validation follows
 `plugins/arbor/skills/arbor/references/rendered-checkpoint-protocol.md`. For
 workflow-facing changes, inspect at least one captured `final-response.md` from a
 real runtime replay when feasible; static fixture checks and JSON schema checks
-are preflight only.
+are preflight only. User-facing checkpoint prose should follow the user's active
+chat language; the English section headings in skill files are canonical for
+English prompts, while non-English prompts should render localized heading
+equivalents in the same order.
 
 Guidance placement follows
 `plugins/arbor/skills/arbor/references/guidance-placement-guard.md`. Keep
@@ -510,7 +513,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-0.4.7
+0.4.8
 ```
 
 Version files:

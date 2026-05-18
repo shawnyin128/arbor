@@ -64,8 +64,11 @@ Write it in plain natural language with these sections:
 6. **Risks And Gaps**: list unresolved risks, skipped checks, blockers, or deviations from the plan.
 7. **Next Step**: describe the next workflow step in plain language, such as saving a local checkpoint commit before independent evaluation, returning to planning, or stopping because authorization is missing.
 
-The normal visible final response MUST include these exact Markdown headings, in
-this order, even when a section has only one sentence:
+The normal visible final response MUST include these exact Markdown headings for
+English prompts, in this order, even when a section has only one sentence. When
+the user's active chat language is not English, render localized heading
+equivalents in the same order with the same section meaning. Do not fall back to
+English headings only because this skill file is written in English:
 
 - `**What I Completed**`
 - `**How It Maps To The Plan**`
@@ -77,10 +80,11 @@ this order, even when a section has only one sentence:
 
 Final response preflight: before sending the actual final assistant message,
 check the captured final text, not just the internal `user_response` draft. If
-any required heading is missing, out of order, or replaced by a prose-only
-summary, rewrite the visible response before finishing. The final message must
-also make independent evaluation explicit when implementation reaches handoff
-state.
+any required English heading is missing for an English prompt, any localized
+heading equivalent is missing for a non-English prompt, headings are out of
+order, or the checkpoint is replaced by a prose-only summary, rewrite the
+visible response before finishing. The final message must also make independent
+evaluation explicit when implementation reaches handoff state.
 
 For non-success states, keep the same readable shape but make the blocker clear. For example, say "the plan has not been confirmed yet, so implementation cannot start" instead of exposing the internal authorization state.
 
