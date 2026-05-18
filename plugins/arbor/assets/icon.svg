@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Arbor">
+  <rect width="512" height="512" rx="112" fill="#F2EBDD"/>
+
+  <path d="M256 112c72 56 123 126 153 209-39 45-90 68-153 68s-114-23-153-68c30-83 81-153 153-209Z" fill="#174837"/>
+  <path d="M256 177c45 39 77 86 96 142-25 28-57 42-96 42s-71-14-96-42c19-56 51-103 96-142Z" fill="#CFE8D7"/>
+
+  <path d="M256 151v228" stroke="#F9F5EB" stroke-width="26" stroke-linecap="round"/>
+  <path d="M156 251c48 31 82 72 100 123 18-61 51-109 100-145" fill="none" stroke="#F9F5EB" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <circle cx="256" cy="112" r="0" fill="#174837"/>
+</svg>
