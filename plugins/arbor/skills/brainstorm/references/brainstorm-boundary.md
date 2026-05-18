@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`brainstorm` turns an Arbor-managed engineering request into a reviewable plan. It combines clarification and planning, but it does not implement, execute tests, converge, release, or manage every kind of thinking.
+`brainstorm` turns an Arbor-managed engineering request into a collaborative, reviewable plan. It combines clarification and planning, but it does not implement, execute tests, converge, release, or manage every kind of thinking.
 
 For ready implementation work, `brainstorm` also creates or updates `.arbor/workflow/features.json` and creates the shared review document at `docs/review/<feature>-review.md`. The feature registry tracks queue/status. The review document holds Context/Test Plan and later developer/evaluator evidence.
 
@@ -90,6 +90,7 @@ We should borrow these ideas:
 
 - explore project context before detailed questions;
 - ask one question at a time;
+- ask for approval or correction when a plan is ready but still needs user review;
 - detect over-broad requests early;
 - propose alternatives with trade-offs when meaningful;
 - recommend an approach with reasoning;
@@ -250,7 +251,10 @@ If a conclusion depends on evidence that has not been loaded, `brainstorm` must 
 
 ## Clarification Rules
 
-Ask questions only when the answer materially affects the plan.
+Ask questions when the answer materially affects the plan or when a ready plan
+needs explicit user approval/correction before development. This is not a broad
+questionnaire; it is the collaboration loop that lets the user refine the
+problem and verify that the agent understood it.
 
 Rules:
 
@@ -259,6 +263,17 @@ Rules:
 - use open-ended questions when the design space is genuinely unknown;
 - do not ask for information the codebase or docs can answer cheaply;
 - do not ask questions just to imitate process;
+- record the clarification history available in `clarification.asked_questions`,
+  including the current visible question when one is asked;
+- set `clarification.pending_question` only for the current question when the
+  answer blocks planning;
+- treat "one question at a time" as pacing, not as permission to stop after one
+  answer; after each answer, re-check hidden decisions and ask the next material
+  question if scope, non-goals, validation, defaults, or approval remain unclear;
+- for `ready_for_user_review`, ask for approval or correction under `Next`
+  about the feature split, priority, interpretation, or the most important
+  default;
+- do not make `Next` plan-only when user review is still required;
 - expose hidden decisions even if the user did not mention them.
 
 Hidden decisions include:
@@ -417,6 +432,13 @@ The visible `user_response` should lower user review cost. It should answer five
 4. What defaults or assumptions did the agent make that the user did not state?
 5. What will the user get when the idea is finished?
 
+It should also ask or request one plain user response for the current turn. For
+blocked plans, ask the next blocking clarification question. For reviewable
+plans, ask for approval or correction of the plan's most important assumption.
+Do not replace that request with a statement of the next action. If the user
+answers with a new uncertainty, continue the clarification loop instead of
+treating the first answer as enough.
+
 Use these section headings exactly for every normal user-visible brainstorm checkpoint. Do not rename them to alternatives such as "Planning Checkpoint", "Goal", "Recommended Plan", or "Acceptance Criteria"; those concepts belong inside the fixed sections so live rendered output stays predictable.
 
 Use this natural-language shape by default:
@@ -476,17 +498,19 @@ Before returning a final brainstorm plan, check:
 
 1. Did I load the evidence required by the evidence mode?
 2. Did I avoid asking questions that the repo can answer?
-3. Did I expose hidden decisions?
-4. Did I split broad work into independently testable features?
-5. Did I create/update `.arbor/workflow/features.json` so feature status does not have to be inferred from review files?
-6. Did I define acceptance criteria?
-7. Did I define artifact-appropriate concrete verification checks, with evaluator focus as review guidance rather than the only check?
-8. Did I create the review Context/Test Plan document for ready implementation work?
-9. Did I avoid implementation?
-10. Did I identify unresolved assumptions?
-11. Did I make the next route explicit?
-12. Did I make the inline response understandable without Arbor-internal field names?
-13. Did I paraphrase internal labels into user-level action and verification language?
-14. Did I translate status codes, feature ids, fixture ids, and abbreviations before writing visible text?
+3. Did I ask the next material blocking question or request approval/correction instead of producing a plan-only checkpoint?
+4. Did I avoid treating "one question at a time" as "only one question total"?
+5. Did I expose hidden decisions?
+6. Did I split broad work into independently testable features?
+7. Did I create/update `.arbor/workflow/features.json` so feature status does not have to be inferred from review files?
+8. Did I define acceptance criteria?
+9. Did I define artifact-appropriate concrete verification checks, with evaluator focus as review guidance rather than the only check?
+10. Did I create the review Context/Test Plan document for ready implementation work?
+11. Did I avoid implementation?
+12. Did I identify unresolved assumptions?
+13. Did I make the next route explicit?
+14. Did I make the inline response understandable without Arbor-internal field names?
+15. Did I paraphrase internal labels into user-level action and verification language?
+16. Did I translate status codes, feature ids, fixture ids, and abbreviations before writing visible text?
 
 If any check fails, revise the output or return `needs_clarification` / `needs_evidence`.

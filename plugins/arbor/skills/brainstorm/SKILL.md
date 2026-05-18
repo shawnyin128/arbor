@@ -22,7 +22,7 @@ Follow this normal sequence for brainstorm runs. Stop early with the correct ter
 1. **Confirm route**: accept only Arbor-managed planning work; return `route_correction` if this belongs to direct work, `develop`, `evaluate`, `converge`, or `release`.
 2. **Select evidence mode**: choose `pure`, `user_artifact`, `project_context`, `codebase`, `paper`, `paper_and_code`, or `mixed`.
 3. **Load required evidence**: read available repo/docs/papers/user artifacts before making settled claims. If required evidence is missing, return `needs_evidence`.
-4. **Clarify only blockers**: ask one material question at a time. Do not ask for facts the repo/docs can answer cheaply.
+4. **Run the clarification loop**: state the current understanding, then ask the next material question when the answer could change scope, design, tests, persistence, approval, or the user's confidence that the request was understood. Do not ask for facts the repo/docs can answer cheaply. Continue this loop across turns until the requirement is clear enough to plan or implement.
 5. **Expose hidden decisions**: surface defaults the user did not specify but that affect implementation, testing, persistence, or user experience.
 6. **Split scope**: reduce broad work into small independently testable features.
 7. **Plan acceptance and verification**: define acceptance criteria, done-when criteria, decision trace handoff, and artifact-appropriate verification scope before routing onward.
@@ -37,7 +37,7 @@ Follow this normal sequence for brainstorm runs. Stop early with the correct ter
 Confirm route
 -> Evidence mode
 -> Evidence loading or needs_evidence
--> Clarification or needs_clarification
+-> Clarification loop or needs_clarification
 -> Hidden decisions
 -> Approach comparison
 -> Feature split
@@ -53,8 +53,8 @@ Confirm route
 1. Do not redo `intake` unless new context shows the route is wrong.
 2. Do not use artifact or topic keywords as hard boundaries.
 3. Do not conclude from evidence that has not been loaded.
-4. Ask only questions that materially change the plan.
-5. Prefer one pending user question over a questionnaire.
+4. Ask one material clarification question when user intent, hidden defaults, or approval scope could change the plan or needs explicit confirmation.
+5. Prefer one pending blocking question at a time over a questionnaire; after each answer, continue clarifying remaining material uncertainty until the whole requirement is confirmed.
 6. Surface hidden decisions explicitly instead of silently choosing defaults.
 7. Split large requests into incremental features before implementation planning.
 8. Include acceptance criteria, done-when criteria, and artifact-appropriate review verification for every ready feature.
@@ -77,6 +77,14 @@ No, not when the plan depends on repo state, code, papers, proposals, logs, or r
 ### "Ask Everything Up Front"
 
 No. Ask one blocking question at a time. Do not turn brainstorming into a questionnaire.
+
+### "Plan-Only Brainstorming"
+
+No. A brainstorm checkpoint is collaborative. When the plan is not blocked, still ask for approval or correction so the user can refine the framing and see what understanding is being carried forward.
+
+### "One Question And Done"
+
+No. "One question at a time" is a pacing rule, not a stopping rule. After the user answers, re-check the remaining hidden decisions and ask the next material question until the requirement, non-goals, default decisions, validation expectations, and approval state are clear.
 
 ### "This Is Ready For Develop Because The Process Is Obvious"
 
@@ -149,7 +157,12 @@ For detailed boundary rationale, read `references/brainstorm-boundary.md`.
 
 - Ask only when the answer changes scope, design, tests, persistence, or approval.
 - Prefer multiple choice when options are clear.
-- Keep exactly one pending question in the structured output.
+- Use `clarification.asked_questions` for the clarification history available in the current checkpoint, including the current visible question.
+- Keep at most one pending question in the structured output for the current turn; this does not mean the whole brainstorm may ask only one question.
+- If a user answer would substantially change the plan, stop at `needs_clarification` instead of burying the uncertainty in defaults.
+- If material uncertainty remains after the user's answer, ask the next question and stay in `needs_clarification`.
+- If the plan is reviewable, set `pending_question` to null and ask for approval or correction under `Next`.
+- Do not route to implementation while unresolved material questions remain.
 - If evidence can answer the question cheaply, load evidence instead of asking the user.
 
 ### Explore Approaches
@@ -166,7 +179,7 @@ For detailed boundary rationale, read `references/brainstorm-boundary.md`.
 - Make each feature independently understandable and testable.
 - Create or update the feature registry so every planned feature has a status and review document path.
 - Create the review document Context/Test Plan section for ready implementation work.
-- Ask for user approval before `develop` unless approval was already explicit and the task is narrow.
+- Ask for user approval or correction before `develop` unless approval was already explicit and the task is narrow.
 
 ### Done-When Verification Thread
 
@@ -315,6 +328,8 @@ Produce this structure for internal workflow handoff:
 
 `user_response` is the inline output the user reads. Write it in plain natural language, not as a dump of machine fields. Do not expose names such as `feature_registry`, `review_doc`, `terminal_state`, `evaluator_focus`, `source_intake`, or `route`.
 
+The visible checkpoint must not be plan-only. It should first make the agent's understanding inspectable, then ask the next useful question or request approval/correction. For `needs_clarification`, the current question is blocking and also appears in `pending_question`. For `ready_for_user_review`, no blocking question remains: ask the user to approve or correct the most important default, feature split, priority, or interpretation before development proceeds.
+
 The structured `brainstorm.v1` object is an internal workflow/runtime packet. In a normal user-facing final response, render the checkpoint from `user_response` and `ui`; do not print the raw `brainstorm.v1` JSON unless the user explicitly asks for debug or machine output.
 
 The tables in `user_response` must be human-readable. Do not copy structured labels such as feature names, summaries, test labels, or review-context phrases directly into visible table cells when they are internal shorthand. Rewrite them into plain action/result language. For example, say "define which requests should enter Arbor" instead of "intake routing contract", and say "confirm comparison rules stay consistent" instead of "baseline field assertions".
@@ -357,7 +372,8 @@ Adapt the content to the terminal state:
 
 - If evidence is missing, say what cannot be concluded yet and what evidence must be read before splitting work.
 - If clarification is needed, ask the single blocking question under `Next`.
-- If the plan is ready, make the first small step and the approval need obvious.
+- If the plan is ready for review, ask for approval or correction under `Next`; do not merely state the next step.
+- If the plan is already approved and ready for implementation, make the first small step and the prior approval basis obvious.
 
 Keep the wording review-oriented. The user should quickly understand how the problem is being framed, what small steps exist, how each step will be verified, what defaults were assumed, and what delivery looks like.
 
@@ -389,17 +405,19 @@ Before returning, check:
 
 1. Did I load the evidence required by the evidence mode, or explicitly return `needs_evidence`?
 2. Did I avoid asking questions that repo/docs/artifacts can answer?
-3. Did I expose hidden decisions?
-4. Did I split broad work into independently testable features?
-5. Did I create/update `.arbor/workflow/features.json` with feature statuses, active feature, and review document paths for ready work?
-6. Did I include acceptance criteria and artifact-appropriate verification scope for ready features?
-7. Did I create the review Context/Test Plan artifact for the selected ready feature?
-8. Did I avoid implementation, test execution, commit, push, and release claims?
-9. Did I make the next route and approval state explicit?
-10. Did I include a user-visible checkpoint that prevents silent continuation into implementation?
-11. Did I write `user_response` as a plain-language review packet that avoids machine field names?
-12. Did every visible table cell use user-level descriptions instead of copied internal labels?
-13. Did I avoid status codes, feature ids, fixture ids, and unexplained abbreviations in visible text?
+3. Did I ask the next material blocking question or request approval/correction instead of producing a plan-only checkpoint?
+4. Did I avoid treating "one question at a time" as "only one question total"?
+5. Did I expose hidden decisions?
+6. Did I split broad work into independently testable features?
+7. Did I create/update `.arbor/workflow/features.json` with feature statuses, active feature, and review document paths for ready work?
+8. Did I include acceptance criteria and artifact-appropriate verification scope for ready features?
+9. Did I create the review Context/Test Plan artifact for the selected ready feature?
+10. Did I avoid implementation, test execution, commit, push, and release claims?
+11. Did I make the next route and approval state explicit?
+12. Did I include a user-visible checkpoint that prevents silent continuation into implementation?
+13. Did I write `user_response` as a plain-language review packet that avoids machine field names?
+14. Did every visible table cell use user-level descriptions instead of copied internal labels?
+15. Did I avoid status codes, feature ids, fixture ids, and unexplained abbreviations in visible text?
 
 If any answer fails, revise the structured output before responding.
 

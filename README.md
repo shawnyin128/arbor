@@ -197,7 +197,7 @@ What it does well:
 
 - selecting and enforcing the required evidence mode: current conversation, user artifact, project context, codebase, paper, paper plus code, or mixed evidence;
 - refusing to make settled claims before required evidence is loaded;
-- asking one blocking clarification question instead of a broad questionnaire;
+- asking one material clarification question at a time, then continuing until the requirement is clear instead of stopping after the first question;
 - exposing hidden design decisions that would otherwise become silent defaults;
 - comparing approaches when there are real alternatives;
 - splitting broad work into independently testable features;
@@ -510,7 +510,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-0.4.5
+0.4.6
 ```
 
 Version files:
