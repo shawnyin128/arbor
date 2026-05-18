@@ -66,9 +66,12 @@ this order:
 - `**Remaining Issues**`
 - `**Next Step**`
 
-Before returning, self-check that the visible response contains those exact
-headings and Markdown tables under `Agreement Check` and `Remaining Issues`.
-A shorter prose-only convergence checkpoint is not acceptable.
+Final response preflight must run on the exact final assistant message, not only
+on the internal `user_response` draft. The final message must contain those
+exact headings and Markdown tables under `Agreement Check` and `Remaining
+Issues`. A shorter prose-only convergence checkpoint is not acceptable.
+Markdown tables under `Agreement Check` and `Remaining Issues` are required in
+both fixture output and the captured final response.
 
 ## Checkpoint And Automation Policy
 

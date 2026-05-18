@@ -123,7 +123,12 @@ The normal visible final response MUST include these exact Markdown headings, in
 - `**Remaining Issues**`
 - `**Next Step**`
 
-Before returning, self-check the captured visible response for the exact headings above and for Markdown tables under `Agreement Check` and `Remaining Issues`. If any heading or required table is missing, rewrite the visible response before finishing. A shorter prose-only convergence checkpoint is not acceptable.
+Final response preflight: before returning, self-check the exact final assistant
+message that will be sent to the user, not just the internal `user_response`
+draft or fixture row. It must contain the exact headings above in order and
+Markdown tables under `Agreement Check` and `Remaining Issues`. If any heading
+or required table is missing, rewrite the visible response before finishing. A
+shorter prose-only convergence checkpoint is not acceptable.
 
 ## Done-When Verification Thread
 
@@ -303,3 +308,4 @@ Before returning:
 11. Did I include a user-visible checkpoint that prevents silent continuation into release, next-feature selection, or a correction loop?
 12. Did `user_response` make clear that release finalization remains pending after convergence?
 13. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?
+14. Did I run final response preflight on the exact final message so it includes all convergence headings and required tables instead of a prose-only summary?

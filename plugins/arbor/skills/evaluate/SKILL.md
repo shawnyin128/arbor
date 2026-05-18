@@ -288,10 +288,13 @@ order, even when a section has only one sentence or a not-applicable table:
 - `**Risks And Gaps**`
 - `**Next Step**`
 
-Before returning, self-check the captured visible response for the exact headings above
-and for Markdown tables under `Unit Tests` and `Scenario Tests`. If any heading or table
+Final response preflight: before returning, self-check the exact final assistant
+message that will be sent to the user, not just the internal `user_response`
+draft or fixture row. It must contain the exact headings above in order and
+Markdown tables under `Unit Tests` and `Scenario Tests`. If any heading or table
 is missing, rewrite the visible response before finishing. A shorter prose-only
-evaluation is not an acceptable `evaluate` checkpoint.
+evaluation is not an acceptable `evaluate` checkpoint, even when the evaluation
+is blocked, missing a develop handoff, or attached to an informal review request.
 
 Do not expose machine-oriented labels in visible text. Avoid schema field names, route assignments, terminal-state strings, fixture ids, synthetic feature ids, and shorthand such as `dev/eval`. Internal evidence may stay in structured fields; the visible text should explain the situation a user cares about.
 
@@ -540,6 +543,7 @@ Before returning:
 19. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
 20. Did `user_response` make clear that convergence remains pending instead of implying final completion?
 21. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+22. Did I run final response preflight on the exact final message so it includes all evaluation headings and required tables instead of a prose-only summary?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

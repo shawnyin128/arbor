@@ -471,6 +471,14 @@ The visible tables must paraphrase structured data. Do not paste internal featur
 
 Do not show internal shorthand in the primary inline text. Status strings such as `ready_for_develop`, route assignments such as `next_skill=develop`, feature ids such as `F1`, fixture ids such as `Case 2`, and abbreviations such as `RFD` or `dev/eval` must be translated into plain user-facing language.
 
+Final response preflight must run on the exact final assistant message, not only
+on the internal `user_response` draft. The final message must keep the standard
+brainstorm headings in order, preserve the table sections as Markdown tables,
+ask the current blocking, approval, or correction question, and avoid collapsing
+into a plan-only, artifact-list, status-paragraph, or prose-only summary. Even
+blocked, needs-evidence, and needs-clarification outcomes must render the full
+checkpoint shape with blocked or not-applicable table rows.
+
 ## Terminal States
 
 `brainstorm` can end in one of these states:
@@ -512,5 +520,6 @@ Before returning a final brainstorm plan, check:
 14. Did I make the inline response understandable without Arbor-internal field names?
 15. Did I paraphrase internal labels into user-level action and verification language?
 16. Did I translate status codes, feature ids, fixture ids, and abbreviations before writing visible text?
+17. Did I run final response preflight on the exact final message and reject status-paragraph or artifact-list output?
 
 If any check fails, revise the output or return `needs_clarification` / `needs_evidence`.

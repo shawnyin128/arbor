@@ -64,6 +64,24 @@ Write it in plain natural language with these sections:
 6. **Risks And Gaps**: list unresolved risks, skipped checks, blockers, or deviations from the plan.
 7. **Next Step**: describe the next workflow step in plain language, such as saving a local checkpoint commit before independent evaluation, returning to planning, or stopping because authorization is missing.
 
+The normal visible final response MUST include these exact Markdown headings, in
+this order, even when a section has only one sentence:
+
+- `**What I Completed**`
+- `**How It Maps To The Plan**`
+- `**What Changed**`
+- `**Implementation Defaults I Chose**`
+- `**How I Self-Tested**`
+- `**Risks And Gaps**`
+- `**Next Step**`
+
+Final response preflight: before sending the actual final assistant message,
+check the captured final text, not just the internal `user_response` draft. If
+any required heading is missing, out of order, or replaced by a prose-only
+summary, rewrite the visible response before finishing. The final message must
+also make independent evaluation explicit when implementation reaches handoff
+state.
+
 For non-success states, keep the same readable shape but make the blocker clear. For example, say "the plan has not been confirmed yet, so implementation cannot start" instead of exposing the internal authorization state.
 
 Never expose machine-oriented labels in `user_response`. Avoid schema field names, terminal-state strings, route assignments, feature ids, fixture ids, and shorthand such as `dev/eval`. If a table is useful, translate every cell into user-facing language; do not copy internal labels from `source`, `route`, `review_handoff`, `self_test`, `feature_registry_update`, or other structured fields.
@@ -400,6 +418,7 @@ Before returning:
 15. Did `user_response` expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
 16. Did `user_response` make clear that independent evaluation remains pending instead of implying final completion?
 17. Did `user_response` explain the development result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
+18. Did I run final response preflight on the exact final message so it includes the required development headings instead of a prose-only summary?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 

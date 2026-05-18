@@ -70,7 +70,7 @@ Arbor regressions should be added here before the fix is accepted.
 | R05 | Runtime traceback was treated as direct work and skipped intake/Arbor. | Paste a non-trivial traceback that blocks an active implementation or pipeline. | `intake -> develop` or `intake -> brainstorm` according to diagnosability | Route trace or observable behavior shows Arbor handling; immediate trivial explanation is not enough; fix or plan includes replay evidence. |
 | R06 | Evaluate accepted work too weakly. | Explicit `$evaluate` on a completed Developer Round. | `evaluate -> release(checkpoint_evaluate)` | Evaluation includes developer replay plus at least two independent check categories and a negative/static/contract probe; if a live replay is unavailable, the risk is rendered visibly. |
 | R07 | Evaluate output exposed or resembled raw `evaluate.v1` instead of readable rendering. | Explicit `$evaluate` and natural active-review continuation. | `evaluate` | Final response has `Evaluation Verdict`, `Findings First`, readable unit/scenario tables, and no raw schema object as primary UI. |
-| R08 | Output layer was not checked after real execution. | Any workflow-facing change case. | Same as case chain | Harness saves `final-response.md` and asserts headings, table shape, hidden raw JSON, internal field leakage, and user-readable scenario wording. |
+| R08 | Output layer was not checked after real execution. | Any workflow-facing change case. | Same as case chain | Harness saves `final-response.md` and asserts exact skill-specific headings, heading order, required table sections, hidden raw JSON, internal field leakage, and user-readable scenario wording. |
 | R09 | Converge/replay loop was claimed without real convergence behavior. | Evaluate emits accepted, changes-requested, and needs-brainstorm examples. | `evaluate -> release(checkpoint_evaluate) -> converge` | Converge routes accepted work toward finalization, changes back to develop, and planning gaps back to brainstorm; registry status changes only when justified. |
 | R10 | Release checkpoint policy was confused with final release. | Completed develop handoff. | `develop -> release(checkpoint_develop) -> evaluate` | A real local git commit is created before evaluation; commit contains selected workflow files only; push/PR/tag/publish do not happen. |
 | R11 | Develop after success did not auto-commit. | Explicit `$develop` from approved scope with review context. | `develop -> release(checkpoint_develop)` | `git log -1` shows checkpoint commit; release status mentions checkpoint commit and next evaluate; unrelated dirty files are preserved. |
@@ -91,6 +91,7 @@ Arbor regressions should be added here before the fix is accepted.
 | R26 | Review loops closed too early. | A failing real case followed by a fix attempt. | `develop -> release -> evaluate -> converge` until accepted | Runner repeats until pass or records a blocking finding; final status cannot be accepted from developer self-test alone. |
 | R27 | Active planning continuation was only protected when the current task was embedded in the same prompt. | Split-context prompt: prior turn establishes active code cleanup requirements, current turn says "Okay. Based on my requirements, let's think through what to do and design a plan." | `intake -> brainstorm` | Rendered brainstorm checkpoint persists `.arbor/workflow/features.json` and review Context/Test Plan; implementation files do not change; the paired non-engineering fixture remains direct in intake baselines. |
 | R28 | `AGENTS.md` Project Map drift was not surfaced or updated after durable project entrypoints changed. | A new top-level `tools/` directory exists but `AGENTS.md` only maps `src/`; user asks Arbor to update the map before release. | `arbor.goal_constraint_drift` -> AGENTS Project Map update | The drift packet exposes project-map candidates, final rendered text is readable, and `AGENTS.md` Project Map mentions `tools/` without adding transient session progress. |
+| R29 | Informal or misspelled evaluate requests could bypass the structured evaluation packet and collapse into a prose-only summary. | Natural prompt with a misspelled verb such as "evalute this active developer handoff" in a repo with active Developer Round and review doc. | `intake -> evaluate` | Evaluator Round is appended and the captured `final-response.md` contains the complete evaluate checkpoint: exact headings, unit/scenario tables, findings, judgments, risks, and next step. |
 
 ## Runtime Assertions
 
@@ -137,6 +138,7 @@ A release may say "real workflow chain review passed" only when these cases pass
 
 - R01, R04, R05, R07, R10, R11, R12, R15, R17, R21, R22, R24 on Codex;
 - R27 on Codex for split-context planning continuation changes;
+- R29 on Codex for workflow rendered-output or evaluate-routing changes;
 - R14 and R25 for shared Codex/Claude changes;
 - R20 for Claude hook changes;
 - the directly affected case for every bug fixed in the release.

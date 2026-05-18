@@ -270,6 +270,14 @@ Use `ui.summary`, `ui.status_items`, `ui.warnings`, and `ui.next_actions` for co
 
 Do not make the primary UI display `checkpoint_handoff`, `feature_registry_signal`, `dirty_scope`, selected-file reasoning, or authorization internals. Those fields remain available for review documents and debug traces.
 
+Final response preflight: before sending the actual final assistant message,
+check the captured final text, not just the internal `user_response` draft. The
+final message must render the compact release status from `ui.summary`,
+`ui.status_items`, `ui.warnings`, and `ui.next_actions`; it must not collapse
+into a generic "done" sentence, imply unauthorized public actions happened, or
+expose internal status fields. If the final text fails this check, rewrite it
+before finishing.
+
 ## Self-Check
 
 Before returning:
@@ -291,3 +299,4 @@ Before returning:
 15. Did I create or refresh `.arbor/memory.md` when unresolved uncommitted Arbor workflow state remains, or clear resolved entries after a successful commit/publish?
 16. Did I set checkpoint policy so internal checkpoints may continue automatically but external actions and finalization decisions stop for the user?
 17. If the project has version management, did I identify the actual method, choose the target version from that method, include the version files in the selected release scope when needed, and block the release when the bump is required but absent?
+18. Did I run final response preflight on the exact final message so it renders concrete release status instead of a generic prose-only summary?

@@ -97,6 +97,12 @@ The structured `release.v1` object is an internal workflow/runtime packet. Norma
 
 Do not show `checkpoint_handoff`, `feature_registry_signal`, dirty-scope analysis, selected-file reasoning, or authorization internals as primary UI. These remain machine-readable for the workflow and available in review/debug views.
 
+Final response preflight must run on the exact final assistant message, not only
+on the internal `user_response` draft. The final message must render a concrete
+release status from summary, status items, warnings, and next actions; it must
+not collapse into a generic done sentence, imply unauthorized public actions
+happened, or expose internal status fields.
+
 ## Checkpoint Policy
 
 `release` participates in checkpoint policy but remains status-only. Its output must include `ui.checkpoint`:

@@ -568,6 +568,12 @@ The visible response should include:
 | Risks And Gaps | List deviations, skipped checks, residual risks, blockers, or missing approvals. |
 | Next Step | Say the next workflow step in plain language. For success this is saving a local checkpoint commit before independent evaluation; for blockers this is planning, selection, approval, or stop. |
 
+The normal visible final response must keep these sections as exact Markdown
+headings in the order above. Final response preflight must run on the exact
+final assistant message, not only on the internal `user_response` draft. If any
+heading is missing, out of order, or collapsed into a prose-only summary,
+rewrite the visible response before finishing.
+
 For tables, every row and column must be written for a human reviewer. Translate internal sources, route reasons, status codes, check identifiers, and feature registry state into ordinary language.
 
 Do not expose internal machine labels in `user_response`, including schema field names, terminal-state strings, route assignments, feature ids, fixture ids, and shorthand such as `dev/eval`. The structured JSON can keep machine-readable values; the visible text should be plain language.
@@ -623,5 +629,6 @@ Before returning:
 13. Did I route to `release` only from `ready_for_evaluate`, with machine-readable checkpoint intent before `evaluate`?
 14. Did the visible response expose implementation-time hidden/default decisions in natural language, or explicitly state that there were no material hidden decisions?
 15. Did the visible response explain the result in natural language without leaking internal field names, route codes, feature ids, fixture ids, or shorthand?
+16. Did I run final response preflight on the exact final message?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.

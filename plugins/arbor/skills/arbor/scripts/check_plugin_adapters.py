@@ -559,6 +559,9 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "unexplained feature ids",
             "final rendered response text",
             "preflight only",
+            "Final Response Preflight",
+            "exact text it is about to send",
+            "Static fixture checks are not a substitute",
         ):
             check(errors, term in protocol_text, f"rendered checkpoint protocol missing term `{term}`")
 
@@ -578,6 +581,18 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "Suggested Small Steps",
             "How I Would Validate Each Step",
             "Expected Delivery",
+            "Final response preflight",
+            "captured final text",
+            "status-paragraph",
+            "artifact-list",
+        ],
+        "skills/develop/SKILL.md": [
+            "The normal visible final response MUST include these exact Markdown headings",
+            "`**What I Completed**`",
+            "`**How I Self-Tested**`",
+            "Final response preflight",
+            "captured final text",
+            "prose-only summary",
         ],
         "skills/intake/SKILL.md": [
             "active engineering planning continuations",
@@ -593,6 +608,8 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "`**Scenario Tests**`",
             "A shorter prose-only",
             "evaluation is not an acceptable `evaluate` checkpoint",
+            "Final response preflight",
+            "exact final assistant",
             "workflow, process-control, routing, plugin, prompt-routing, or output-layer changes",
             "checker or harness negative probe",
             "weak pass",
@@ -605,14 +622,23 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "`**Goal Alignment**`",
             "`**Remaining Issues**`",
             "`**Next Step**`",
-            "A shorter prose-only convergence checkpoint is not acceptable",
+            "Final response preflight",
+            "exact final assistant",
+            "shorter prose-only convergence checkpoint is not acceptable",
         ],
         "skills/converge/references/converge-boundary.md": [
             "The normal visible final response MUST include these exact Markdown headings",
             "`**Convergence Decision**`",
             "`**Goal Alignment**`",
             "Markdown tables under `Agreement Check` and `Remaining Issues`",
+            "Final response preflight",
             "A shorter prose-only convergence checkpoint is not acceptable",
+        ],
+        "skills/release/SKILL.md": [
+            "User-Visible Status",
+            "Final response preflight",
+            "captured final text",
+            "generic",
         ],
     }
     repo_root = repo_root_from_plugin(plugin_root)
@@ -1392,7 +1418,9 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "CLASS_WRONG_ROUTE",
         "CLASS_FLAKY_AMBIGUOUS",
         "CLASS_BLOCKED_RUNTIME",
-        'assert_rendered_table("Convergence Decision", "Why This Decision", "Agreement Check", "Goal Alignment", "Remaining Issues", "Next Step")',
+        "SKILL_RENDER_CONTRACTS",
+        'assert_skill_rendered_checkpoint("converge")',
+        "R29",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
     for category in (

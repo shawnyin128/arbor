@@ -240,6 +240,12 @@ Put `How I Challenged The Work` and `Plan Coverage` before `What I Checked`. The
 
 `Unit Tests` and `Scenario Tests` must be tables with human-readable columns such as `Check`, `Behavior Covered`, `Expected`, `Actual`, and `Result`. If a category is not applicable or could not run, include a table row that explains why instead of omitting the section.
 
+Final response preflight must run on the exact final assistant message, not only
+on the internal `user_response` draft. The final message must keep every
+evaluation heading in order, include Markdown tables under `Unit Tests` and
+`Scenario Tests`, and avoid collapsing blocked or informal review requests into
+a prose-only summary.
+
 The visible text must not require the user to know the structured schema. Do not expose field names, assignment-style routes, terminal-state strings, fixture ids, synthetic feature ids, or unexplained shorthand. Keep internal evidence in structured fields or secondary evidence lists; primary prose should explain the workflow situation and user-visible risk.
 
 ## Relationship To Other Skills
@@ -424,3 +430,4 @@ Before returning:
 13. Did every test-matrix row include a concrete representative example and every scenario row start with a human workflow situation instead of a synthetic id?
 14. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
 15. Did the visible response lead with verdict and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+16. Did I run final response preflight on the exact final message?

@@ -96,6 +96,11 @@ ROUTING_REPLAY_CASES = {
         "situation": "A workflow-skill output smoke should render the user-facing evaluation sections.",
         "expected_chain": "evaluate",
     },
+    "R29": {
+        "category": "active_review_evaluate",
+        "situation": "A misspelled or informal evaluate request attached to an active handoff should still render the full evaluation checkpoint instead of a prose-only summary.",
+        "expected_chain": "intake -> evaluate",
+    },
     "R27": {
         "category": "planning_continuation",
         "situation": "A split-context engineering planning continuation should still become brainstorm.",
@@ -142,6 +147,64 @@ RAW_CHECKPOINT_LEAK_RE = re.compile(
     r"^\s*(?:route|terminal state|next route|next skill)\s*:",
     re.IGNORECASE | re.MULTILINE,
 )
+TABLE_SEPARATOR_RE = re.compile(r"^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$", re.MULTILINE)
+SKILL_RENDER_CONTRACTS = {
+    "brainstorm": {
+        "headings": (
+            "Understanding And Recommendation",
+            "How I Would Handle This",
+            "Suggested Small Steps",
+            "How I Would Validate Each Step",
+            "Default Decisions I Made",
+            "Expected Delivery",
+            "Next",
+        ),
+        "table_sections": (
+            "Suggested Small Steps",
+            "How I Would Validate Each Step",
+            "Default Decisions I Made",
+        ),
+    },
+    "develop": {
+        "headings": (
+            "What I Completed",
+            "How It Maps To The Plan",
+            "What Changed",
+            "Implementation Defaults I Chose",
+            "How I Self-Tested",
+            "Risks And Gaps",
+            "Next Step",
+        ),
+        "table_sections": (),
+    },
+    "evaluate": {
+        "headings": (
+            "Evaluation Verdict",
+            "Findings First",
+            "How I Challenged The Work",
+            "Plan Coverage",
+            "What I Checked",
+            "Unit Tests",
+            "Scenario Tests",
+            "Other Checks",
+            "Evaluator Judgments I Made",
+            "Risks And Gaps",
+            "Next Step",
+        ),
+        "table_sections": ("Unit Tests", "Scenario Tests"),
+    },
+    "converge": {
+        "headings": (
+            "Convergence Decision",
+            "Why This Decision",
+            "Agreement Check",
+            "Goal Alignment",
+            "Remaining Issues",
+            "Next Step",
+        ),
+        "table_sections": ("Agreement Check", "Remaining Issues"),
+    },
+}
 
 
 class CaseFailure(AssertionError):
@@ -661,14 +724,58 @@ def assert_file_equals(path: str, expected: str) -> Callable[[CaseContext, Runti
     return _assert
 
 
-def assert_rendered_table(*headings: str) -> Callable[[CaseContext, RuntimeResult | None], None]:
+def rendered_section(text: str, headings: tuple[str, ...], heading: str) -> str:
+    marker = f"**{heading}**"
+    start = text.find(marker)
+    require(start != -1, f"rendered response missing exact heading marker: {marker}")
+    next_starts = [
+        text.find(f"**{later}**")
+        for later in headings
+        if text.find(f"**{later}**") > start
+    ]
+    end = min(next_starts) if next_starts else len(text)
+    return text[start:end]
+
+
+def assert_skill_rendered_checkpoint(skill: str) -> Callable[[CaseContext, RuntimeResult | None], None]:
+    contract = SKILL_RENDER_CONTRACTS[skill]
+    headings = contract["headings"]
+    table_sections = contract["table_sections"]
+
     def _assert(_: CaseContext, result: RuntimeResult | None) -> None:
         text = final_text(result)
-        missing = [heading for heading in headings if heading not in text]
-        require(not missing, f"rendered response missing headings: {missing}")
-        require("|" in text and "---" in text, "rendered response missing markdown table")
+        positions: list[int] = []
+        missing: list[str] = []
+        for heading in headings:
+            marker = f"**{heading}**"
+            position = text.find(marker)
+            if position == -1:
+                missing.append(marker)
+            else:
+                positions.append(position)
+        require(not missing, f"{skill} final response missing exact rendered headings: {missing}")
+        require(positions == sorted(positions), f"{skill} final response headings are out of order")
+        for section in table_sections:
+            section_text = rendered_section(text, headings, section)
+            require(
+                "|" in section_text and TABLE_SEPARATOR_RE.search(section_text) is not None,
+                f"{skill} final response section `{section}` must contain a Markdown table",
+            )
 
     return _assert
+
+
+def assert_release_status_checkpoint(_: CaseContext, result: RuntimeResult | None) -> None:
+    text = final_text(result)
+    lowered = text.lower()
+    require(
+        any(term in lowered for term in ("checkpoint", "commit", "confirmation", "release", "publish", "next")),
+        "release final response must render a concrete status checkpoint",
+    )
+    require(
+        not any(term in lowered for term in ("checkpoint_handoff", "feature_registry_signal", "dirty_scope")),
+        "release final response exposes internal status fields",
+    )
 
 
 def assert_git_commit_created(ctx: CaseContext, _: RuntimeResult | None) -> None:
@@ -701,11 +808,20 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
     for cache in (CODEX_CACHE, CLAUDE_CACHE):
         require(cache.exists(), f"cache missing: {cache}")
         for rel in (
+            "skills/brainstorm/SKILL.md",
             "skills/develop/SKILL.md",
+            "skills/evaluate/SKILL.md",
+            "skills/converge/SKILL.md",
             "skills/release/SKILL.md",
+            "skills/arbor/references/rendered-checkpoint-protocol.md",
             "skills/arbor/references/real-workflow-chain-review.md",
             "skills/arbor/scripts/check_real_workflow_chains.py",
             "skills/arbor/scripts/check_plugin_adapters.py",
+            "skills/brainstorm/scripts/check_brainstorm_baselines.py",
+            "skills/develop/scripts/check_develop_baselines.py",
+            "skills/evaluate/scripts/check_evaluate_baselines.py",
+            "skills/converge/scripts/check_converge_baselines.py",
+            "skills/release/scripts/check_release_baselines.py",
         ):
             source = PLUGIN_ROOT / rel
             cached = cache / rel
@@ -753,7 +869,8 @@ def prompt_header(case_id: str) -> str:
     return (
         f"Arbor real workflow chain review case {case_id}. "
         "Use the actual Arbor skill when the prompt names one or when the request matches Arbor. "
-        "Keep the final response concise but rendered for a user. Do not print raw workflow JSON. "
+        "Keep the final response concise inside each required skill-specific rendered heading and required table; "
+        "do not replace the checkpoint with a status paragraph. Do not print raw workflow JSON. "
         "If you perform an Arbor workflow action, append a compact trace line to .arbor/e2e-trace.jsonl. "
     )
 
@@ -773,12 +890,7 @@ def make_cases() -> dict[str, CaseSpec]:
             setup_planning_context,
             [
                 *common_assertions,
-                assert_contains(
-                    "Understanding And Recommendation",
-                    "Suggested Small Steps",
-                    "How I Would Validate Each Step",
-                    "Expected Delivery",
-                ),
+                assert_skill_rendered_checkpoint("brainstorm"),
                 assert_file_exists(".arbor/workflow/features.json"),
                 assert_file_exists("docs/review"),
                 assert_file_equals("src/example.py", "def answer() -> int:\n    return 41\n"),
@@ -791,15 +903,7 @@ def make_cases() -> dict[str, CaseSpec]:
             setup_planning_context,
             [
                 *common_assertions,
-                assert_contains(
-                    "Understanding And Recommendation",
-                    "How I Would Handle This",
-                    "Suggested Small Steps",
-                    "How I Would Validate Each Step",
-                    "Default Decisions I Made",
-                    "Expected Delivery",
-                    "Next",
-                ),
+                assert_skill_rendered_checkpoint("brainstorm"),
                 assert_file_exists("docs/review"),
             ],
         ),
@@ -821,7 +925,11 @@ def make_cases() -> dict[str, CaseSpec]:
             "active review routes to evaluate",
             agent_prompt("R04", "Review the active Arbor developer handoff and validate it independently."),
             setup_review_context,
-            [*common_assertions, assert_file_contains("docs/review/F-review.md", "Evaluator"), assert_any_contains("Evaluation", "Findings")],
+            [
+                *common_assertions,
+                assert_file_contains("docs/review/F-review.md", "Evaluator"),
+                assert_skill_rendered_checkpoint("evaluate"),
+            ],
         ),
         CaseSpec(
             "R05",
@@ -845,21 +953,26 @@ def make_cases() -> dict[str, CaseSpec]:
             "evaluate strictness",
             agent_prompt("R06", "$evaluate independently validate the completed developer handoff in docs/review/F-review.md."),
             setup_review_context,
-            [*common_assertions, assert_file_contains("docs/review/F-review.md", "Evaluator"), assert_any_contains("negative", "static", "contract", "independent")],
+            [
+                *common_assertions,
+                assert_file_contains("docs/review/F-review.md", "Evaluator"),
+                assert_skill_rendered_checkpoint("evaluate"),
+                assert_any_contains("negative", "static", "contract", "independent"),
+            ],
         ),
         CaseSpec(
             "R07",
             "evaluate rendered output",
             agent_prompt("R07", "$evaluate validate docs/review/F-review.md and make the visible output readable."),
             setup_review_context,
-            [*common_assertions, assert_rendered_table("Evaluation", "Findings", "Scenario")],
+            [*common_assertions, assert_skill_rendered_checkpoint("evaluate")],
         ),
         CaseSpec(
             "R08",
             "output layer captured",
             agent_prompt("R08", "$evaluate validate the active review handoff and render the user-facing packet."),
             setup_review_context,
-            [*common_assertions, assert_rendered_table("Evaluation", "Findings", "What I Checked", "Scenario")],
+            [*common_assertions, assert_skill_rendered_checkpoint("evaluate")],
         ),
         CaseSpec(
             "R09",
@@ -869,7 +982,7 @@ def make_cases() -> dict[str, CaseSpec]:
             [
                 *common_assertions,
                 assert_any_contains("converge", "develop", "release", "blocking"),
-                assert_rendered_table("Convergence Decision", "Why This Decision", "Agreement Check", "Goal Alignment", "Remaining Issues", "Next Step"),
+                assert_skill_rendered_checkpoint("converge"),
             ],
         ),
         CaseSpec(
@@ -877,29 +990,35 @@ def make_cases() -> dict[str, CaseSpec]:
             "release checkpoint creates local commit",
             agent_prompt("R10", "$release checkpoint the completed develop handoff before evaluate."),
             setup_develop_context,
-            [*common_assertions, assert_git_commit_created, assert_no_public_release],
+            [*common_assertions, assert_release_status_checkpoint, assert_git_commit_created, assert_no_public_release],
         ),
         CaseSpec(
             "R11",
             "develop success checkpoints",
             agent_prompt("R11", "$develop implement F-dev, run the planned check, append developer evidence, and checkpoint before evaluate."),
             setup_develop_context,
-            [*common_assertions, assert_file_contains("src/example.py", "42"), assert_file_contains("docs/review/F-dev.md", "Developer"), assert_git_commit_created],
-            timeout_seconds=360,
+            [
+                *common_assertions,
+                assert_skill_rendered_checkpoint("develop"),
+                assert_file_contains("src/example.py", "42"),
+                assert_file_contains("docs/review/F-dev.md", "Developer"),
+                assert_git_commit_created,
+            ],
+            timeout_seconds=600,
         ),
         CaseSpec(
             "R12",
             "release public actions gated",
             agent_prompt("R12", "$release prepare finalization for F-review, but do not push, tag, or publish without explicit authorization."),
             setup_converged_release_context,
-            [*common_assertions, assert_any_contains("confirmation", "authorize", "prepared", "release"), assert_no_public_release],
+            [*common_assertions, assert_release_status_checkpoint, assert_any_contains("confirmation", "authorize", "prepared", "release"), assert_no_public_release],
         ),
         CaseSpec(
             "R13",
             "explicit publish path",
             agent_prompt("R13", "$release finalize F-review with local commit only. Do not push to a remote or publish a package."),
             setup_converged_release_context,
-            [*common_assertions, assert_any_contains("commit", "release"), assert_no_public_release],
+            [*common_assertions, assert_release_status_checkpoint, assert_any_contains("commit", "release"), assert_no_public_release],
         ),
         CaseSpec(
             "R14",
@@ -960,21 +1079,26 @@ def make_cases() -> dict[str, CaseSpec]:
             "all skill rendered output smoke",
             agent_prompt("R21", "$evaluate validate the active handoff, then summarize the next release checkpoint in readable terms."),
             setup_review_context,
-            [*common_assertions, assert_any_contains("Evaluation", "Findings")],
+            [*common_assertions, assert_skill_rendered_checkpoint("evaluate")],
         ),
         CaseSpec(
             "R22",
             "single skill handoff sufficiency",
             agent_prompt("R22", "$develop use the existing review context for F-dev and produce a handoff that release/evaluate can continue."),
             setup_develop_context,
-            [*common_assertions, assert_file_contains("docs/review/F-dev.md", "Developer"), assert_any_contains("checkpoint", "evaluate")],
+            [
+                *common_assertions,
+                assert_skill_rendered_checkpoint("develop"),
+                assert_file_contains("docs/review/F-dev.md", "Developer"),
+                assert_any_contains("checkpoint", "evaluate"),
+            ],
         ),
         CaseSpec(
             "R23",
             "mid-chain entry blocks or proceeds correctly",
             agent_prompt("R23", "$converge use the available review evidence. If evidence is incomplete, block with readable missing evidence instead of inventing state."),
             setup_review_context,
-            [*common_assertions, assert_any_contains("missing", "evidence", "converge", "blocked", "release")],
+            [*common_assertions, assert_skill_rendered_checkpoint("converge"), assert_any_contains("missing", "evidence", "converge", "blocked", "release")],
         ),
         CaseSpec(
             "R24",
@@ -1000,7 +1124,7 @@ def make_cases() -> dict[str, CaseSpec]:
             [
                 *common_assertions,
                 assert_any_contains("evaluate", "evaluator", "missing", "cannot", "not"),
-                assert_rendered_table("Convergence Decision", "Why This Decision", "Agreement Check", "Goal Alignment", "Remaining Issues", "Next Step"),
+                assert_skill_rendered_checkpoint("converge"),
             ],
         ),
         CaseSpec(
@@ -1012,15 +1136,24 @@ def make_cases() -> dict[str, CaseSpec]:
             setup_planning_context,
             [
                 *common_assertions,
-                assert_contains(
-                    "Understanding And Recommendation",
-                    "Suggested Small Steps",
-                    "How I Would Validate Each Step",
-                    "Expected Delivery",
-                ),
+                assert_skill_rendered_checkpoint("brainstorm"),
                 assert_file_exists(".arbor/workflow/features.json"),
                 assert_file_exists("docs/review"),
                 assert_file_equals("src/example.py", "def answer() -> int:\n    return 41\n"),
+            ],
+        ),
+        CaseSpec(
+            "R29",
+            "informal misspelled evaluate request still renders packet",
+            agent_prompt(
+                "R29",
+                "evalute this active Arbor developer handoff. Do not answer with a one-sentence validation summary; render the complete user-facing evaluation packet.",
+            ),
+            setup_review_context,
+            [
+                *common_assertions,
+                assert_file_contains("docs/review/F-review.md", "Evaluator"),
+                assert_skill_rendered_checkpoint("evaluate"),
             ],
         ),
         CaseSpec(

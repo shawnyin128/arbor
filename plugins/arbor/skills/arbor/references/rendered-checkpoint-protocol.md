@@ -24,6 +24,28 @@ Skill-specific section headings remain owned by each skill. This protocol does
 not replace those sections; it defines the minimum readable content they must
 carry.
 
+## Final Response Preflight
+
+The final assistant message is part of the workflow artifact. Before returning
+from a user-visible workflow skill, the agent must run a final-response
+preflight over the exact text it is about to send to the user, not only over an
+internal `user_response` draft or fixture row.
+
+The preflight must verify:
+
+- the final message renders the skill-specific checkpoint rather than a compact
+  prose-only summary;
+- required skill-specific headings appear exactly and in order;
+- required table sections contain Markdown tables;
+- raw workflow schema, route labels, terminal-state labels, fixture ids, and
+  unexplained internal ids are not the primary visible output;
+- the next step is described in user-facing language and does not imply that a
+  later checkpoint already happened.
+
+If the captured final message fails this preflight, rewrite the visible response
+before finishing. Static fixture checks are not a substitute for this
+last-mile check because they do not inspect the actual live final response.
+
 ## Internal Packet Boundary
 
 The structured packet may keep machine fields such as `schema_version`,

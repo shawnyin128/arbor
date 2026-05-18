@@ -330,6 +330,12 @@ Produce this structure for internal workflow handoff:
 
 The visible checkpoint must not be plan-only. It should first make the agent's understanding inspectable, then ask the next useful question or request approval/correction. For `needs_clarification`, the current question is blocking and also appears in `pending_question`. For `ready_for_user_review`, no blocking question remains: ask the user to approve or correct the most important default, feature split, priority, or interpretation before development proceeds.
 
+The visible checkpoint also must not be a compact status paragraph, artifact
+list, or "created checkpoint" summary. Even when the terminal state is blocked,
+needs evidence, or needs clarification, render the full brainstorm checkpoint
+with the fixed headings below. Use not-applicable or blocked rows in the table
+sections when planning cannot proceed yet.
+
 The structured `brainstorm.v1` object is an internal workflow/runtime packet. In a normal user-facing final response, render the checkpoint from `user_response` and `ui`; do not print the raw `brainstorm.v1` JSON unless the user explicitly asks for debug or machine output.
 
 The tables in `user_response` must be human-readable. Do not copy structured labels such as feature names, summaries, test labels, or review-context phrases directly into visible table cells when they are internal shorthand. Rewrite them into plain action/result language. For example, say "define which requests should enter Arbor" instead of "intake routing contract", and say "confirm comparison rules stay consistent" instead of "baseline field assertions".
@@ -367,6 +373,14 @@ Default format:
 **Next**
 ...
 ```
+
+Final response preflight: before sending the actual final assistant message,
+check the captured final text, not just the internal `user_response` draft. The
+final message must contain the exact headings above in order, must keep the
+three table sections as Markdown tables, must ask the current blocking,
+approval, or correction question under `Next`, and must not collapse into a
+plan-only, artifact-list, status-paragraph, or prose-only summary. If the final
+text fails this check, rewrite it before finishing.
 
 Adapt the content to the terminal state:
 
@@ -418,6 +432,7 @@ Before returning, check:
 13. Did I write `user_response` as a plain-language review packet that avoids machine field names?
 14. Did every visible table cell use user-level descriptions instead of copied internal labels?
 15. Did I avoid status codes, feature ids, fixture ids, and unexplained abbreviations in visible text?
+16. Did I run final response preflight on the exact final message so it includes the required headings, tables, and current question instead of a status paragraph, artifact list, or prose-only summary?
 
 If any answer fails, revise the structured output before responding.
 
