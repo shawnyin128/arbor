@@ -99,7 +99,7 @@ intake -> brainstorm -> develop -> release(checkpoint_develop: local commit)
 -> converge -> release(finalize_feature)
 ```
 
-`intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, done-when criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry. After a successful `develop`, `release(checkpoint_develop)` creates an automatic local checkpoint commit before `evaluate`.
+`intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, done-when criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry. After a successful `develop`, `release(checkpoint_develop)` creates an automatic local checkpoint commit before `evaluate`; after an appendable `evaluate`, `release(checkpoint_evaluate)` creates the evaluator checkpoint commit before `converge`. Automatic `develop_evaluate_converge` runs must pass through both release gates and stop if either checkpoint commit cannot be created.
 
 Two workflow artifacts carry state between skills:
 
@@ -226,6 +226,7 @@ What it does well:
 - mapping developer self-tests to accepted done-when criteria;
 - appending developer review handoff evidence to the existing review document;
 - routing only completed developer handoffs to `release` for an automatic local checkpoint commit before `evaluate`.
+- treating automatic develop/evaluate/converge continuation as permission for internal release checkpoints, not permission to skip release or finalization gates.
 
 Use it when:
 
@@ -513,7 +514,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-0.4.8
+0.5.0
 ```
 
 Version files:

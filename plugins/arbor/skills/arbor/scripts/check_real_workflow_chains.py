@@ -106,6 +106,11 @@ ROUTING_REPLAY_CASES = {
         "situation": "A non-English evaluate request should render the visible checkpoint in the user's language while preserving the evaluation structure.",
         "expected_chain": "evaluate",
     },
+    "R31": {
+        "category": "release_checkpoint",
+        "situation": "An automatic develop/evaluate/converge run must execute release checkpoint gates and create local checkpoint commits instead of only writing Release Round prose.",
+        "expected_chain": "develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge",
+    },
     "R27": {
         "category": "planning_continuation",
         "situation": "A split-context engineering planning continuation should still become brainstorm.",
@@ -255,6 +260,7 @@ class CaseSpec:
     runtimes: tuple[str, ...] = RUNTIMES
     requires_agent: bool = True
     timeout_seconds: int = 240
+    codex_sandbox: str = "workspace-write"
     description: str = ""
 
 
@@ -558,7 +564,7 @@ def runtime_available(runtime: str) -> bool:
     return shutil.which(runtime) is not None
 
 
-def codex_command(ctx: CaseContext, prompt: str, timeout: int) -> RuntimeResult:
+def codex_command(ctx: CaseContext, prompt: str, timeout: int, sandbox: str) -> RuntimeResult:
     final_path = ctx.artifacts / "final-response.md"
     cmd = [
         "codex",
@@ -568,7 +574,7 @@ def codex_command(ctx: CaseContext, prompt: str, timeout: int) -> RuntimeResult:
         "-C",
         str(ctx.workdir),
         "-s",
-        "workspace-write",
+        sandbox,
         "--ephemeral",
         "--output-last-message",
         str(final_path),
@@ -606,9 +612,9 @@ def local_result(ctx: CaseContext, prompt: str, timeout: int) -> RuntimeResult:
     return RuntimeResult(0, "", "", "", ["local"])
 
 
-def run_runtime(ctx: CaseContext, prompt: str, timeout: int) -> RuntimeResult:
+def run_runtime(ctx: CaseContext, prompt: str, timeout: int, *, codex_sandbox: str = "workspace-write") -> RuntimeResult:
     if ctx.runtime == RUNTIME_CODEX:
-        return codex_command(ctx, prompt, timeout)
+        return codex_command(ctx, prompt, timeout, codex_sandbox)
     if ctx.runtime == RUNTIME_CLAUDE:
         return claude_command(ctx, prompt, timeout)
     if ctx.runtime == RUNTIME_LOCAL:
@@ -622,6 +628,22 @@ def command_output(ctx: CaseContext, name: str, cmd: list[str], timeout: int = 6
     write(ctx.artifacts / f"{name}.stderr.txt", proc.stderr)
     require(proc.returncode == 0, f"{name} failed: {proc.stderr}")
     return proc.stdout
+
+
+def git_commit_count(ctx: CaseContext) -> int:
+    proc = run(["git", "rev-list", "--count", "HEAD"], cwd=ctx.workdir)
+    require(proc.returncode == 0, f"git rev-list failed: {proc.stderr}")
+    try:
+        return int(proc.stdout.strip())
+    except ValueError as exc:
+        raise CaseFailure(f"invalid git commit count: {proc.stdout!r}") from exc
+
+
+def snapshot_initial_state(ctx: CaseContext) -> None:
+    count = git_commit_count(ctx)
+    write(ctx.artifacts / "initial-git-commit-count.txt", f"{count}\n")
+    proc = run(["git", "log", "--oneline", "--decorate", "-5"], cwd=ctx.workdir)
+    write(ctx.artifacts / "initial-git-log.txt", proc.stdout + proc.stderr)
 
 
 def snapshot_state(ctx: CaseContext) -> None:
@@ -812,9 +834,26 @@ def assert_release_status_checkpoint(_: CaseContext, result: RuntimeResult | Non
     )
 
 
-def assert_git_commit_created(ctx: CaseContext, _: RuntimeResult | None) -> None:
-    log = command_output(ctx, "assert-git-log", ["git", "log", "--oneline", "-3"])
-    require(len([line for line in log.splitlines() if line.strip()]) >= 2, "expected a new git commit")
+def assert_git_commits_created(min_new_commits: int = 1) -> Callable[[CaseContext, RuntimeResult | None], None]:
+    def _assert(ctx: CaseContext, result: RuntimeResult | None) -> None:
+        baseline_path = ctx.artifacts / "initial-git-commit-count.txt"
+        require(baseline_path.exists(), "initial git commit count was not recorded")
+        baseline = int(baseline_path.read_text(encoding="utf-8").strip())
+        current = git_commit_count(ctx)
+        command_output(ctx, "assert-git-log", ["git", "log", "--oneline", "-8"])
+        require(
+            current >= baseline + min_new_commits,
+            f"expected at least {min_new_commits} new git commit(s), baseline={baseline}, current={current}",
+        )
+        text = final_text(result).lower() if result is not None else ""
+        forbidden = ("checkpoint commit is not saved", "could not be saved", "index.lock", "operation not permitted")
+        require(not any(term in text for term in forbidden), "final response reports checkpoint commit failure")
+
+    return _assert
+
+
+def assert_git_commit_created(ctx: CaseContext, result: RuntimeResult | None) -> None:
+    assert_git_commits_created(1)(ctx, result)
 
 
 def assert_no_public_release(ctx: CaseContext, _: RuntimeResult | None) -> None:
@@ -1026,20 +1065,27 @@ def make_cases() -> dict[str, CaseSpec]:
             agent_prompt("R10", "$release checkpoint the completed develop handoff before evaluate."),
             setup_develop_context,
             [*common_assertions, assert_release_status_checkpoint, assert_git_commit_created, assert_no_public_release],
+            codex_sandbox="danger-full-access",
         ),
         CaseSpec(
             "R11",
             "develop success checkpoints",
-            agent_prompt("R11", "$develop implement F-dev, run the planned check, append developer evidence, and checkpoint before evaluate."),
+            agent_prompt(
+                "R11",
+                "$develop implement F-dev, run the planned check, append developer evidence, then immediately run "
+                "release(checkpoint_develop) and create the local checkpoint commit before evaluate. Do not leave "
+                "checkpointing as a next-step suggestion.",
+            ),
             setup_develop_context,
             [
                 *common_assertions,
-                assert_skill_rendered_checkpoint("develop"),
+                assert_release_status_checkpoint,
                 assert_file_contains("src/example.py", "42"),
-                assert_file_contains("docs/review/F-dev.md", "Developer"),
+                assert_file_contains("docs/review/F-dev.md", "Developer", "Release"),
                 assert_git_commit_created,
             ],
             timeout_seconds=600,
+            codex_sandbox="danger-full-access",
         ),
         CaseSpec(
             "R12",
@@ -1054,6 +1100,7 @@ def make_cases() -> dict[str, CaseSpec]:
             agent_prompt("R13", "$release finalize F-review with local commit only. Do not push to a remote or publish a package."),
             setup_converged_release_context,
             [*common_assertions, assert_release_status_checkpoint, assert_any_contains("commit", "release"), assert_no_public_release],
+            codex_sandbox="danger-full-access",
         ),
         CaseSpec(
             "R14",
@@ -1203,6 +1250,30 @@ def make_cases() -> dict[str, CaseSpec]:
             ],
         ),
         CaseSpec(
+            "R31",
+            "automatic workflow uses release checkpoint commits",
+            agent_prompt(
+                "R31",
+                """
+                Use the explicit develop_evaluate_converge automation policy for F-dev.
+                Implement F-dev, run the planned developer check, append developer evidence,
+                run release(checkpoint_develop) and create its local checkpoint commit,
+                evaluate independently, run release(checkpoint_evaluate) and create its
+                local checkpoint commit, then converge the same feature. Stop before any
+                finalization commit, push, tag, or publish.
+                """,
+            ),
+            setup_develop_context,
+            [
+                *common_assertions,
+                assert_file_contains("docs/review/F-dev.md", "Developer", "Evaluator", "Release", "Convergence"),
+                assert_git_commits_created(2),
+                assert_no_public_release,
+            ],
+            timeout_seconds=900,
+            codex_sandbox="danger-full-access",
+        ),
+        CaseSpec(
             "R28",
             "AGENTS project map drift is updated",
             agent_prompt(
@@ -1249,7 +1320,7 @@ def reset_artifact_dir(artifacts: Path) -> None:
 
 
 def make_case_context(case_id: str, runtime: str, artifact_root: Path, plugin_root: Path) -> CaseContext:
-    workdir = Path(tempfile.mkdtemp(prefix=f"arbor-{case_id.lower()}-{runtime}-", dir="/private/tmp"))
+    workdir = Path(tempfile.mkdtemp(prefix=f"arbor-e2e-{runtime}-", dir="/private/tmp"))
     artifacts = artifact_root / f"{case_id}-{runtime}"
     reset_artifact_dir(artifacts)
     write(artifacts / "workdir.txt", str(workdir) + "\n")
@@ -1262,10 +1333,11 @@ def run_case(case: CaseSpec, runtime: str, artifact_root: Path, plugin_root: Pat
     metadata = case_metadata(case)
     try:
         case.setup(ctx)
+        snapshot_initial_state(ctx)
         if case.requires_agent:
             if not runtime_available(runtime):
                 raise CaseFailure(f"runtime unavailable: {runtime}")
-            result = run_runtime(ctx, case.prompt, case.timeout_seconds)
+            result = run_runtime(ctx, case.prompt, case.timeout_seconds, codex_sandbox=case.codex_sandbox)
         for assertion in case.assertions:
             assertion(ctx, result)
         snapshot_state(ctx)

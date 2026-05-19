@@ -13,9 +13,9 @@ artifacts own the durable facts for a managed workflow:
 
 `scripts/check_process_state.py` validates these facts without mutating them.
 It checks registry shape, `docs/review/*.md` review-document ownership,
-review-document existence, phase round presence,
-open-work memory hygiene, stale in-flight memory after terminal features, and
-optional release-round evidence for done features.
+review-document existence, phase round presence, checkpoint Release Round commit
+evidence, open-work memory hygiene, stale in-flight memory after terminal
+features, and optional release-round evidence for done features.
 
 The script deliberately does not choose a feature, select tests, decide whether
 an implementation is good, update statuses, or impose a coding process. Use it
@@ -37,5 +37,6 @@ python3 plugins/arbor/skills/arbor/scripts/check_process_state.py --root <projec
 python3 plugins/arbor/skills/arbor/scripts/check_process_state.py --root <project-root> --json
 python3 plugins/arbor/skills/arbor/scripts/check_process_state.py --root <project-root> --strict
 python3 plugins/arbor/skills/arbor/scripts/check_process_state.py --root <project-root> --require-release-round-for-done
+python3 plugins/arbor/skills/arbor/scripts/check_process_state.py --root <project-root> --require-checkpoint-commit-evidence
 python3 plugins/arbor/skills/arbor/scripts/check_process_state.py --self-test
 ```

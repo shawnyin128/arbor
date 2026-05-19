@@ -17,7 +17,7 @@ The normal terminal output is a structured `converge.v1` decision plus a Converg
 
 A `converged` decision is not release completion. Do not present convergence-only work as committed, pushed, published, or fully released. The visible output must make release finalization explicit as the next step.
 
-The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `converge` may continue automatically only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, or external release action required.
+The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `converge` may continue automatically only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, or external release action required. Convergence must consume evaluator evidence that has passed through `release(checkpoint_evaluate)` when the same automatic flow produced the evaluator round; a handwritten Release Round without a checkpoint commit hash is not release-gate evidence.
 
 ## Checklist
 
@@ -290,7 +290,7 @@ Use these enums:
 - `ui.checkpoint.resume_after`: `user_acknowledgement`, `auto_policy`, `user_decision`, `evidence_loaded`, or `blocker_resolved`
 - `ui.workflow_automation.policy`: `develop_evaluate_converge` or `none`
 
-For `converged`, `brainstorm_context_loaded`, `latest_developer_round_loaded`, `latest_evaluator_round_loaded`, `develop_evaluate_agree`, `brainstorm_goals_satisfied`, and `feature_identity_consistent` must all be true; `round_limit_reached` must be false; loaded acceptance criteria, done-when criteria when present, and brainstorm goals must be present; the evaluator signal must report `current_status=in_evaluate` and `recommended_next_status=done`; the registry update must move only the selected feature from `in_evaluate` to `done`; and `route.next_skill` must be `release`. If the evaluator accepted but brainstorm acceptance criteria, done-when criteria, or goals are missing, return `needs_evidence` and route to `brainstorm` instead of marking the feature done.
+For `converged`, `brainstorm_context_loaded`, `latest_developer_round_loaded`, `latest_evaluator_round_loaded`, `develop_evaluate_agree`, `brainstorm_goals_satisfied`, and `feature_identity_consistent` must all be true; `round_limit_reached` must be false; loaded acceptance criteria, done-when criteria when present, and brainstorm goals must be present; the evaluator signal must report `current_status=in_evaluate` and `recommended_next_status=done`; automatic develop/evaluate/converge runs must include `release(checkpoint_evaluate)` evidence with a local checkpoint commit hash before convergence; the registry update must move only the selected feature from `in_evaluate` to `done`; and `route.next_skill` must be `release`. If the evaluator accepted but brainstorm acceptance criteria, done-when criteria, goals, or required checkpoint commit evidence are missing, return `needs_evidence` and route to the missing-evidence owner instead of marking the feature done.
 
 Keep `route` focused on the current feature's convergence result. `converge` must not advertise next-feature continuation; `workflow_continuation.status` stays `none`, with no next feature id and `next_skill=none`. Release owns next-feature continuation after finalization.
 

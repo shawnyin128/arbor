@@ -396,7 +396,7 @@ The structured `evaluate.v1` object is an internal workflow/runtime packet. `eva
 
 An `accepted` evaluation is not workflow completion. The visible output must say that convergence remains next and must not imply the feature is done, released, or finally accepted.
 
-The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `evaluate` may set `continue_policy=auto_continue_allowed` only when evaluation evidence is appendable, no blocker requires a user decision, and the route remains inside the develop/evaluate/converge loop.
+The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `evaluate` may set `continue_policy=auto_continue_allowed` only when evaluation evidence is appendable, no blocker requires a user decision, and the route remains inside the develop/evaluate/converge loop. Automatic continuation still goes through `release(checkpoint_evaluate)` and its local checkpoint commit; it must not jump directly to convergence with only an Evaluator Round.
 
 `ui.workflow_automation` records whether that policy is enabled and eligible. Missing developer handoff, blocked evaluation, route correction, plan contradiction, or a finding that needs user judgment must keep the checkpoint at `must_stop`.
 

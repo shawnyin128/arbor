@@ -84,9 +84,9 @@ Durable project-map entrypoints include stable top-level directories, new skills
 
 ### Process State Authority Guard
 
-Use `scripts/check_process_state.py --root <project-root>` when a managed Arbor workflow is about to stop, hand off, checkpoint, release, or publish and the current state needs an auditable consistency check. The checker is read-only: it validates feature-registry shape, review-document links, phase evidence, short-term memory for open work, stale in-flight memory after resolved work, and optional Release Round evidence for done features.
+Use `scripts/check_process_state.py --root <project-root>` when a managed Arbor workflow is about to stop, hand off, checkpoint, release, or publish and the current state needs an auditable consistency check. The checker is read-only: it validates feature-registry shape, review-document links, phase evidence, checkpoint Release Round commit evidence, short-term memory for open work, stale in-flight memory after resolved work, and optional Release Round evidence for done features.
 
-Treat normal warnings as migration or advisory evidence unless the current gate explicitly requires strictness. Use `--strict` or `--require-release-round-for-done` for release gates that should fail on those gaps. Do not use this guard to choose implementation steps, tests, routes, or feature priorities.
+Treat normal warnings as migration or advisory evidence unless the current gate explicitly requires strictness. Use `--strict`, `--require-release-round-for-done`, or `--require-checkpoint-commit-evidence` for release gates that should fail on those gaps. Do not use this guard to choose implementation steps, tests, routes, or feature priorities.
 
 ### Rendered Checkpoint Guard
 

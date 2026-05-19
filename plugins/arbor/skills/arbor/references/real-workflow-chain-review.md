@@ -93,6 +93,7 @@ Arbor regressions should be added here before the fix is accepted.
 | R28 | `AGENTS.md` Project Map drift was not surfaced or updated after durable project entrypoints changed. | A new top-level `tools/` directory exists but `AGENTS.md` only maps `src/`; user asks Arbor to update the map before release. | `arbor.goal_constraint_drift` -> AGENTS Project Map update | The drift packet exposes project-map candidates, final rendered text is readable, and `AGENTS.md` Project Map mentions `tools/` without adding transient session progress. |
 | R29 | Informal or misspelled evaluate requests could bypass the structured evaluation packet and collapse into a prose-only summary. | Natural prompt with a misspelled verb such as "evalute this active developer handoff" in a repo with active Developer Round and review doc. | `intake -> evaluate` | Evaluator Round is appended and the captured `final-response.md` contains the complete evaluate checkpoint: exact headings, unit/scenario tables, findings, judgments, risks, and next step. |
 | R30 | Non-English workflow prompts could still render canonical English headings because the skill package is English-only. | Non-English prompt explicitly invoking evaluation in a repo with active Developer Round and review doc. | `evaluate` | Evaluator Round is appended, captured `final-response.md` uses the user's non-English language for visible checkpoint prose and localized headings, preserves required unit/scenario Markdown tables, and does not use the canonical English headings as the final visible headings. |
+| R31 | Automatic develop/evaluate/converge runs could skip release checkpoint execution while writing hand-authored Release Round prose. | Explicit `develop_evaluate_converge` automation prompt from an approved feature. | `develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge` | Developer, evaluator, release, and convergence evidence exist; git commit count increases by at least two local checkpoint commits after setup; finalization commit, push, tag, and publish do not happen. |
 
 ## Runtime Assertions
 
@@ -121,6 +122,8 @@ Every real case must define assertions in four groups.
 - skill-specific headings and tables are present;
 - non-English prompts use localized visible headings in the user's language while
   preserving the same section order and required tables;
+- checkpoint cases compare git commit count against the pre-runtime baseline,
+  not just the total number of commits in the fixture repository;
 - internal field names and fixture ids are not the main user-facing explanation;
 - release output stays status-only;
 - evaluate output has readable verdict, findings, challenge plan, test tables, judgments, risks, and next step.
@@ -143,6 +146,7 @@ A release may say "real workflow chain review passed" only when these cases pass
 - R27 on Codex for split-context planning continuation changes;
 - R29 on Codex for workflow rendered-output or evaluate-routing changes;
 - R30 on Codex for visible language or localized checkpoint rendering changes;
+- R31 on Codex for checkpoint gate or develop/evaluate/converge automation changes;
 - R14 and R25 for shared Codex/Claude changes;
 - R20 for Claude hook changes;
 - the directly affected case for every bug fixed in the release.

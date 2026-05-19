@@ -721,6 +721,8 @@ def validate_guidance_placement_contract(plugin_root: Path, errors: list[str]) -
         ],
         "skills/arbor/references/process-state-authority.md": [
             "Guidance placement follows the same ownership model",
+            "checkpoint Release Round commit evidence",
+            "--require-checkpoint-commit-evidence",
             "concise startup map",
             "volatile external context",
             "fixed reading limits",
@@ -741,7 +743,7 @@ def validate_guidance_placement_contract(plugin_root: Path, errors: list[str]) -
         base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
         text = (base / rel_path).read_text(encoding="utf-8")
         for term in terms:
-            check(errors, term in text, f"{rel_path} missing guidance placement term `{term}`")
+            check(errors, contains_term(text, term), f"{rel_path} missing guidance placement term `{term}`")
 
 
 def validate_done_when_verification_thread_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -1338,6 +1340,7 @@ def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[
         "skills/release/SKILL.md": [
             "policy-authorized checkpoint commits",
             "For `checkpoint_develop`, that means creating a local checkpoint commit",
+            "`checkpoint_evaluate`",
             "Local checkpoint commits after successful develop are internal workflow actions",
             "finalization commits and public actions require explicit user authorization",
             "allowing policy-authorized checkpoint commits",
@@ -1345,7 +1348,8 @@ def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[
         "skills/release/references/release-boundary.md": [
             "create a local checkpoint commit after `develop.ready_for_evaluate`",
             "local git commits are internal workflow actions authorized by active workflow checkpoint policy",
-            "block rather than silently continue if `checkpoint_develop` lacks local commit authorization",
+            "block rather than silently continue",
+            "`checkpoint_develop` or `checkpoint_evaluate` lacks local commit authorization",
         ],
     }
     if repo_root is not None:
@@ -1359,7 +1363,7 @@ def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[
         base = repo_root if rel_path == "README.md" and repo_root is not None else plugin_root
         text = (base / rel_path).read_text(encoding="utf-8")
         for term in terms:
-            check(errors, term in text, f"{rel_path} missing develop checkpoint commit term `{term}`")
+            check(errors, contains_term(text, term), f"{rel_path} missing develop checkpoint commit term `{term}`")
 
 
 def validate_release_version_management_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -1443,8 +1447,11 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "SKILL_RENDER_CONTRACTS",
         'assert_skill_rendered_checkpoint("converge")',
         "assert_response_language_cjk",
+        "assert_git_commits_created",
+        "initial-git-commit-count",
         "R29",
         "R30",
+        "R31",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
     for category in (

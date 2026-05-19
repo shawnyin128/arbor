@@ -111,7 +111,7 @@ sections are required in both fixture output and the captured final response.
 
 A `converged` decision is not release completion. The visible output must say that release finalization remains next and must not imply commit, push, publish, or full release has happened.
 
-The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `converge` may set `continue_policy=auto_continue_allowed` only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, blocked convergence, or external release action required.
+The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `converge` may set `continue_policy=auto_continue_allowed` only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, blocked convergence, or external release action required. If the same automatic flow produced the evaluator round, convergence requires `release(checkpoint_evaluate)` evidence with a local checkpoint commit hash; handwritten Release Round prose is not enough.
 
 ## Route Decisions
 

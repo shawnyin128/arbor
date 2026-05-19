@@ -21,7 +21,7 @@ The terminal state is a structured `evaluate.v1` output plus, when evaluation re
 
 An `accepted` evaluation is not workflow completion. Do not present evaluation-only work as done, converged, released, or finished. The visible output must make convergence explicit as pending, either by stopping at the checkpoint or by continuing only under an eligible `develop_evaluate_converge` automation policy.
 
-The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `evaluate` may continue automatically only when evaluation evidence is appendable, no blocker requires a user decision, and the next route remains inside the develop/evaluate/converge loop.
+The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `evaluate` may continue automatically only when evaluation evidence is appendable, no blocker requires a user decision, and the next route remains inside the develop/evaluate/converge loop. Automatic continuation still goes through `release(checkpoint_evaluate)`; it must not skip directly to `converge`. If the evaluator checkpoint commit cannot be created, stop at the release checkpoint blocker instead of converging uncheckpointed evaluator evidence.
 
 ## Checklist
 
@@ -503,7 +503,7 @@ Use these enums:
 - `ui.checkpoint.resume_after`: `user_acknowledgement`, `auto_policy`, `develop_handoff_ready`, or `blocker_resolved`
 - `ui.workflow_automation.policy`: `develop_evaluate_converge` or `none`
 
-For every terminal state, default to `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`. `evaluate` may record `release -> converge` as the next workflow path, but that route is normally a resume target after the visible evaluation checkpoint, not permission to continue silently in the same turn. Use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no stop condition applies.
+For every terminal state, default to `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`. `evaluate` may record `release -> converge` as the next workflow path, but that route is normally a resume target after the visible evaluation checkpoint, not permission to continue silently in the same turn. Use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no stop condition applies. Even then, the next automatic step is `release(checkpoint_evaluate)` with a local checkpoint commit, not direct convergence.
 
 For completed evaluation states, the visible `user_response` must say that convergence remains next. It must not imply the feature is done, released, or finally accepted.
 

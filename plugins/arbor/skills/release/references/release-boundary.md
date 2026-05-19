@@ -131,7 +131,7 @@ chat language for user-facing prose or the user's explicit output language.
 
 Checkpointed release output is not final delivery. In checkpoint mode, `release` preserves the current handoff and routes the same feature onward; it must not imply that evaluation, convergence, or final release has already happened.
 
-Use `continue_policy=auto_continue_allowed` only for safe internal `checkpoint_develop` or `checkpoint_evaluate` handoffs whose local checkpoint commit completed with no blocker, dirty-scope conflict, or confirmation need. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing convergence evidence, or any required confirmation.
+Use `continue_policy=auto_continue_allowed` only for safe internal `checkpoint_develop` or `checkpoint_evaluate` handoffs whose local checkpoint commit completed and whose Release Round records the commit hash, with no blocker, dirty-scope conflict, or confirmation need. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing checkpoint commit evidence, missing convergence evidence, or any required confirmation.
 
 An explicit `develop_evaluate_converge` automation policy can allow release to carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. It authorizes the local checkpoint commit for those handoffs. It does not authorize finalization commit, push, PR, tag, publish, next-feature release, or any public action.
 
@@ -215,7 +215,7 @@ Action:
 - append Release Round;
 - record checkpoint mode and selected files;
 - preserve the upstream handoff in `checkpoint_handoff`, including terminal state, review round reference, and feature registry signal when the checkpoint comes from evaluate;
-- record performed checkpoint commit when it was created; block rather than silently continue if `checkpoint_develop` lacks local commit authorization;
+- record performed checkpoint commit and its commit hash; block rather than silently continue if `checkpoint_develop` or `checkpoint_evaluate` lacks local commit authorization, the commit cannot be created, or the Release Round would not contain commit evidence;
 - route `checkpoint_develop` to `evaluate`;
 - route `checkpoint_evaluate` to `converge`;
 - keep `workflow_continuation.status=none` because this is the same feature, not next-feature selection.

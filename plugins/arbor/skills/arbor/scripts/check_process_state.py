@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -47,6 +48,17 @@ ROUND_PATTERNS = {
     "convergence": re.compile(r"^#+\s+.*Convergence Round\b", re.IGNORECASE | re.MULTILINE),
     "release": re.compile(r"^#+\s+.*Release Round\b", re.IGNORECASE | re.MULTILINE),
 }
+MARKDOWN_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
+CHECKPOINT_RELEASE_RE = re.compile(
+    r"\bcheckpoint[_ -]?(?:develop|evaluate)\b|\bdeveloper checkpoint\b|\bevaluator checkpoint\b",
+    re.IGNORECASE,
+)
+COMMIT_HASH_RE = re.compile(r"\b[0-9a-f]{7,40}\b", re.IGNORECASE)
+MISSING_COMMIT_RE = re.compile(
+    r"\bno git commit\b|\bno commit was created\b|\bwithout commit\b|"
+    r"\bcommit was not created\b|\bcould not\b.*\bcommit\b|\bcommit\b.*\bfailed\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -103,6 +115,20 @@ def is_review_doc_path(raw_path: str) -> bool:
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def git_commit_exists(root: Path, commit_hash: str) -> bool:
+    if not (root / ".git").exists():
+        return True
+    proc = subprocess.run(
+        ["git", "cat-file", "-e", f"{commit_hash}^{{commit}}"],
+        cwd=root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    return proc.returncode == 0
 
 
 def managed_state_exists(root: Path) -> bool:
@@ -254,7 +280,66 @@ def required_rounds_for_status(status: str) -> tuple[str, ...]:
     return ()
 
 
-def validate_review_docs(root: Path, features: list[FeatureRow], findings: list[Finding], *, require_release_round_for_done: bool) -> None:
+def iter_release_sections(text: str) -> list[str]:
+    headings = list(MARKDOWN_HEADING_RE.finditer(text))
+    sections: list[str] = []
+    for index, heading in enumerate(headings):
+        title = heading.group(2)
+        if not re.search(r"\bRelease Round\b", title, re.IGNORECASE):
+            continue
+        level = len(heading.group(1))
+        end = len(text)
+        for next_heading in headings[index + 1 :]:
+            if len(next_heading.group(1)) <= level:
+                end = next_heading.start()
+                break
+        sections.append(text[heading.start() : end])
+    return sections
+
+
+def validate_release_checkpoint_commit_evidence(root: Path, display_path: Path, text: str, findings: list[Finding]) -> None:
+    for index, section in enumerate(iter_release_sections(text), start=1):
+        if not CHECKPOINT_RELEASE_RE.search(section):
+            continue
+        if MISSING_COMMIT_RE.search(section):
+            add_finding(
+                findings,
+                "error",
+                "checkpoint_release_missing_commit",
+                display_path,
+                f"Release Round {index} describes a checkpoint but says no git commit was created.",
+            )
+            continue
+        hashes = COMMIT_HASH_RE.findall(section)
+        if not hashes:
+            add_finding(
+                findings,
+                "error",
+                "checkpoint_release_missing_commit_hash",
+                display_path,
+                f"Release Round {index} describes a checkpoint but does not include a commit hash.",
+            )
+            continue
+        missing = [commit_hash for commit_hash in hashes if not git_commit_exists(root, commit_hash)]
+        if missing:
+            add_finding(
+                findings,
+                "error",
+                "checkpoint_release_commit_not_in_history",
+                display_path,
+                f"Release Round {index} references commit hash(es) not found in git history: {', '.join(missing)}.",
+            )
+
+
+def validate_review_docs(
+    root: Path,
+    features: list[FeatureRow],
+    findings: list[Finding],
+    *,
+    require_release_round_for_done: bool,
+    require_checkpoint_commit_evidence: bool,
+) -> None:
+    checkpoint_docs_checked: set[Path] = set()
     for feature in features:
         if feature.review_doc_path is None:
             continue
@@ -295,6 +380,9 @@ def validate_review_docs(root: Path, features: list[FeatureRow], findings: list[
                 display_path,
                 f"Feature {feature.feature_id} is done but has no Release Round evidence in the review document.",
             )
+        if require_checkpoint_commit_evidence and resolved not in checkpoint_docs_checked:
+            validate_release_checkpoint_commit_evidence(root, display_path, text, findings)
+            checkpoint_docs_checked.add(resolved)
 
 
 def validate_memory(root: Path, features: list[FeatureRow], findings: list[Finding]) -> None:
@@ -335,14 +423,26 @@ def validate_memory(root: Path, features: list[FeatureRow], findings: list[Findi
             )
 
 
-def validate_process_state(root: Path, *, strict: bool = False, require_release_round_for_done: bool = False) -> ProcessStateReport:
+def validate_process_state(
+    root: Path,
+    *,
+    strict: bool = False,
+    require_release_round_for_done: bool = False,
+    require_checkpoint_commit_evidence: bool = False,
+) -> ProcessStateReport:
     resolved = resolve_project_root(root)
     findings: list[Finding] = []
     managed = managed_state_exists(resolved)
     validate_project_guide(resolved, managed, findings)
     registry = load_registry(resolved, findings)
     features = validate_registry_rows(resolved, registry, findings)
-    validate_review_docs(resolved, features, findings, require_release_round_for_done=require_release_round_for_done)
+    validate_review_docs(
+        resolved,
+        features,
+        findings,
+        require_release_round_for_done=require_release_round_for_done,
+        require_checkpoint_commit_evidence=require_checkpoint_commit_evidence,
+    )
     validate_memory(resolved, features, findings)
 
     errors = sum(1 for finding in findings if finding.severity == "error")
@@ -448,6 +548,11 @@ def seed_review_doc(root: Path, *rounds: str) -> None:
         "evaluator": "## Evaluator Round 1\n\nEvaluator evidence.\n",
         "convergence": "## Convergence Round 1\n\nConverged.\n",
         "release": "## Release Round 1\n\nRelease evidence.\n",
+        "checkpoint_release_no_commit": "## Release Round 1\n\nMode: checkpoint_evaluate.\nNo git commit was created because the user did not request commit or push.\n",
+        "checkpoint_release_with_hash": "## Release Round 1\n\nMode: checkpoint_evaluate.\nCheckpoint commit: abc1234.\n",
+        "release_preamble_before_checkpoint": "# Release Skill Review\n\n| Custom commit-safety mutation replay | Failed |\n\n## Release Round 1\n\nMode: checkpoint_develop.\nCheckpoint commit: abc1234.\n",
+        "checkpoint_release_subheading_hash": "## Release Round 1\n\n### Checkpoint Status\n\n| Field | Value |\n| --- | --- |\n| Release mode | `checkpoint_evaluate` |\n| Checkpoint commit | `abc1234` |\n",
+        "checkpoint_release_nested_level_hash": "# Feature Review\n\n## Parent Section\n\n### Release Round 1\n\n#### Checkpoint Status\n\n| Field | Value |\n| --- | --- |\n| Release mode | `checkpoint_evaluate` |\n| Checkpoint commit | `abc1234` |\n",
     }
     write(root / "docs/review/feature.md", "\n".join(labels[name] for name in rounds))
 
@@ -512,6 +617,101 @@ def run_self_tests() -> None:
             code="missing_release_round",
         )
 
+        checkpoint_gap = base / "checkpoint-gap"
+        checkpoint_gap.mkdir()
+        seed_project(checkpoint_gap)
+        seed_registry(checkpoint_gap, "done")
+        seed_review_doc(
+            checkpoint_gap,
+            "context",
+            "developer",
+            "evaluator",
+            "convergence",
+            "checkpoint_release_no_commit",
+        )
+        expect_report(
+            "checkpoint release without commit",
+            validate_process_state(checkpoint_gap, require_checkpoint_commit_evidence=True),
+            status="fail",
+            code="checkpoint_release_missing_commit",
+        )
+
+        checkpoint_hash = base / "checkpoint-hash"
+        checkpoint_hash.mkdir()
+        seed_project(checkpoint_hash)
+        seed_registry(checkpoint_hash, "done")
+        seed_review_doc(
+            checkpoint_hash,
+            "context",
+            "developer",
+            "evaluator",
+            "convergence",
+            "checkpoint_release_with_hash",
+        )
+        expect_report(
+            "checkpoint release with hash",
+            validate_process_state(checkpoint_hash, require_checkpoint_commit_evidence=True),
+            status="warn",
+            code="stale_memory_after_resolved_work",
+        )
+
+        checkpoint_preamble = base / "checkpoint-preamble"
+        checkpoint_preamble.mkdir()
+        seed_project(checkpoint_preamble)
+        seed_registry(checkpoint_preamble, "done")
+        seed_review_doc(
+            checkpoint_preamble,
+            "context",
+            "developer",
+            "evaluator",
+            "convergence",
+            "release_preamble_before_checkpoint",
+        )
+        expect_report(
+            "checkpoint release parser ignores preamble",
+            validate_process_state(checkpoint_preamble, require_checkpoint_commit_evidence=True),
+            status="warn",
+            code="stale_memory_after_resolved_work",
+        )
+
+        checkpoint_subheading = base / "checkpoint-subheading"
+        checkpoint_subheading.mkdir()
+        seed_project(checkpoint_subheading)
+        seed_registry(checkpoint_subheading, "done")
+        seed_review_doc(
+            checkpoint_subheading,
+            "context",
+            "developer",
+            "evaluator",
+            "convergence",
+            "checkpoint_release_subheading_hash",
+        )
+        expect_report(
+            "checkpoint release parser includes subheadings",
+            validate_process_state(checkpoint_subheading, require_checkpoint_commit_evidence=True),
+            status="warn",
+            code="stale_memory_after_resolved_work",
+        )
+
+        checkpoint_nested = base / "checkpoint-nested"
+        checkpoint_nested.mkdir()
+        seed_project(checkpoint_nested)
+        seed_registry(checkpoint_nested, "done")
+        seed_review_doc(
+            checkpoint_nested,
+            "context",
+            "developer",
+            "evaluator",
+            "convergence",
+            "checkpoint_release_nested_level_hash",
+        )
+        expect_report(
+            "checkpoint release parser handles nested heading levels",
+            validate_process_state(checkpoint_nested, require_checkpoint_commit_evidence=True),
+            status="warn",
+            code="stale_memory_after_resolved_work",
+        )
+
         unsafe_path = base / "unsafe-path"
         unsafe_path.mkdir()
         seed_project(unsafe_path)
@@ -530,7 +730,7 @@ def run_self_tests() -> None:
             code="review_doc_path_outside_review_dir",
         )
 
-    print("process state self-tests passed count=9")
+    print("process state self-tests passed count=14")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -542,6 +742,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--require-release-round-for-done",
         action="store_true",
         help="Require done features to have Release Round evidence. Useful for release gates.",
+    )
+    parser.add_argument(
+        "--require-checkpoint-commit-evidence",
+        action="store_true",
+        help="Require checkpoint Release Rounds to include git commit evidence that exists in history.",
     )
     parser.add_argument("--self-test", action="store_true", help="Run built-in regression fixtures.")
     return parser
@@ -558,6 +763,7 @@ def main() -> int:
             args.root,
             strict=args.strict,
             require_release_round_for_done=args.require_release_round_for_done,
+            require_checkpoint_commit_evidence=args.require_checkpoint_commit_evidence,
         )
     except ProjectStateError as exc:
         parser.error(str(exc))
