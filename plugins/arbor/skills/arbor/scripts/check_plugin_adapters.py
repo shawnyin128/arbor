@@ -400,14 +400,16 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
     brainstorm = (skills_root / "brainstorm" / "SKILL.md").read_text(encoding="utf-8")
     feedback = (skills_root / "feedback" / "SKILL.md").read_text(encoding="utf-8")
     converge = (skills_root / "converge" / "SKILL.md").read_text(encoding="utf-8")
+    release = (skills_root / "release" / "SKILL.md").read_text(encoding="utf-8")
     agents_template = (skills_root / "arbor" / "references" / "agents-template.md").read_text(encoding="utf-8")
     real_runner = (skills_root / "arbor" / "scripts" / "check_real_workflow_chains.py").read_text(encoding="utf-8")
+    readme = (plugin_root.parent.parent / "README.md").read_text(encoding="utf-8")
     codex = load_json(plugin_root / ".codex-plugin" / "plugin.json", errors)
 
     for term in (
         "ready_for_converge",
-        "`route.next_skill`: `brainstorm`, `converge`, `release`, `none`",
-        "Do not route ordinary user prompts to public `develop` or public `evaluate`",
+        "`route.next_skill`: `brainstorm`, `converge`, `none`",
+        "Do not route ordinary user prompts to public `develop`, public `evaluate`, or public `release`",
     ):
         check(errors, contains_term(brainstorm, term), f"brainstorm public-entrypoint contract missing `{term}`")
     check(errors, "ready_for_develop" not in brainstorm, "brainstorm must not expose ready_for_develop")
@@ -419,6 +421,7 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
         "does not force a non-feedback request",
         "Do not trigger from keywords alone",
         "The next owner is limited to `brainstorm`, `converge`, or direct response",
+        "Do not expose `develop`, `evaluate`, or `release` as public next steps",
     ):
         check(errors, contains_term(feedback, term), f"feedback public-entrypoint contract missing `{term}`")
 
@@ -430,12 +433,23 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
         check(errors, contains_term(converge, term), f"converge public-entrypoint contract missing `{term}`")
 
     for term in (
+        "Internal-only Arbor checkpoint/finalization gate",
+        "do not select for ordinary user prompts",
+        "Do not advertise or accept `release` as a public workflow entrypoint",
+    ):
+        check(errors, contains_term(release, term), f"release internal-entrypoint contract missing `{term}`")
+
+    for term in (
         "Workflow Entrypoint Protocol",
         "explicit Arbor public entrypoint",
         "Feedback should decide only between `brainstorm`, `converge`,",
         "`develop` and `evaluate` are internal stages owned by `converge`",
+        "`release` is also internal",
     ):
         check(errors, contains_term(agents_template, term), f"agents template missing public entrypoint term `{term}`")
+
+    for forbidden in ("Codex:        $release", "Claude Code:  /arbor:release", "$release finalize"):
+        check(errors, forbidden not in readme, f"README must not advertise public release invocation `{forbidden}`")
 
     interface = codex.get("interface")
     if isinstance(interface, dict):
@@ -444,11 +458,12 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
             "before routing approved work to converge",
             "needs-evidence",
             "does not trigger from keywords alone",
-            "Develop and evaluate are internal stages",
+            "Develop, evaluate, and release are internal stages",
+            "users should not be asked to invoke release directly",
         ):
             check(errors, contains_term(long_description, term), f"Codex longDescription missing public entrypoint term `{term}`")
 
-    for forbidden in ('"$develop ', '"$evaluate ', "CJK_EVALUATE_PROMPT"):
+    for forbidden in ('"$develop ', '"$evaluate ', '"$release ', "CJK_EVALUATE_PROMPT"):
         check(errors, forbidden not in real_runner, f"real workflow chain runner must not use public {forbidden}")
 
 

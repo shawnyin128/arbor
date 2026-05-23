@@ -1,4 +1,4 @@
 interface:
   display_name: "Release"
-  short_description: "Checkpoint or finalize Arbor features"
-  default_prompt: "Use $release as an internal Arbor checkpoint/finalization gate; show only concise release status unless debug review is requested."
+  short_description: "Internal Arbor checkpoint/finalization gate"
+  default_prompt: "Use release only from internal Arbor handoffs after develop, evaluate, or converge; do not ask users to invoke it directly, and show only concise release status unless debug review is requested."

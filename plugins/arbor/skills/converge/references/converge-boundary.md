@@ -138,7 +138,7 @@ sections are required in both fixture output and the captured final response.
 }
 ```
 
-A `converged` decision is not release completion. The visible output must say that release finalization remains next and must not imply commit, push, publish, or full release has happened.
+A `converged` decision is not release completion. The visible output must say that the internal release finalization gate remains next and must not imply commit, push, publish, or full release has happened. It must not ask the user to invoke public `release`.
 
 The only allowed automatic continuation is the internal quality loop that
 `converge` owns. `converge` may set `continue_policy=auto_continue_allowed` only

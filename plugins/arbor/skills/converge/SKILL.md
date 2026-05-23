@@ -34,7 +34,7 @@ agrees, whether the result still matches the brainstorm goal, what internal
 stage ran or must run next, and why the workflow is stopping, looping, or
 finalizing.
 
-A `converged` decision is not release completion. Do not present convergence-only work as committed, pushed, published, or fully released. The visible output must make release finalization explicit as the next step.
+A `converged` decision is not release completion. Do not present convergence-only work as committed, pushed, published, or fully released. The visible output must make the internal release finalization gate explicit as the next step without asking the user to call `release` directly.
 
 The only automatic continuation path is the quality loop that `converge` owns.
 It may continue through internal `develop`, checkpoint release, internal
@@ -352,7 +352,7 @@ Keep `route` focused on the current feature's convergence result. `converge` mus
 
 For every terminal state, default to `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`. A clear route may still be recorded for the next workflow step, but it is normally a resume target after the visible convergence checkpoint, not permission to continue silently in the same turn. Use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and the decision remains inside the current feature loop without any stop condition.
 
-For `converged`, the visible `user_response` must say that release finalization remains next. It must not imply commit, push, publish, or full release has happened.
+For `converged`, the visible `user_response` must say that the internal release finalization gate remains next. It must not imply commit, push, publish, or full release has happened, and it must not tell the user to invoke public `release`.
 
 ## Self-Check
 
@@ -369,6 +369,6 @@ Before returning:
 9. If uncommitted Arbor workflow changes remain, did I create or refresh `.arbor/memory.md` with the in-flight state and next step?
 10. If the feature converged, did I route to internal release and defer next-feature selection?
 11. Did I include a user-visible checkpoint that prevents silent continuation into release, next-feature selection, or a correction loop?
-12. Did `user_response` make clear that release finalization remains pending after convergence?
+12. Did `user_response` make clear that internal release finalization remains pending after convergence without asking the user to invoke release?
 13. Did `user_response` explain the decision, agreement check, goal alignment, remaining issues, and next step without leaking internal ids or state codes?
 14. Did I run final response preflight on the exact final message so it includes all convergence headings and required tables instead of a prose-only summary?

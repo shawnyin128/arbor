@@ -86,12 +86,7 @@ Claude Code:  /arbor:converge
 
 Internal workflow stages and gates:
 
-develop, evaluate, release checkpoints
-
-Manual release/finalization gate:
-
-Codex:        $release
-Claude Code:  /arbor:release
+develop, evaluate, release checkpoints/finalization
 ```
 
 The public entrypoints are parallel, not a hidden intake chain:
@@ -103,7 +98,6 @@ feedback   -> brainstorm | converge | needs evidence | direct response
 converge   -> internal develop -> release(checkpoint_develop: local commit)
            -> internal evaluate -> release(checkpoint_evaluate)
            -> convergence decision -> release(finalize_feature)
-release    -> manual finalization, status, or explicitly authorized external action
 ```
 
 `brainstorm` is the public planning entrypoint for managed work: it turns
@@ -119,12 +113,18 @@ finding, and current-loop continuation requests after planning context exists,
 then internally drives `develop` and `evaluate` as needed. `develop`,
 `evaluate`, and `converge` append evidence to the same review document, while
 `release` records checkpoints/finalization and keeps workflow state discoverable
-through git and the feature registry. In this model, develop and evaluate are internal stages, not user-facing commands. After a successful internal `develop`,
+through git and the feature registry. In this model, develop and evaluate are internal stages.
+Develop, evaluate, and release are internal stages, not
+user-facing commands. After a successful internal `develop`,
 `release(checkpoint_develop)` creates an automatic local checkpoint commit before
 internal `evaluate`; after an appendable internal `evaluate`,
 `release(checkpoint_evaluate)` creates the evaluator checkpoint commit before
-the convergence decision. Automatic quality-loop runs must pass through both
-release gates and stop if either checkpoint commit cannot be created.
+the convergence decision. After `converge` accepts the feature, internal release
+finalization checks versioning and git readiness before any finalization commit
+or public push. Automatic quality-loop runs must pass through both release gates
+and stop if either checkpoint commit cannot be created. Push, PR, tag, publish,
+or cache sync happens only after convergence and only when that external action
+was explicitly authorized; do not push at intermediate develop/evaluate stages.
 
 Two workflow artifacts carry state between skills:
 
@@ -357,7 +357,9 @@ Canonical examples:
 
 ### `release`
 
-`release` is primarily an internal skill invoked after `develop`, `evaluate`, and `converge`, not the normal user-facing entrypoint.
+`release` is an internal skill invoked after `develop`, `evaluate`, and
+`converge`; it is not a user-facing entrypoint and users should not call
+`$release` or `/arbor:release` directly.
 
 What it does well:
 
@@ -369,11 +371,14 @@ What it does well:
 - appending Release Round evidence to the review document;
 - selecting the next unfinished feature through structured `workflow_continuation`.
 
-Use it directly only when a manual release request has equivalent review or convergence evidence loaded.
+Use `converge` for the public quality-loop entrypoint. If the user asks to
+finish, publish, push, or sync a converged feature, keep that as a user intent
+for the internal release gate after convergence instead of exposing a public
+release command.
 
 ## Usage
 
-Invocation phrasing is the same idea on both runtimes; replace the prefix with `$arbor` on Codex or `/arbor:arbor` on Claude Code. Prefer explicit skill invocation for managed workflow steps; if automatic skill selection misses, call the intended skill manually.
+Invocation phrasing is the same idea on both runtimes; replace the prefix with `$arbor` on Codex or `/arbor:arbor` on Claude Code. Prefer explicit skill invocation for managed workflow entrypoints; if automatic skill selection misses, call the intended public skill manually.
 
 Initialize Arbor in a project:
 
@@ -424,10 +429,10 @@ $converge fix this bug in the current Arbor feature and verify it
 $converge handle the evaluator's findings and keep the repair/validation loop together
 ```
 
-Finalize or checkpoint a feature when the required review evidence is already loaded:
+Finish or publish a managed feature through the quality loop:
 
 ```text
-$release finalize this converged feature using the Arbor git convention
+$converge finish the current feature; after convergence, create the required release commit and push only if explicitly authorized
 ```
 
 After initialization on Codex, the target project should contain:
@@ -583,7 +588,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-1.0.0
+1.0.1
 ```
 
 Version files:

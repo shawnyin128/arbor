@@ -1,13 +1,19 @@
 ---
 name: release
-description: Internally checkpoint or finalize an Arbor feature by verifying review evidence, feature status, git readiness, commit-message convention, workflow continuation, policy-authorized checkpoint commits, and user confirmation before finalization commit, push, PR, tag, or publish.
+description: Internal-only Arbor checkpoint/finalization gate invoked from develop, evaluate, and converge handoffs; verify review evidence, git readiness, versioning, checkpoint commits, and explicit authorization before any finalization commit, push, PR, tag, or publish; do not select for ordinary user prompts or expose as a public workflow entrypoint.
 ---
 
 # Release
 
 ## Purpose
 
-Use `release` after `develop`, after `evaluate`, and after `converge` for Arbor-managed work. It is primarily an internal checkpoint/finalization skill in the Arbor pipeline, not the main user-facing entrypoint; finalization mode is the internal finalization gate for converged features.
+Use `release` after `develop`, after `evaluate`, and after `converge` for Arbor-managed work. It is an internal checkpoint/finalization skill in the Arbor pipeline, not a public user-facing entrypoint; finalization mode is the internal finalization gate for converged features.
+
+Do not select `release` directly for ordinary user prompts. User-facing requests
+to continue, finish, publish, push, or sync managed work should enter through
+`converge` when review context exists, or through `brainstorm`/`feedback` when
+scope or identity still needs routing. `release` may run only from an internal
+handoff packet or equivalent Arbor workflow state after convergence.
 
 `release` is a workflow gate for state tracking and current-feature finalization. In checkpoint mode, it records the latest developer or evaluator state before the next skill runs. For `checkpoint_develop`, that means creating a local checkpoint commit after a successful developer handoff before `evaluate` runs. In finalization mode, it verifies that the selected feature is converged, prepares safe local release evidence, enforces the commit convention, checks the project's actual version management method when one exists, blocks push, PR, tag, or publish actions unless the user explicitly authorized that action, then reports the next unfinished feature through `workflow_continuation`.
 
@@ -15,7 +21,7 @@ It does not plan, implement, evaluate, or decide convergence.
 
 `release` has status-only user visibility. It may report concise action results such as checkpoint saved, commit hash, push status, confirmation needed, blocker, or next skill. It must not expose checkpoint handoff internals, dirty-scope reasoning, or full release evidence as the primary UI unless the user opens a debug/review trace.
 
-`release` participates in the checkpoint policy but should stay status-only. In checkpoint mode after `develop` or `evaluate`, local checkpoint commits are internal workflow actions authorized by checkpoint policy and may continue automatically when no blocker, dirty-scope conflict, or confirmation need exists. A checkpoint handoff is not complete until the local checkpoint commit exists and the Release Round records the commit hash. If the commit cannot be created, return a blocker packet and do not route onward to `evaluate` or `converge`. In finalization mode after `converge`, it must surface status and stop before any externally visible action such as finalization commit, push, PR, tag, or publish unless the user explicitly authorized that exact action.
+`release` participates in the checkpoint policy but should stay status-only. In checkpoint mode after `develop` or `evaluate`, local checkpoint commits are internal workflow actions authorized by checkpoint policy and may continue automatically when no blocker, dirty-scope conflict, or confirmation need exists. A checkpoint handoff is not complete until the local checkpoint commit exists and the Release Round records the commit hash. If the commit cannot be created, return a blocker packet and do not route onward to `evaluate` or `converge`. In finalization mode after `converge`, it must surface status and stop before any externally visible action such as finalization commit, push, PR, tag, publish, or cache sync unless the user explicitly authorized that exact action. External pushes are unified after convergence/finalization, never at intermediate develop/evaluate checkpoints.
 
 Checkpointed release output is not final delivery. In checkpoint mode, `release` preserves the current handoff and routes the same feature onward; it must not imply that evaluation, convergence, or final release has already happened.
 
@@ -23,14 +29,14 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 
 ## Checklist
 
-1. **Confirm source**: accept `develop.ready_for_evaluate` for `checkpoint_develop`, completed `evaluate` states for `checkpoint_evaluate`, and `converge.converged` or equivalent evidence for `finalize_feature`.
+1. **Confirm source**: accept only internal Arbor handoff evidence: `develop.ready_for_evaluate` for `checkpoint_develop`, completed `evaluate` states for `checkpoint_evaluate`, and `converge.converged` or equivalent evidence for `finalize_feature`. Explicit user prompts without that handoff should route to the public owner instead of running release directly.
 2. **Load state**: read `.arbor/workflow/features.json`, the selected feature's registry row, the selected review document, git status, and relevant diff/branch state.
 3. **Verify mode evidence**: for develop checkpoints, confirm Context/Test Plan, done-when criteria when present, and Developer Round; for evaluate checkpoints, confirm Context/Test Plan, done-when criteria when present, Developer Round, and Evaluator Round; for finalization, confirm the selected source feature exists in the registry, its registry status is `done`, and the review document has Context/Test Plan, done-when criteria when present, Developer Round, Evaluator Round, and Convergence Round.
-4. **Classify requested action**: local summary, stage, commit, push, PR, tag, publish, or route correction.
+4. **Classify requested action**: internal checkpoint, local summary, stage, commit, push, PR, tag, publish, cache sync, or route correction.
 5. **Run readiness checks**: replay requested or policy-required checks when feasible; record blocked checks, replay conditions that affect release confidence, and residual risk.
 6. **Prepare commit convention**: use `<type>[optional scope]: <description>` with optional body/footer.
 7. **Check version management**: if the current project has a version-managed release artifact, identify the actual version management method before finalization or publish, such as plugin manifests, `package.json`, `pyproject.toml`, git tags, or a documented custom policy. Choose the target version from that method and the release scope. If a required bump is missing or the method is unclear, block release instead of publishing under the old version.
-8. **Gate external actions**: for `checkpoint_develop` and `checkpoint_evaluate`, create the local checkpoint commit when Arbor workflow checkpoint policy authorizes it and readiness checks pass. Treat checkpoint commits as internal workflow actions; push, PR, tag, publish, finalization commits, or other public/external actions always require explicit user authorization. Do not append a successful checkpoint Release Round or route onward unless the commit was created and recorded.
+8. **Gate external actions**: for `checkpoint_develop` and `checkpoint_evaluate`, create the local checkpoint commit when Arbor workflow checkpoint policy authorizes it and readiness checks pass. Treat checkpoint commits as internal workflow actions; push, PR, tag, publish, cache sync, finalization commits, or other public/external actions always require explicit user authorization and must occur only after convergence/finalization. Do not append a successful checkpoint Release Round or route onward unless the commit was created and recorded.
 9. **Append release evidence**: append a Release Round to the same review document when release reaches a meaningful terminal state.
 10. **Select continuation**: after a checkpoint state, route to the next stage for the same feature; after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json` or report that none remains.
 11. **Update registry when justified**: update release metadata/status only for the selected feature.
@@ -52,12 +58,12 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 ## Core Rules
 
 1. Do not finalize a feature unless convergence evidence is loaded.
-2. Do not infer user authorization from broad intent; confirm the specific external action. Local checkpoint commits after successful develop are internal workflow actions authorized by active Arbor workflow checkpoint policy; finalization commits and public actions require explicit user authorization.
+2. Do not infer user authorization from broad intent; confirm the specific external action. Local checkpoint commits after successful develop are internal workflow actions. Local checkpoint commits after successful develop/evaluate are authorized by active Arbor workflow checkpoint policy; finalization commits and public actions require explicit user authorization and happen only after convergence.
 3. Do not plan feature scope.
 4. Do not change implementation files.
 5. Do not re-run develop/evaluate logic except for release-readiness checks.
 6. Do not re-evaluate correctness; only check that required verification evidence exists before finalization or publish.
-7. Keep local preparation separate from finalization commit, push, PR, tag, and publish; do not treat the internal checkpoint commit as final release.
+7. Keep local preparation separate from finalization commit, push, PR, tag, publish, and cache sync; do not treat the internal checkpoint commit as final release.
 8. Use the commit convention exactly: `<type>[optional scope]: <description>`.
 9. Reject commit subjects whose description is empty after trimming whitespace.
 10. Append release evidence to the same review document.
@@ -73,6 +79,7 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 20. Do not leave unresolved uncommitted Arbor workflow state without an up-to-date `.arbor/memory.md`; do not leave resolved memory entries after a successful commit or publish makes git history authoritative.
 21. For workflow-facing finalization or publish, check that outcome and observability evidence exists: rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof. Preserve replay conditions when runtime target, source path or published cache, command, environment blocker, infrastructure failure, or weak-pass gap affects release confidence. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
 22. If the current project has version management, release must reason from the actual version management method before finalization or publish. A plugin should follow its plugin manifests, a JavaScript package should follow `package.json`, a Python package should follow `pyproject.toml` or the documented package metadata, and a tag-driven project should follow its tag convention. Do not reuse a stale version or invent a bump without citing the method and selected target version.
+23. Do not advertise or accept `release` as a public workflow entrypoint. If a user prompt directly asks for release behavior, preserve the intent and route through the public owner, normally `converge` for an existing managed feature, instead of asking the user to call `$release`.
 
 ## Authorization Scope
 
@@ -81,15 +88,16 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 - local summary or readiness check;
 - staging plan;
 - internal checkpoint commit authorized by active Arbor checkpoint policy;
-- finalization commit;
-- push, PR, tag, publish, marketplace sync, or other public/external side
+- finalization commit after convergence;
+- push, PR, tag, publish, marketplace sync, cache sync, or other public/external side
   effect.
 
 Authorization is not transitive across the ladder. A local summary does not
 authorize staging; staging does not authorize a finalization commit; a
 checkpoint commit does not authorize finalization; and finalization does not
-authorize push, PR, tag, publish, marketplace sync, or connector mutation unless
-the user explicitly authorized that exact action.
+authorize push, PR, tag, publish, marketplace sync, cache sync, or connector
+mutation unless the user explicitly authorized that exact action. Public pushes
+are a post-convergence action, not a per-checkpoint action.
 
 ## Route Rules
 

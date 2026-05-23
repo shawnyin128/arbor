@@ -62,7 +62,13 @@ These are not hard exclusions. The same prompt shape can enter `brainstorm` if i
 
 `brainstorm` owns planning. It should classify only enough boundary context to decide whether the current request needs managed planning, direct handling, or another explicit workflow skill.
 
-If the request is a simple direct answer, an already authorized quality-loop continuation, an independent validation request with existing review context, a convergence decision, or a release gate, return a structured `route_correction` rather than silently changing scope. Public requests to implement, repair, evaluate, verify, or continue existing Arbor work belong to `converge`, not public `develop` or public `evaluate`.
+If the request is a simple direct answer, an already authorized quality-loop
+continuation, an independent validation request with existing review context, a
+convergence decision, or a release/finalization intent, return a structured
+`route_correction` rather than silently changing scope. Public requests to
+implement, repair, evaluate, verify, finish, publish, push, or continue existing
+Arbor work belong to `converge`, not public `develop`, public `evaluate`, or
+public `release`.
 
 ### `develop`
 
@@ -84,7 +90,8 @@ If the request is a simple direct answer, an already authorized quality-loop con
 
 ### `release`
 
-`release` handles git and release gates.
+`release` handles internal git and release gates after `develop`, `evaluate`,
+and `converge`.
 
 `brainstorm` can note release considerations but must not commit, push, tag, or declare release readiness.
 
@@ -118,7 +125,9 @@ We should not copy these parts directly:
 `brainstorm` makes the documentation decision only for planning work it owns:
 
 - outside Arbor: documentation or writing whose only purpose is human presentation, prose, submission support, or one-off conversation recovery;
-- another explicit workflow skill: already scoped implementation, evaluation, convergence, or release work with the required upstream evidence;
+- another explicit workflow skill: already scoped implementation, evaluation,
+  convergence, or post-convergence release work with the required upstream
+  evidence;
 - `brainstorm`: requests where the document is really the outcome of unresolved design, planning, impact analysis, or feature breakdown.
 
 This is an intent boundary, not a document-type boundary. A README, report, proposal, paper response, or project summary can enter Arbor when it drives development, experiments, evaluation, context recovery, or agent workflow rules.

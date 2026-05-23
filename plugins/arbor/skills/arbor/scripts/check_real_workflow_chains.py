@@ -1077,7 +1077,12 @@ def make_cases() -> dict[str, CaseSpec]:
         CaseSpec(
             "R10",
             "release checkpoint creates local commit",
-            agent_prompt("R10", "$release checkpoint the completed develop handoff before evaluate."),
+            agent_prompt(
+                "R10",
+                "$converge continue the completed develop handoff through the managed quality loop, "
+                "run the internal release(checkpoint_develop) gate, and create the local checkpoint "
+                "commit before internal evaluate. Do not ask me to invoke release directly.",
+            ),
             setup_develop_context,
             [*common_assertions, assert_release_status_checkpoint, assert_git_commit_created, assert_no_public_release],
             codex_sandbox="danger-full-access",
@@ -1105,14 +1110,22 @@ def make_cases() -> dict[str, CaseSpec]:
         CaseSpec(
             "R12",
             "release public actions gated",
-            agent_prompt("R12", "$release prepare finalization for F-review, but do not push, tag, or publish without explicit authorization."),
+            agent_prompt(
+                "R12",
+                "$converge prepare post-convergence finalization for F-review through the internal release gate, "
+                "but do not push, tag, or publish without explicit authorization.",
+            ),
             setup_converged_release_context,
             [*common_assertions, assert_release_status_checkpoint, assert_any_contains("confirmation", "authorize", "prepared", "release"), assert_no_public_release],
         ),
         CaseSpec(
             "R13",
             "explicit publish path",
-            agent_prompt("R13", "$release finalize F-review with local commit only. Do not push to a remote or publish a package."),
+            agent_prompt(
+                "R13",
+                "$converge finalize F-review through the internal release gate with local commit only. "
+                "Do not push to a remote or publish a package.",
+            ),
             setup_converged_release_context,
             [*common_assertions, assert_release_status_checkpoint, assert_any_contains("commit", "release"), assert_no_public_release],
             codex_sandbox="danger-full-access",
@@ -1151,7 +1164,10 @@ def make_cases() -> dict[str, CaseSpec]:
         CaseSpec(
             "R18",
             "memory pruned after commit",
-            agent_prompt("R18", "$release checkpoint the resolved Arbor state and prune resolved memory entries."),
+            agent_prompt(
+                "R18",
+                "$arbor prune resolved memory entries after the successful Arbor commit; git history is authoritative.",
+            ),
             setup_develop_context,
             [*common_assertions, assert_memory_pruned],
         ),

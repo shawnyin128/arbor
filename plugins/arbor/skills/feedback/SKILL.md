@@ -1,6 +1,6 @@
 ---
 name: feedback
-description: Use when the user explicitly invokes feedback or gives Arbor feedback such as bug reports, regressions, failed checks, reviewer comments, corrections to prior output, or defects in a current managed feature and the next public owner is unclear; do not use for new feature planning, project status, release/finalization requests, or ordinary explanations; route only to brainstorm, converge, needs-evidence, or a direct response, never public develop/evaluate.
+description: Use when the user explicitly invokes feedback or gives Arbor feedback such as bug reports, regressions, failed checks, reviewer comments, corrections to prior output, or defects in a current managed feature and the next public owner is unclear; do not use for new feature planning, project status, release/finalization requests, or ordinary explanations; route only to brainstorm, converge, needs-evidence, or a direct response, never public develop/evaluate/release.
 ---
 
 # Feedback
@@ -52,9 +52,10 @@ release, new feature planning, or an ordinary explanation, return
 Do not trigger `feedback` when the user clearly invokes another public Arbor
 skill and the request matches that skill. In particular, keep new feature ideas,
 scope design, and unscoped bug planning in `brainstorm`; keep current-loop
-continuation with known review context in `converge`; keep project overview or
-resume questions in `arbor`; keep release, commit, push, tag, publish, and
-cache-sync requests in `release`; answer ordinary explanations directly.
+continuation, finish, publish, push, and cache-sync intent with known review
+context in `converge`; keep project overview or resume questions in `arbor`;
+answer ordinary explanations directly. `release` is internal, not a public
+feedback route.
 
 Do not trigger from keywords alone. Words like "bug", "feedback", "reviewer",
 or "failed" are signals, not proof that this skill owns the turn. The skill
@@ -162,7 +163,8 @@ Confirm invocation
 ## Core Rules
 
 1. The next owner is limited to `brainstorm`, `converge`, or direct response.
-2. Do not expose `develop` or `evaluate` as public next steps.
+2. Do not expose `develop` or `evaluate` as public next steps. Do not expose
+   `develop`, `evaluate`, or `release` as public next steps.
 3. Do not recreate a universal router. `feedback` handles feedback-shaped input
    only.
 4. Do not intercept another explicitly named public skill when that skill fits

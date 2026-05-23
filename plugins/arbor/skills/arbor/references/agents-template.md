@@ -29,7 +29,10 @@ or sit in front of another named public entrypoint that already fits.
 Use `converge` when the current feature already has Arbor review context or the
 user asks to continue, repair, verify, or close an existing managed quality
 loop. `develop` and `evaluate` are internal stages owned by `converge`, not
-normal public user entrypoints.
+normal public user entrypoints. `release` is also internal: it records
+checkpoint/finalization evidence, creates required local checkpoint commits, and
+handles post-convergence finalization/push intent after explicit authorization.
+Do not ask users to invoke `release` directly.
 
 Keep simple one-off explanations, prose-only writing, and standalone conceptual
 questions direct unless they affect future development, testing, experiments,

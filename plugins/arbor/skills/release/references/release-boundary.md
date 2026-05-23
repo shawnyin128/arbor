@@ -2,13 +2,21 @@
 
 ## Position
 
-`release` sits after `develop`, `evaluate`, and `converge` as an internal checkpoint/finalization step:
+`release` sits after `develop`, `evaluate`, and `converge` as an internal
+checkpoint/finalization step:
 
 ```text
 brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature) -> next feature
 ```
 
-It is a current-feature state-tracking and finalization gate, not a planner, developer, evaluator, convergence judge, or primary user-facing entrypoint. Its user visibility is status-only: report what checkpoint/release action happened, whether confirmation is needed, and what comes next; keep detailed release reasoning in structured fields, review docs, or debug traces.
+It is a current-feature state-tracking and finalization gate, not a planner,
+developer, evaluator, convergence judge, or public user-facing entrypoint. Do
+not ask users to call `$release` or `/arbor:release`; public continuation,
+finish, publish, push, and sync requests should enter through `converge` when
+review context exists. Release's user visibility is status-only: report what
+checkpoint/release action happened, whether confirmation is needed, and what
+comes next; keep detailed release reasoning in structured fields, review docs,
+or debug traces.
 
 ## Inputs
 
@@ -28,10 +36,10 @@ Minimum evidence:
   infrastructure/environment versus workflow-contract classification, and
   weak-pass gap when relevant;
 - version-management evidence when the project has a versioned release artifact: version source files, current version, target_version, bump type, changed version files, and the actual version management method used to choose the bump;
-- requested release action;
+- requested internal release action or post-convergence external action intent;
 - git status, selected files, dirty scope, and branch/remotes when relevant;
 - replayable `checkpoint_authorization` evidence for local checkpoint commits, with `source=user` or `source=policy`;
-- user authorization for public/external actions;
+- user authorization for public/external actions after convergence;
 - feature registry rows needed for next-feature continuation.
 
 If finalization convergence evidence is missing, return `needs_converge`. If authorization is missing for an external action, return `needs_confirmation`.
@@ -59,13 +67,20 @@ Safe local preparation:
 Confirmation-gated actions:
 
 - staging files;
-- creating a finalization commit;
-- pushing a branch;
+- creating a finalization commit after convergence;
+- pushing a branch after convergence/finalization;
 - opening or updating a PR;
 - creating a tag;
 - publishing a package, plugin, release artifact, or marketplace entry.
 
-The user must authorize the specific public or finalization action. "Release this" can authorize preparation, but not every external action unless the prompt clearly asks for it. For Arbor-managed checkpoint mode, local git commits are internal workflow actions authorized by active workflow checkpoint policy; public actions and finalization commits still require explicit user authorization. Checkpoint authorization must be machine-readable through `checkpoint_authorization.source`, `checkpoint_authorization.ref`, `checkpoint_authorization.scope`, and `allows_local_commit`.
+The user must authorize the specific public or finalization action. "Release
+this" can authorize preparation, but not every external action unless the prompt
+clearly asks for it. For Arbor-managed checkpoint mode, local git commits are
+internal workflow actions authorized by active workflow checkpoint policy; public
+actions and finalization commits still require explicit user authorization and
+happen only after convergence. Checkpoint authorization must be machine-readable
+through `checkpoint_authorization.source`, `checkpoint_authorization.ref`,
+`checkpoint_authorization.scope`, and `allows_local_commit`.
 
 Standalone `stage` has no completed release terminal. `release` may prepare an exact stage file list, and staging may happen as part of an explicitly authorized finalization commit, but a stage-only request should not be reported as completed release delivery.
 
@@ -78,11 +93,13 @@ Standalone `stage` has no completed release terminal. `release` may prepare an e
 | Local summary or readiness check | Inspect state, report blockers, draft a commit plan. | Staging, commit, push, PR, tag, publish. |
 | Staging plan | Prepare the exact selected file list. | Running `git add` unless folded into an explicitly authorized finalization commit. |
 | Internal checkpoint commit | Create a local checkpoint commit only under active Arbor checkpoint policy and selected-only dirty scope. | Finalization commit or any public action. |
-| Finalization commit | Commit selected files only when explicitly authorized. | Push, PR, tag, publish, marketplace sync, connector mutation. |
+| Finalization commit | Commit selected files only after convergence and explicit authorization. | Push, PR, tag, publish, marketplace sync, connector mutation. |
 | Public or external action | Nothing beyond the exact authorized action. | Any additional public/external effect not named in the prompt. |
 
 Broad wording such as "go ahead" inherits only the active scope. It does not
 upgrade a local preparation request into a finalization commit or public action.
+Pushes are unified after convergence/finalization; release must not push from
+intermediate develop/evaluate checkpoints.
 
 ## User-Visible Boundary
 
@@ -133,7 +150,11 @@ Checkpointed release output is not final delivery. In checkpoint mode, `release`
 
 Use `continue_policy=auto_continue_allowed` only for safe internal `checkpoint_develop` or `checkpoint_evaluate` handoffs whose local checkpoint commit completed and whose Release Round records the commit hash, with no blocker, dirty-scope conflict, or confirmation need. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing checkpoint commit evidence, missing convergence evidence, or any required confirmation.
 
-An explicit `develop_evaluate_converge` automation policy can allow release to carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. It authorizes the local checkpoint commit for those handoffs. It does not authorize finalization commit, push, PR, tag, publish, next-feature release, or any public action.
+An explicit `develop_evaluate_converge` automation policy can allow release to
+carry internal checkpoint handoffs between `develop`, `evaluate`, and
+`converge`. It authorizes the local checkpoint commit for those handoffs. It
+does not authorize finalization commit, push, PR, tag, publish, cache sync,
+next-feature release, or any public action.
 
 ## Commit Convention
 

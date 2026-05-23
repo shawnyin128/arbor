@@ -36,7 +36,7 @@ evidence when useful.
 Follow this normal sequence for brainstorm runs. Stop early with the correct terminal state when route correction, missing evidence, or a blocking clarification prevents later steps.
 
 1. **Match canonical example**: identify the closest example above. If none fits, classify only enough boundary context to decide whether this is managed planning, direct work, or another explicit workflow skill.
-2. **Confirm route**: accept only Arbor-managed planning work; return `route_correction` if this belongs to direct work, the public `converge` quality-loop entrypoint, or `release`. Do not route ordinary user prompts to public `develop` or public `evaluate`.
+2. **Confirm route**: accept only Arbor-managed planning work; return `route_correction` if this belongs to direct work or the public `converge` quality-loop entrypoint. Do not route ordinary user prompts to public `develop`, public `evaluate`, or public `release`.
 3. **Select evidence mode**: choose `pure`, `user_artifact`, `project_context`, `codebase`, `paper`, `paper_and_code`, or `mixed`.
 4. **Load required evidence**: read available repo/docs/papers/user artifacts before making settled claims. If required evidence is missing, return `needs_evidence`.
 5. **Run the clarification loop**: state the current understanding, then ask the next material question when the answer could change scope, design, tests, persistence, approval, or the user's confidence that the request was understood. Do not ask for facts the repo/docs can answer cheaply. Continue this loop across turns until the requirement is clear enough to plan or implement.
@@ -112,7 +112,9 @@ No. A ready plan needs concrete scope, features, acceptance criteria, verificati
 
 ### "Brainstorm Can Just Start Editing"
 
-No. Public repair or continuation belongs to `converge`, which drives internal `develop` and `evaluate`. Git gates belong to `release`. The only normal file write in `brainstorm` is the review context artifact for a ready Arbor plan.
+No. Public repair or continuation belongs to `converge`, which drives internal
+`develop`, `evaluate`, and release checkpoints. The only normal file write in
+`brainstorm` is the review context artifact for a ready Arbor plan.
 
 ### "Every Plan Needs A Design Doc"
 
@@ -144,7 +146,7 @@ Return `route_correction` when:
 
 - the request is direct writing, explanation, or simple file editing with no downstream workflow impact;
 - the user is asking for implementation, tests, convergence, or release without unresolved planning work;
-- the task belongs to direct handling, public `converge`, `release`, or an internal handoff rather than planning.
+- the task belongs to direct handling, public `converge`, or an internal handoff rather than planning.
 
 Proceed with `brainstorm` when the request needs:
 
@@ -426,7 +428,7 @@ Use these enums:
 - `source_entrypoint.arbor_managed`: `yes`, `mixed`, `context_dependent`, `uncertain`
 - `evidence.mode`: `pure`, `user_artifact`, `project_context`, `codebase`, `paper`, `paper_and_code`, `mixed`
 - `route.terminal_state`: `needs_clarification`, `needs_evidence`, `ready_for_user_review`, `ready_for_converge`, `route_correction`, `blocked`
-- `route.next_skill`: `brainstorm`, `converge`, `release`, `none`
+- `route.next_skill`: `brainstorm`, `converge`, `none`
 - `ui.checkpoint.visibility`: `user_visible`
 - `ui.checkpoint.continue_policy`: `must_stop`
 - `ui.checkpoint.resume_after`: `user_approval`, `evidence_loaded`, `clarification_answered`, or `route_correction_handled`

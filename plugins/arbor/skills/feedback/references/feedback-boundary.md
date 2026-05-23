@@ -19,9 +19,10 @@ because the user named the skill.
 
 Do not insert feedback between the user and another explicitly named public
 skill when that skill fits. `brainstorm` owns new feature planning and unscoped
-bug planning. `converge` owns known current-loop continuation when review
-context is clear. `arbor` owns startup, resume, and project-status context.
-`release` owns finalization, commit, push, tag, publish, and cache sync.
+bug planning. `converge` owns known current-loop continuation, finish, repair,
+verification, and post-convergence publish/push intent when review context is
+clear. `arbor` owns startup, resume, and project-status context. `release` is an
+internal gate, not a public feedback destination.
 
 Do not trigger from a keyword alone. A status question mentioning feedback, a
 new feature named "feedback", or a release request that includes reviewer
@@ -54,7 +55,8 @@ Ask these questions in order:
 | Reviewer or user says the accepted criteria, non-goals, or test plan are wrong. | `brainstorm` | The feedback changes planning evidence, not implementation evidence. |
 | Existing Arbor feature has a defect, failed check, regression, or evaluator finding within accepted scope. | `converge` | Converge owns the quality loop and internally drives repair and validation. |
 | User asks to run develop or evaluate from a feedback-shaped prompt. | `converge` when review context exists; otherwise `brainstorm` or direct correction. | Develop and evaluate are internal stages, not public feedback destinations. |
-| User explicitly names `brainstorm`, `converge`, `arbor`, or `release`, and that public skill fits. | that named skill or route correction | Feedback should not become a hidden pre-router in front of explicit public entrypoints. |
+| User explicitly names `brainstorm`, `converge`, or `arbor`, and that public skill fits. | that named skill or route correction | Feedback should not become a hidden pre-router in front of explicit public entrypoints. |
+| User asks for finalization, push, publish, or cache sync from a feedback-shaped prompt. | `converge` when review context exists; otherwise route correction or needs evidence. | Release is internal; public release intent should be held until convergence/finalization evidence exists. |
 | A finalized or released feature regresses after the loop closed. | `brainstorm` | The work normally needs a new scoped repair plan and proof target instead of silently reopening old evidence. |
 | The feedback could refer to multiple features, a stale feature row, or a missing review document. | no workflow owner yet | Ask for feature identity or the missing review evidence before routing. |
 | User corrects wording, asks for a direct answer, or points out a simple chat misunderstanding. | direct response | No workflow state, review document, or future development plan is needed. |
