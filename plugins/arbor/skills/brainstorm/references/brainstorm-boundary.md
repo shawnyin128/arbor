@@ -4,17 +4,21 @@
 
 `brainstorm` turns an Arbor-managed engineering request into a collaborative, reviewable plan. It combines clarification and planning, but it does not implement, execute tests, converge, release, or manage every kind of thinking.
 
-For ready implementation work, `brainstorm` also creates or updates `.arbor/workflow/features.json` and creates the shared review document at `docs/review/<feature>-review.md`. The feature registry tracks queue/status. The review document holds Context/Test Plan and later developer/evaluator evidence.
+For ready implementation work, `brainstorm` also creates or updates `.arbor/workflow/features.json` and creates the shared review document at `docs/review/<feature>-review.md`. The feature registry tracks queue/status. The review document holds Context/Test Plan and later internal developer/evaluator evidence under `converge`.
 
-The skill exists after `intake` has decided the request belongs in Arbor and needs clarification, design, impact analysis, or feature planning.
+The skill is the public planning entrypoint for requests that belong in Arbor and need clarification, design, impact analysis, or feature planning.
 
 ## Position In The Workflow
 
 ```text
-intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature)
+brainstorm -> converge
+  -> internal develop -> release(checkpoint_develop)
+  -> internal evaluate -> release(checkpoint_evaluate)
+  -> converge decision
+-> release(finalize_feature)
 ```
 
-`brainstorm` receives an Arbor-managed request or active context. It returns a structured plan that can be reviewed by a user or UI and then routed onward.
+`brainstorm` receives an Arbor-managed request or active context. It returns a structured plan that can be reviewed by a user or UI and then routed to the public `converge` quality loop.
 
 Its terminal state is a `brainstorm.v1` structured output plus, for ready implementation work, an initialized feature registry and review document. It must not make implementation code changes.
 
@@ -37,7 +41,7 @@ Use `brainstorm` for:
 - defining artifact-appropriate verification principles, such as unit tests, scenario checks, edge/negative cases, content checks, structure checks, dry runs, schema checks, or evaluator focus;
 - creating or updating `.arbor/workflow/features.json` as the feature queue/status index;
 - creating the `docs/review/<feature>-review.md` Context/Test Plan section for ready implementation work;
-- deciding whether a task is ready for `develop`.
+- deciding whether a task is ready for the `converge` quality loop.
 
 Usually keep work outside `brainstorm` when the user intent is only:
 
@@ -54,21 +58,21 @@ These are not hard exclusions. The same prompt shape can enter `brainstorm` if i
 
 ## Relationship To Other Skills
 
-### `intake`
+### Public Entrypoints
 
-`intake` decides whether a request belongs in Arbor and which skill should handle it.
+`brainstorm` owns planning. It should classify only enough boundary context to decide whether the current request needs managed planning, direct handling, or another explicit workflow skill.
 
-`brainstorm` should not redo the full intake decision unless new context shows the request was misrouted. If it discovers a route mismatch, it should return a structured `route_correction` rather than silently changing scope.
+If the request is a simple direct answer, an already authorized quality-loop continuation, an independent validation request with existing review context, a convergence decision, or a release gate, return a structured `route_correction` rather than silently changing scope. Public requests to implement, repair, evaluate, verify, or continue existing Arbor work belong to `converge`, not public `develop` or public `evaluate`.
 
 ### `develop`
 
-`develop` implements an approved feature or managed artifact.
+`develop` is an internal stage that implements an approved feature or managed artifact when `converge` or an equivalent workflow handoff drives it.
 
 `brainstorm` may outline implementation steps and create the review Context/Test Plan artifact, but must not edit implementation files, scaffold code, or run formatting/test commands as implementation work.
 
 ### `evaluate`
 
-`evaluate` independently validates implemented changes through tests, coverage, scenarios, and adversarial checks.
+`evaluate` is an internal stage that independently validates implemented changes through tests, coverage, scenarios, and adversarial checks when `converge` or an equivalent workflow handoff drives it.
 
 `brainstorm` writes the test plan in the review document, but it must not claim validation has passed.
 
@@ -107,15 +111,15 @@ We should not copy these parts directly:
 - having a fixed next skill like `writing-plans`;
 - treating every simple change as needing a full design process.
 
-Arbor's `intake` already decides whether a request should enter the workflow. `brainstorm` should remain scoped to Arbor-managed engineering work.
+`brainstorm` should remain scoped to Arbor-managed engineering work. It must not become a universal hidden router for every technical request.
 
 ## Documentation And Persistence Boundary
 
-`intake` makes the first documentation decision:
+`brainstorm` makes the documentation decision only for planning work it owns:
 
 - outside Arbor: documentation or writing whose only purpose is human presentation, prose, submission support, or one-off conversation recovery;
-- direct to `develop`: clear development-serving artifacts that do not need design discussion, such as a specified development guide or project/data map;
-- to `brainstorm`: requests where the document is really the outcome of unresolved design, planning, impact analysis, or feature breakdown.
+- another explicit workflow skill: already scoped implementation, evaluation, convergence, or release work with the required upstream evidence;
+- `brainstorm`: requests where the document is really the outcome of unresolved design, planning, impact analysis, or feature breakdown.
 
 This is an intent boundary, not a document-type boundary. A README, report, proposal, paper response, or project summary can enter Arbor when it drives development, experiments, evaluation, context recovery, or agent workflow rules.
 
@@ -152,7 +156,7 @@ It should use `schema_version: features.v1` and include:
 Allowed feature statuses:
 
 - `planned`: feature exists but is not approved for implementation;
-- `approved`: selected or approved to enter develop;
+- `approved`: selected or approved to enter the converge-owned quality loop;
 - `in_develop`: develop is actively implementing it;
 - `in_evaluate`: develop handed it to evaluate;
 - `changes_requested`: evaluator/converge requested another develop round;
@@ -164,7 +168,7 @@ Status integrity rules:
 
 - `feature_registry.status_summary` must be recomputable from the emitted feature rows;
 - `ready_for_user_review` should create newly split features as `planned`;
-- `ready_for_develop` should mark the active selected feature as `approved`;
+- `ready_for_converge` should mark the active selected feature as `approved`;
 - `brainstorm` should not mark newly planned work as `done`, `in_evaluate`, or `changes_requested`.
 
 `features.json` and review docs are one-to-one at the feature level: every registry feature should have a `review_doc_path`, and each ready feature review doc should correspond to exactly one registry feature.
@@ -173,7 +177,7 @@ Do not use review docs as the only progress index. Downstream skills should not 
 
 The initial review document should include:
 
-- raw request and source intake;
+- raw request and source entrypoint;
 - selected feature id/title;
 - problem summary, goals, non-goals, and constraints;
 - hidden decisions and resolved assumptions;
@@ -186,11 +190,20 @@ The initial review document should include:
 - known risks and remaining assumptions;
 - approval state and next route.
 
-Do not create the review document when the terminal state is `needs_evidence`, `needs_clarification`, `route_correction`, or `blocked`, unless the user explicitly asks for a durable planning artifact.
+Do not create the review document when the terminal state is `route_correction`
+or `blocked`.
+
+For `needs_evidence` or `needs_clarification`, create the feature registry and
+review Context/Test Plan only when the loaded evidence already supports a
+useful provisional feature split or durable planning checkpoint. The artifact
+must name the blocker, pending question, non-goals, provisional acceptance
+criteria, and the evidence required before implementation. If the request is
+too vague to define a responsible provisional scope, keep the registry and
+review document `not_required`.
 
 Write or recommend durable artifacts when:
 
-- downstream `develop` or `evaluate` needs the plan;
+- `converge` and its internal implementation/validation stages need the plan;
 - feature scope, acceptance criteria, or test plan must survive across sessions;
 - future agents need the information for context recovery;
 - the content is a stable project map or development reference.
@@ -206,7 +219,7 @@ Choose artifact targets by purpose:
 
 ### Done-When Verification Thread
 
-For ready Arbor-managed implementation work, `brainstorm` starts the done-when verification thread. It should describe what completion means in outcome language, map each criterion to artifact-appropriate verification, and name any weak evidence risk when exact live proof may not be available.
+For ready Arbor-managed implementation work, `brainstorm` starts the done-when verification thread before the converge-owned quality loop. It should describe what completion means in outcome language, map each criterion to artifact-appropriate verification, and name any weak evidence risk when exact live proof may not be available.
 
 Each done-when criterion should name the user-visible or workflow-visible
 outcome, the minimum acceptable proof, and the evidence owner when proof belongs
@@ -252,7 +265,7 @@ If a conclusion depends on evidence that has not been loaded, `brainstorm` must 
 ## Clarification Rules
 
 Ask questions when the answer materially affects the plan or when a ready plan
-needs explicit user approval/correction before development. This is not a broad
+needs explicit user approval/correction before the quality loop. This is not a broad
 questionnaire; it is the collaboration loop that lets the user refine the
 problem and verify that the agent understood it.
 
@@ -328,9 +341,10 @@ When approaches are useful, include:
 {
   "schema_version": "brainstorm.v1",
   "raw_user_request": "",
-  "source_intake": {
+  "source_entrypoint": {
+    "entrypoint": "brainstorm",
     "arbor_managed": "yes",
-    "route_reason": ""
+    "reason": ""
   },
   "evidence": {
     "mode": "project_context",
@@ -396,7 +410,7 @@ When approaches are useful, include:
   "risks": [],
   "route": {
     "terminal_state": "ready_for_user_review",
-    "next_skill": "develop",
+    "next_skill": "converge",
     "requires_user_approval": true,
     "reason": ""
   },
@@ -420,7 +434,7 @@ When approaches are useful, include:
 
 `brainstorm` is always a user-visible checkpoint. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`.
 
-The next skill may be `develop`, but that route is a resume target after the user reviews the plan. It is not permission to silently continue into implementation in the same final response.
+The next public skill may be `converge`, but that route is a resume target after the user reviews the plan. It is not permission to silently continue into implementation or validation in the same final response.
 
 ## Inline Review Packet
 
@@ -472,11 +486,11 @@ Use this natural-language shape by default:
 ...
 ```
 
-Avoid exposing machine names such as `feature_registry`, `review_doc`, `terminal_state`, `evaluator_focus`, `source_intake`, or `route` in the primary inline text. The structured fields still keep those machine concepts for runtime and later UI work.
+Avoid exposing machine names such as `feature_registry`, `review_doc`, `terminal_state`, `evaluator_focus`, `source_entrypoint`, or `route` in the primary inline text. The structured fields still keep those machine concepts for runtime and later UI work.
 
 The visible tables must paraphrase structured data. Do not paste internal feature labels, test labels, status labels, or handoff phrases into user-facing cells. Each row should describe the user-level action, why it matters, and how completion is recognized. A reader should not need to know Arbor internals to understand a row.
 
-Do not show internal shorthand in the primary inline text. Status strings such as `ready_for_develop`, route assignments such as `next_skill=develop`, feature ids such as `F1`, fixture ids such as `Case 2`, and abbreviations such as `RFD` or `dev/eval` must be translated into plain user-facing language.
+Do not show internal shorthand in the primary inline text. Status strings such as `ready_for_converge`, route assignments such as `next_skill=converge`, feature ids such as `F1`, fixture ids such as `Case 2`, and abbreviations such as `RFQ` or `dev/eval` must be translated into plain user-facing language.
 
 Final response preflight must run on the exact final assistant message, not only
 on the internal `user_response` draft. The final message must keep the standard
@@ -495,19 +509,19 @@ table rows.
 - `needs_clarification`: one pending user question blocks planning;
 - `needs_evidence`: code/docs/paper must be read before conclusion;
 - `ready_for_user_review`: a plan exists but needs user approval;
-- `ready_for_develop`: user has approved a sufficiently scoped feature plan;
+- `ready_for_converge`: user has approved a sufficiently scoped feature plan;
 - `route_correction`: this should not be handled by `brainstorm`;
 - `blocked`: progress requires unavailable information or permission.
 
 It must not end by making implementation code changes.
 
-For `ready_for_user_review` and `ready_for_develop`, it should create or update the feature registry and create the review Context/Test Plan document unless explicitly read-only. For non-ready states, `feature_registry.status` and `review_doc.status` should be `not_required` or `blocked`.
+For `ready_for_user_review` and `ready_for_converge`, it should create or update the feature registry and create the review Context/Test Plan document unless explicitly read-only. For non-ready states, `feature_registry.status` and `review_doc.status` should be `not_required` or `blocked`.
 
 ## Approval Gate
 
 Implementation requires explicit user approval unless the user already clearly asked to proceed and the plan is low-risk, narrow, and fully specified.
 
-Even then, `brainstorm` should output the plan and route to `develop`; it should not perform the implementation itself.
+Even then, `brainstorm` should output the plan and route to `converge`; it should not perform the implementation itself.
 
 ## Self-Review Checklist
 

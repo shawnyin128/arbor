@@ -66,8 +66,8 @@ conflict, or violated decision invariants remain.
 
 When the evidence is missing or inconsistent, converge should return the
 appropriate evidence or planning route: missing brainstorm trace routes to
-`brainstorm`, missing developer decision evidence routes to `develop`, and
-missing evaluator drift checks route to `evaluate`.
+`brainstorm`, missing developer decision evidence routes internally to
+`develop`, and missing evaluator drift checks route internally to `evaluate`.
 
 ## Non-Goals
 

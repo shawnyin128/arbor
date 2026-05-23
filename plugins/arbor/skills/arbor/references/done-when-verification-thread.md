@@ -11,7 +11,7 @@ normal judgment over how to read, design, code, test, and review.
 
 | Stage | Responsibility |
 | --- | --- |
-| `brainstorm` | Define task-appropriate done-when criteria and artifact-appropriate verification before development begins. |
+| `brainstorm` | Define task-appropriate done-when criteria and artifact-appropriate verification before the converge-owned quality loop begins. |
 | `develop` | Map self-tests, structure checks, content checks, or replay evidence to the accepted done-when criteria. Record any verification gap instead of hiding it. |
 | `evaluate` | Independently challenge the done-when criteria, add adversarial checks, and label weak pass evidence when exact runtime proof is unavailable. |
 | `converge` | Decide whether developer and evaluator evidence agrees with the done-when criteria and the original brainstorm goal. |

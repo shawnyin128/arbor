@@ -122,13 +122,13 @@ MEMORY_HYGIENE_CASE_CORPUS: list[dict[str, Any]] = [
         "rationale": "new constraints affect the active implementation",
     },
     {
-        "id": "trigger-brainstorm-to-develop",
-        "situation": "before handing off from brainstorm to develop with dirty Arbor artifacts",
+        "id": "trigger-brainstorm-to-converge",
+        "situation": "before handing off from brainstorm to converge with dirty Arbor artifacts",
         "expected": "trigger",
         "git_state": "dirty",
         "arbor_managed": True,
         "checkpoint": "skill_handoff",
-        "rationale": "the developer should recover the selected plan",
+        "rationale": "the quality loop should recover the selected plan",
     },
     {
         "id": "trigger-develop-to-release-evaluate",

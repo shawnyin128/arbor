@@ -392,6 +392,66 @@ def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None
     check(errors, not (plugin_root / "agents").exists(), "plugin-level agents directory is out of scope for this release")
 
 
+def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) -> None:
+    skills_root = plugin_root / "skills"
+    check(errors, (skills_root / "feedback" / "SKILL.md").is_file(), "feedback skill must be present")
+    check(errors, not (skills_root / "intake").exists(), "hidden intake skill must not ship")
+
+    brainstorm = (skills_root / "brainstorm" / "SKILL.md").read_text(encoding="utf-8")
+    feedback = (skills_root / "feedback" / "SKILL.md").read_text(encoding="utf-8")
+    converge = (skills_root / "converge" / "SKILL.md").read_text(encoding="utf-8")
+    agents_template = (skills_root / "arbor" / "references" / "agents-template.md").read_text(encoding="utf-8")
+    real_runner = (skills_root / "arbor" / "scripts" / "check_real_workflow_chains.py").read_text(encoding="utf-8")
+    codex = load_json(plugin_root / ".codex-plugin" / "plugin.json", errors)
+
+    for term in (
+        "ready_for_converge",
+        "`route.next_skill`: `brainstorm`, `converge`, `release`, `none`",
+        "Do not route ordinary user prompts to public `develop` or public `evaluate`",
+    ):
+        check(errors, contains_term(brainstorm, term), f"brainstorm public-entrypoint contract missing `{term}`")
+    check(errors, "ready_for_develop" not in brainstorm, "brainstorm must not expose ready_for_develop")
+    check(errors, "`route.next_skill`: `brainstorm`, `develop`, `evaluate`" not in brainstorm, "brainstorm must not allow public develop/evaluate routes")
+
+    for term in (
+        "Invocation And Acceptance Contract",
+        "Accept and route as feedback only",
+        "does not force a non-feedback request",
+        "Do not trigger from keywords alone",
+        "The next owner is limited to `brainstorm`, `converge`, or direct response",
+    ):
+        check(errors, contains_term(feedback, term), f"feedback public-entrypoint contract missing `{term}`")
+
+    for term in (
+        "`converge` as the public quality-loop orchestrator",
+        "Do not expose `develop` or `evaluate` as public next steps",
+        "internal `develop` and `evaluate`",
+    ):
+        check(errors, contains_term(converge, term), f"converge public-entrypoint contract missing `{term}`")
+
+    for term in (
+        "Workflow Entrypoint Protocol",
+        "explicit Arbor public entrypoint",
+        "Feedback should decide only between `brainstorm`, `converge`,",
+        "`develop` and `evaluate` are internal stages owned by `converge`",
+    ):
+        check(errors, contains_term(agents_template, term), f"agents template missing public entrypoint term `{term}`")
+
+    interface = codex.get("interface")
+    if isinstance(interface, dict):
+        long_description = str(interface.get("longDescription", ""))
+        for term in (
+            "before routing approved work to converge",
+            "needs-evidence",
+            "does not trigger from keywords alone",
+            "Develop and evaluate are internal stages",
+        ):
+            check(errors, contains_term(long_description, term), f"Codex longDescription missing public entrypoint term `{term}`")
+
+    for forbidden in ('"$develop ', '"$evaluate ', "CJK_EVALUATE_PROMPT"):
+        check(errors, forbidden not in real_runner, f"real workflow chain runner must not use public {forbidden}")
+
+
 def run_session_start(plugin_root: Path, project_root: Path, source: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
@@ -434,9 +494,16 @@ def validate_session_start_smoke(plugin_root: Path, errors: list[str]) -> None:
         check(errors, clear_proc.stdout == "", "SessionStart clear source must not inject context")
 
 
-def run_stop_hook(plugin_root: Path, project_root: Path, stop_hook_active: bool) -> subprocess.CompletedProcess[str]:
+def run_stop_hook(
+    plugin_root: Path,
+    project_root: Path,
+    stop_hook_active: bool,
+    memory_hygiene_mode: str | None = None,
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+    if memory_hygiene_mode is not None:
+        env["ARBOR_STOP_MEMORY_HYGIENE_MODE"] = memory_hygiene_mode
     payload = {
         "session_id": "adapter-smoke",
         "transcript_path": str(project_root / "transcript.jsonl"),
@@ -453,6 +520,18 @@ def run_stop_hook(plugin_root: Path, project_root: Path, stop_hook_active: bool)
         check=False,
         env=env,
     )
+
+
+def assert_stop_allows(errors: list[str], proc: subprocess.CompletedProcess[str], label: str) -> dict[str, Any]:
+    try:
+        output = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        add_error(errors, f"{label}: Stop adapter must emit non-blocking JSON")
+        return {}
+    check(errors, output.get("continue") is True, f"{label}: Stop adapter must explicitly allow stop")
+    check(errors, output.get("decision") != "block", f"{label}: Stop adapter must not block")
+    check(errors, output.get("suppressOutput") is True, f"{label}: Stop adapter should request suppressed hook output")
+    return output
 
 
 def _git(args: list[str], cwd: Path) -> None:
@@ -478,40 +557,65 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         _git(["add", "-A"], project)
         _git(["commit", "-m", "init"], project)
 
-        # Clean worktree: the adapter must stay silent and allow the stop.
+        # Clean worktree: the adapter must emit non-blocking JSON and allow the stop.
         clean_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
         check(errors, clean_proc.returncode == 0, f"Stop clean smoke failed: {clean_proc.stderr.strip()}")
-        check(errors, clean_proc.stdout == "", "Stop adapter must stay silent on a clean worktree")
+        assert_stop_allows(errors, clean_proc, "Stop clean smoke")
 
-        # Dirty worktree: the adapter must block with the memory hygiene packet.
+        # Dirty worktree: the adapter must allow stop by default so Stop hook
+        # continuations cannot replace the assistant's real final response. It
+        # should still write a bounded fallback if memory has no In-flight entry.
         (project / "feature.txt").write_text("work in progress\n", encoding="utf-8")
         dirty_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
         check(errors, dirty_proc.returncode == 0, f"Stop dirty smoke failed: {dirty_proc.stderr.strip()}")
+        assert_stop_allows(errors, dirty_proc, "Stop dirty smoke")
+        memory_after_dirty = (project / ".arbor" / "memory.md").read_text(encoding="utf-8")
+        check(
+            errors,
+            "stop hook fallback: dirty Arbor worktree detected before stop" in memory_after_dirty,
+            "Stop adapter must quietly add a fallback In-flight memory entry when one is missing",
+        )
+
+        # Opt-in blocking mode keeps the old memory-hygiene packet path
+        # available for Claude installs that explicitly choose it.
+        block_proc = run_stop_hook(plugin_root, project, stop_hook_active=False, memory_hygiene_mode="block")
+        check(errors, block_proc.returncode == 0, f"Stop block-mode smoke failed: {block_proc.stderr.strip()}")
         try:
-            decision = json.loads(dirty_proc.stdout)
+            decision = json.loads(block_proc.stdout)
         except json.JSONDecodeError:
-            add_error(errors, "Stop adapter must emit JSON when blocking a dirty worktree")
+            add_error(errors, "Stop adapter must emit JSON when opt-in blocking mode is enabled")
             decision = {}
-        check(errors, decision.get("decision") == "block", "Stop adapter must block when the worktree is dirty")
+        check(errors, decision.get("decision") == "block", "Stop adapter must block in opt-in mode when the worktree is dirty")
         check(
             errors,
             "# Memory Hygiene Context" in str(decision.get("reason", "")),
-            "Stop block reason must carry the memory hygiene packet",
+            "Stop opt-in block reason must carry the memory hygiene packet",
         )
 
         # stop_hook_active guard: the adapter must never block a continuation.
         active_proc = run_stop_hook(plugin_root, project, stop_hook_active=True)
         check(errors, active_proc.returncode == 0, f"Stop active smoke failed: {active_proc.stderr.strip()}")
-        check(errors, active_proc.stdout == "", "Stop adapter must allow the stop when stop_hook_active is set")
+        assert_stop_allows(errors, active_proc, "Stop active smoke")
 
-    # Non-Arbor project: the adapter must stay silent even when dirty.
+        explicit_memory = "# Session Memory\n\n## In-flight\n\n- existing workflow handoff remains authoritative.\n"
+        (project / ".arbor" / "memory.md").write_text(explicit_memory, encoding="utf-8")
+        explicit_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, explicit_proc.returncode == 0, f"Stop explicit-memory smoke failed: {explicit_proc.stderr.strip()}")
+        assert_stop_allows(errors, explicit_proc, "Stop explicit-memory smoke")
+        check(
+            errors,
+            (project / ".arbor" / "memory.md").read_text(encoding="utf-8") == explicit_memory,
+            "Stop adapter must not overwrite an existing meaningful In-flight memory entry",
+        )
+
+    # Non-Arbor project: the adapter must allow stop even when dirty.
     with tempfile.TemporaryDirectory(prefix="arbor-claude-stop-nonarbor-") as tmp:
         project = Path(tmp)
         _git(["init"], project)
         (project / "feature.txt").write_text("unrelated work\n", encoding="utf-8")
         proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
         check(errors, proc.returncode == 0, f"Stop non-Arbor smoke failed: {proc.stderr.strip()}")
-        check(errors, proc.stdout == "", "Stop adapter must stay silent in a non-Arbor project")
+        assert_stop_allows(errors, proc, "Stop non-Arbor smoke")
 
 
 def validate_in_flight_memory_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -525,6 +629,10 @@ def validate_in_flight_memory_contract(plugin_root: Path, errors: list[str]) -> 
         ],
         "skills/brainstorm/SKILL.md": [
             "Before stopping with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists",
+        ],
+        "skills/feedback/SKILL.md": [
+            "**Update in-flight memory when needed**",
+            "if uncommitted Arbor workflow changes remain because this feedback decision created local evidence or state",
         ],
         "skills/develop/SKILL.md": [
             "**Update in-flight memory**",
@@ -546,7 +654,7 @@ def validate_in_flight_memory_contract(plugin_root: Path, errors: list[str]) -> 
     for rel_path, terms in required.items():
         text = (plugin_root / rel_path).read_text(encoding="utf-8")
         for term in terms:
-            check(errors, term in text, f"{rel_path} missing in-flight memory contract term `{term}`")
+            check(errors, contains_term(text, term), f"{rel_path} missing in-flight memory contract term `{term}`")
 
 
 def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -595,6 +703,26 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "status-paragraph",
             "artifact-list",
         ],
+        "skills/feedback/SKILL.md": [
+            "The normal visible final response MUST include these exact Markdown headings",
+            "`**Feedback Decision**`",
+            "`**Why This Route**`",
+            "`**What I Need Or Will Use**`",
+            "`**Next Step**`",
+            "localized heading equivalents",
+            "user's active chat language",
+            "Final response preflight",
+            "captured final text",
+            "prose-only summary",
+        ],
+        "skills/feedback/references/feedback-boundary.md": [
+            "Do not print the raw `feedback.v1` packet",
+            "route fields",
+            "terminal-state labels",
+            "localized heading equivalents",
+            "Final response preflight",
+            "prose-only summary",
+        ],
         "skills/develop/SKILL.md": [
             "The normal visible final response MUST include these exact Markdown headings",
             "`**What I Completed**`",
@@ -604,16 +732,6 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "Final response preflight",
             "captured final text",
             "prose-only summary",
-        ],
-        "skills/intake/SKILL.md": [
-            "active engineering planning continuations",
-            "the downstream visible answer must be the standard brainstorm checkpoint",
-            "Understanding And Recommendation",
-            "Suggested Small Steps",
-            "How I Would Validate Each Step",
-            "Expected Delivery",
-            "localized heading equivalents",
-            "user's active chat language",
         ],
         "skills/evaluate/SKILL.md": [
             "The normal visible final response MUST include these exact Markdown headings",
@@ -1329,12 +1447,12 @@ def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
         "skills/develop/SKILL.md": [
-            "automatic local developer checkpoint commit before `evaluate`",
+            "automatic local developer checkpoint commit before internal `evaluate`",
             "`release(checkpoint_develop)` creates the local checkpoint commit",
             "policy authorization for a local checkpoint commit",
         ],
         "skills/develop/references/develop-boundary.md": [
-            "automatic local developer checkpoint commit before `evaluate`",
+            "automatic local developer checkpoint commit before internal `evaluate`",
             "policy authorization for a local developer checkpoint commit",
         ],
         "skills/release/SKILL.md": [
@@ -1355,7 +1473,7 @@ def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[
     if repo_root is not None:
         required["README.md"] = [
             "release(checkpoint_develop: local commit)",
-            "automatic local checkpoint commit before `evaluate`",
+            "automatic local checkpoint commit before internal `evaluate`",
             "gating finalization commit, push, PR, tag, and publish behind explicit user authorization",
         ]
 
@@ -1457,17 +1575,20 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
     for category in (
         "planning_continuation",
         "runtime_traceback",
-        "active_review_evaluate",
+        "quality_loop_converge",
         "direct_answer_control",
         "memory_hygiene",
         "project_map_drift",
         "release_publish",
+        "feedback_triage",
     ):
         check(errors, category in runner_text, f"real workflow chain runner missing routing category `{category}`")
     for case_number in range(1, 29):
         case_id = f"R{case_number:02d}"
         check(errors, f"| {case_id} |" in text, f"real workflow chain review missing case {case_id}")
         check(errors, f'"{case_id}"' in runner_text, f"real workflow chain runner missing case {case_id}")
+    check(errors, "| R32 |" in text, "real workflow chain review missing feedback triage case R32")
+    check(errors, '"R32"' in runner_text, "real workflow chain runner missing feedback triage case R32")
 
 
 def main() -> int:
@@ -1478,6 +1599,7 @@ def main() -> int:
     validate_project_hook_contract(plugin_root, errors)
     validate_agents_guide_drift_smoke(plugin_root, errors)
     validate_claude_hook_structure(plugin_root, errors)
+    validate_public_entrypoint_contract(plugin_root, errors)
     validate_session_start_smoke(plugin_root, errors)
     validate_stop_memory_hygiene_smoke(plugin_root, errors)
     validate_in_flight_memory_contract(plugin_root, errors)

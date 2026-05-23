@@ -49,27 +49,27 @@ ROUTING_REPLAY_CASES = {
     "R01": {
         "category": "planning_continuation",
         "situation": "An active engineering planning prompt should become a formal brainstorm checkpoint before code changes.",
-        "expected_chain": "intake -> brainstorm",
+        "expected_chain": "brainstorm",
     },
     "R03": {
         "category": "direct_answer_control",
         "situation": "A standalone explanation should stay direct and should not create Arbor workflow state.",
-        "expected_chain": "direct answer or intake -> none",
+        "expected_chain": "direct answer",
     },
     "R04": {
-        "category": "active_review_evaluate",
-        "situation": "A review request attached to an active developer handoff should run independent evaluation.",
-        "expected_chain": "intake -> evaluate",
+        "category": "quality_loop_converge",
+        "situation": "A review request attached to an active developer handoff should enter the public converge quality loop.",
+        "expected_chain": "converge -> internal evaluate",
     },
     "R05": {
         "category": "runtime_traceback",
         "situation": "A non-trivial traceback blocking an active pipeline should enter Arbor-managed debugging.",
-        "expected_chain": "intake -> develop or intake -> brainstorm",
+        "expected_chain": "brainstorm or develop with review context",
     },
     "R07": {
-        "category": "active_review_evaluate",
-        "situation": "Evaluation output should be rendered for a user instead of exposing raw evaluator packets.",
-        "expected_chain": "evaluate",
+        "category": "quality_loop_converge",
+        "situation": "Public validation requests should render a converge checkpoint instead of exposing raw evaluator packets.",
+        "expected_chain": "converge -> internal evaluate",
     },
     "R12": {
         "category": "release_publish",
@@ -92,29 +92,34 @@ ROUTING_REPLAY_CASES = {
         "expected_chain": "arbor memory hygiene",
     },
     "R21": {
-        "category": "active_review_evaluate",
-        "situation": "A workflow-skill output smoke should render the user-facing evaluation sections.",
-        "expected_chain": "evaluate",
+        "category": "quality_loop_converge",
+        "situation": "A workflow-skill output smoke should render the user-facing convergence sections for public validation requests.",
+        "expected_chain": "converge",
     },
     "R29": {
-        "category": "active_review_evaluate",
-        "situation": "A misspelled or informal evaluate request attached to an active handoff should still render the full evaluation checkpoint instead of a prose-only summary.",
-        "expected_chain": "intake -> evaluate",
+        "category": "quality_loop_converge",
+        "situation": "A misspelled or informal evaluate request attached to an active handoff should enter converge instead of public evaluate.",
+        "expected_chain": "converge",
     },
     "R30": {
-        "category": "active_review_evaluate",
-        "situation": "A non-English evaluate request should render the visible checkpoint in the user's language while preserving the evaluation structure.",
-        "expected_chain": "evaluate",
+        "category": "quality_loop_converge",
+        "situation": "A non-English public validation request should render the converge checkpoint in the user's language.",
+        "expected_chain": "converge",
     },
     "R31": {
         "category": "release_checkpoint",
         "situation": "An automatic develop/evaluate/converge run must execute release checkpoint gates and create local checkpoint commits instead of only writing Release Round prose.",
         "expected_chain": "develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge",
     },
+    "R32": {
+        "category": "feedback_triage",
+        "situation": "A user feedback prompt should render a feedback checkpoint and choose brainstorm, converge, or direct response without exposing internal stages.",
+        "expected_chain": "feedback -> brainstorm or converge or direct response",
+    },
     "R27": {
         "category": "planning_continuation",
         "situation": "A split-context engineering planning continuation should still become brainstorm.",
-        "expected_chain": "intake -> brainstorm",
+        "expected_chain": "brainstorm",
     },
     "R28": {
         "category": "project_map_drift",
@@ -125,11 +130,12 @@ ROUTING_REPLAY_CASES = {
 REQUIRED_ROUTING_CATEGORIES = {
     "planning_continuation",
     "runtime_traceback",
-    "active_review_evaluate",
+    "quality_loop_converge",
     "direct_answer_control",
     "memory_hygiene",
     "project_map_drift",
     "release_publish",
+    "feedback_triage",
 }
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -151,7 +157,7 @@ CODEX_CACHE = Path.home() / ".codex/plugins/cache/arbor/arbor" / PLUGIN_VERSION
 CLAUDE_CACHE = Path.home() / ".claude/plugins/cache/arbor/arbor" / PLUGIN_VERSION
 RAW_CHECKPOINT_LEAK_RE = re.compile(
     r"schema_version|```json|\"(?:source|route|ui|evaluation|review_context|release_context)\"\s*:|"
-    r"\b(?:brainstorm|develop|evaluate|converge|release)\.v1\b|"
+    r"\b(?:brainstorm|feedback|develop|evaluate|converge|release)\.v1\b|"
     r"\b(?:terminal_state|next_skill|feature_id|review_doc_path)\b|"
     r"\b(?:ready_for_evaluate|needs_develop_handoff|route_correction|checkpointed)\b|"
     r"\bR\d{2}\b|\bCase\s+\d+\b|"
@@ -176,6 +182,15 @@ SKILL_RENDER_CONTRACTS = {
             "How I Would Validate Each Step",
             "Default Decisions I Made",
         ),
+    },
+    "feedback": {
+        "headings": (
+            "Feedback Decision",
+            "Why This Route",
+            "What I Need Or Will Use",
+            "Next Step",
+        ),
+        "table_sections": ("Why This Route",),
     },
     "develop": {
         "headings": (
@@ -217,12 +232,12 @@ SKILL_RENDER_CONTRACTS = {
         "table_sections": ("Agreement Check", "Remaining Issues"),
     },
 }
-CJK_EVALUATE_PROMPT = (
-    "$evaluate "
-    "\u8bf7\u72ec\u7acb\u8bc4\u4f30 docs/review/F-review.md "
-    "\u91cc\u7684\u5f00\u53d1\u4ea4\u63a5\u3002"
+CJK_CONVERGE_PROMPT = (
+    "$converge "
+    "\u8bf7\u6839\u636e docs/review/F-review.md "
+    "\u91cc\u7684\u5f00\u53d1\u4ea4\u63a5\u7ee7\u7eed\u8d28\u91cf\u5faa\u73af\u3002"
     "\u7528\u4e2d\u6587\u8f93\u51fa\u7528\u6237\u53ef\u89c1\u7684"
-    "\u8bc4\u4f30\u68c0\u67e5\u70b9\uff0c"
+    "\u6536\u655b\u68c0\u67e5\u70b9\uff0c"
     "\u4e0d\u8981\u628a\u82f1\u6587\u6807\u9898\u5f53\u4f5c"
     "\u6700\u7ec8\u8f93\u51fa\u3002"
 )
@@ -882,6 +897,7 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
         require(cache.exists(), f"cache missing: {cache}")
         for rel in (
             "skills/brainstorm/SKILL.md",
+            "skills/feedback/SKILL.md",
             "skills/develop/SKILL.md",
             "skills/evaluate/SKILL.md",
             "skills/converge/SKILL.md",
@@ -891,6 +907,7 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
             "skills/arbor/scripts/check_real_workflow_chains.py",
             "skills/arbor/scripts/check_plugin_adapters.py",
             "skills/brainstorm/scripts/check_brainstorm_baselines.py",
+            "skills/feedback/scripts/check_feedback_baselines.py",
             "skills/develop/scripts/check_develop_baselines.py",
             "skills/evaluate/scripts/check_evaluate_baselines.py",
             "skills/converge/scripts/check_converge_baselines.py",
@@ -996,13 +1013,12 @@ def make_cases() -> dict[str, CaseSpec]:
         ),
         CaseSpec(
             "R04",
-            "active review routes to evaluate",
-            agent_prompt("R04", "Review the active Arbor developer handoff and validate it independently."),
+            "active review enters converge",
+            agent_prompt("R04", "$converge review the active Arbor developer handoff and drive any needed internal validation."),
             setup_review_context,
             [
                 *common_assertions,
-                assert_file_contains("docs/review/F-review.md", "Evaluator"),
-                assert_skill_rendered_checkpoint("evaluate"),
+                assert_skill_rendered_checkpoint("converge"),
             ],
         ),
         CaseSpec(
@@ -1024,29 +1040,28 @@ def make_cases() -> dict[str, CaseSpec]:
         ),
         CaseSpec(
             "R06",
-            "evaluate strictness",
-            agent_prompt("R06", "$evaluate independently validate the completed developer handoff in docs/review/F-review.md."),
+            "converge validates through internal evaluation",
+            agent_prompt("R06", "$converge independently validate the completed developer handoff in docs/review/F-review.md through the managed quality loop."),
             setup_review_context,
             [
                 *common_assertions,
-                assert_file_contains("docs/review/F-review.md", "Evaluator"),
-                assert_skill_rendered_checkpoint("evaluate"),
+                assert_skill_rendered_checkpoint("converge"),
                 assert_any_contains("negative", "static", "contract", "independent"),
             ],
         ),
         CaseSpec(
             "R07",
-            "evaluate rendered output",
-            agent_prompt("R07", "$evaluate validate docs/review/F-review.md and make the visible output readable."),
+            "converge rendered output",
+            agent_prompt("R07", "$converge validate docs/review/F-review.md and make the visible quality-loop output readable."),
             setup_review_context,
-            [*common_assertions, assert_skill_rendered_checkpoint("evaluate")],
+            [*common_assertions, assert_skill_rendered_checkpoint("converge")],
         ),
         CaseSpec(
             "R08",
             "output layer captured",
-            agent_prompt("R08", "$evaluate validate the active review handoff and render the user-facing packet."),
+            agent_prompt("R08", "$converge validate the active review handoff and render the user-facing quality-loop packet."),
             setup_review_context,
-            [*common_assertions, assert_skill_rendered_checkpoint("evaluate")],
+            [*common_assertions, assert_skill_rendered_checkpoint("converge")],
         ),
         CaseSpec(
             "R09",
@@ -1069,12 +1084,12 @@ def make_cases() -> dict[str, CaseSpec]:
         ),
         CaseSpec(
             "R11",
-            "develop success checkpoints",
+            "converge drives implementation checkpoint",
             agent_prompt(
                 "R11",
-                "$develop implement F-dev, run the planned check, append developer evidence, then immediately run "
-                "release(checkpoint_develop) and create the local checkpoint commit before evaluate. Do not leave "
-                "checkpointing as a next-step suggestion.",
+                "$converge implement F-dev through the managed quality loop, run the planned check, append developer "
+                "evidence, then immediately run release(checkpoint_develop) and create the local checkpoint commit "
+                "before internal evaluate. Do not leave checkpointing as a next-step suggestion.",
             ),
             setup_develop_context,
             [
@@ -1159,18 +1174,18 @@ def make_cases() -> dict[str, CaseSpec]:
         CaseSpec(
             "R21",
             "all skill rendered output smoke",
-            agent_prompt("R21", "$evaluate validate the active handoff, then summarize the next release checkpoint in readable terms."),
+            agent_prompt("R21", "$converge validate the active handoff, then summarize the next release checkpoint in readable terms."),
             setup_review_context,
-            [*common_assertions, assert_skill_rendered_checkpoint("evaluate")],
+            [*common_assertions, assert_skill_rendered_checkpoint("converge")],
         ),
         CaseSpec(
             "R22",
-            "single skill handoff sufficiency",
-            agent_prompt("R22", "$develop use the existing review context for F-dev and produce a handoff that release/evaluate can continue."),
+            "public quality-loop handoff sufficiency",
+            agent_prompt("R22", "$converge use the existing review context for F-dev and produce the internal handoff that release/evaluate can continue."),
             setup_develop_context,
             [
                 *common_assertions,
-                assert_skill_rendered_checkpoint("develop"),
+                assert_skill_rendered_checkpoint("converge"),
                 assert_file_contains("docs/review/F-dev.md", "Developer"),
                 assert_any_contains("checkpoint", "evaluate"),
             ],
@@ -1226,27 +1241,25 @@ def make_cases() -> dict[str, CaseSpec]:
         ),
         CaseSpec(
             "R29",
-            "informal misspelled evaluate request still renders packet",
+            "informal misspelled evaluate request enters converge",
             agent_prompt(
                 "R29",
-                "evalute this active Arbor developer handoff. Do not answer with a one-sentence validation summary; render the complete user-facing evaluation packet.",
+                "evalute this active Arbor developer handoff through the public quality loop. Do not answer with a one-sentence validation summary; render the complete user-facing convergence packet.",
             ),
             setup_review_context,
             [
                 *common_assertions,
-                assert_file_contains("docs/review/F-review.md", "Evaluator"),
-                assert_skill_rendered_checkpoint("evaluate"),
+                assert_skill_rendered_checkpoint("converge"),
             ],
         ),
         CaseSpec(
             "R30",
             "non-English evaluate output follows user language",
-            agent_prompt("R30", CJK_EVALUATE_PROMPT),
+            agent_prompt("R30", CJK_CONVERGE_PROMPT),
             setup_review_context,
             [
                 *common_assertions,
-                assert_file_contains("docs/review/F-review.md", "Evaluator"),
-                assert_response_language_cjk("evaluate"),
+                assert_response_language_cjk("converge"),
             ],
         ),
         CaseSpec(
@@ -1272,6 +1285,20 @@ def make_cases() -> dict[str, CaseSpec]:
             ],
             timeout_seconds=900,
             codex_sandbox="danger-full-access",
+        ),
+        CaseSpec(
+            "R32",
+            "feedback triage renders public checkpoint",
+            agent_prompt(
+                "R32",
+                "$feedback this bug still happens in the current Arbor feature: the answer returns 41 instead of 42. Decide the right next step and do not repair directly.",
+            ),
+            setup_review_context,
+            [
+                *common_assertions,
+                assert_skill_rendered_checkpoint("feedback"),
+                assert_any_contains("feedback", "converge", "bug", "next"),
+            ],
         ),
         CaseSpec(
             "R28",

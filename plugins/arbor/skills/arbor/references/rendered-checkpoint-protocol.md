@@ -4,7 +4,7 @@ Arbor workflow packets are runtime handoffs. Normal users should see the
 rendered checkpoint, not raw workflow JSON.
 
 This protocol applies only to Arbor workflow checkpoints and decision points:
-`brainstorm`, `develop`, `evaluate`, `converge`, and `release`. It does not
+`brainstorm`, `feedback`, `develop`, `evaluate`, `converge`, and `release`. It does not
 apply to direct answers, read-only explanations, ordinary code discussion, or
 the agent's private reasoning.
 

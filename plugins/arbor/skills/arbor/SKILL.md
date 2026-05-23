@@ -150,7 +150,7 @@ Do not store Arbor hook state in user-global memory. Re-register hooks when need
 Claude Code does not have an equivalent project-level hook intent file. It ships two auto-fired Arbor adapters in `hooks/hooks.json`:
 
 - `hooks/session-start` (`SessionStart`) calls `run_session_startup_hook.py` and applies a runtime-specific injection budget so the rendered packet stays under Claude Code's `additionalContext` cap.
-- `hooks/stop-memory-hygiene` (`Stop`) is the Claude Code mapping of `arbor.in_session_memory_hygiene`. `Stop` is the only native Claude Code event whose output can re-enter the agent loop, so the adapter self-gates: it honors `stop_hook_active` first (so it can never loop), stays silent unless the project is Arbor-managed and the worktree is dirty, and otherwise blocks the stop with the `run_memory_hygiene_hook.py` packet as the block reason.
+- `hooks/stop-memory-hygiene` (`Stop`) is the Claude Code mapping of `arbor.in_session_memory_hygiene`. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard for dirty Arbor worktrees: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the `run_memory_hygiene_hook.py` packet as the block reason.
 
 `arbor.goal_constraint_drift` has no native Claude Code event; it stays user/skill-driven there.
 

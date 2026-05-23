@@ -2,13 +2,28 @@
 
 ## Position
 
-`converge` sits after `evaluate`:
+`converge` sits after planning and owns the public quality loop:
 
 ```text
-intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature) -> next feature
+brainstorm -> converge
+  -> internal develop -> release(checkpoint_develop)
+  -> internal evaluate -> release(checkpoint_evaluate)
+  -> converge decision
+-> release(finalize_feature) -> next feature
 ```
 
-It is a decision point, not a planner, developer, evaluator, or releaser. It routes converged features to internal `release`; release handles finalization and next-feature continuation.
+It is the public quality-loop orchestrator, not a planner, developer,
+evaluator, or releaser. It accepts bug, defect, evaluator-finding, direct public
+develop/evaluate, and continuation requests for existing managed features, then
+selects the next internal stage. It routes converged features to internal
+`release`; release handles finalization and next-feature continuation.
+
+As a public quality-loop entrypoint, `converge` can be invoked when the user
+asks Arbor to continue the current managed feature, fix a bug, address a review
+finding, verify a repair, or close the quality loop. In that case it loads the
+registry and review document, determines the current loop position, and drives
+the missing internal `develop` or `evaluate` stage. It still does not personally
+implement fixes or independently evaluate changes.
 
 ## Inputs
 
@@ -27,6 +42,20 @@ Minimum evidence:
 
 If this evidence is missing, return `needs_evidence` rather than guessing.
 
+For an active workflow request that does not yet have all convergence evidence,
+choose the missing evidence owner for the next proof. Public requests to run
+`develop` or `evaluate` are treated as `converge` requests unless the caller is
+an internal handoff packet.
+
+- missing or contradictory Context/Test Plan, acceptance criteria, goals, or
+  decision invariants route to `brainstorm`;
+- missing Developer Round or implementation-time decision evidence runs or
+  requests internal `develop`;
+- missing Evaluator Round, evaluator verdict, replay evidence, identity check,
+  or feature-registry signal runs or requests internal `evaluate`;
+- accepted evaluator evidence with complete agreement can be checked for
+  convergence and then routed to `release`.
+
 ## Two Required Questions
 
 1. Do `develop` and `evaluate` agree?
@@ -37,7 +66,7 @@ All must be true to return `converged`.
 
 ## User-Facing Convergence Packet
 
-`user_response` is the visible decision packet. It should not repeat the full evaluator test report. It should explain the convergence decision and the next workflow owner.
+`user_response` is the visible decision packet. It should not repeat the full evaluator test report. It should explain the convergence decision and the next workflow owner. When internal `develop` or `evaluate` ran, summarize those stages as part of the `converge` quality-loop checkpoint instead of telling the user to invoke them separately.
 
 The structured `converge.v1` object is an internal workflow/runtime packet. Normal user-facing output should render `user_response` and `ui`, not print the raw JSON unless explicit debug output is requested.
 
@@ -89,7 +118,7 @@ sections are required in both fixture output and the captured final response.
     "checkpoint": {
       "visibility": "user_visible",
       "continue_policy": "must_stop",
-      "reason": "The convergence decision and any loop/finalization route must be visible before the workflow continues.",
+      "reason": "The convergence decision and any internal loop/finalization route must be visible before the workflow continues.",
       "resume_after": "user_acknowledgement"
     },
     "workflow_automation": {
@@ -100,7 +129,7 @@ sections are required in both fixture output and the captured final response.
         "round limit reached",
         "product or design decision required",
         "scope change",
-        "missing evidence",
+        "missing planning evidence",
         "blocked convergence",
         "external release action required"
       ]
@@ -111,9 +140,32 @@ sections are required in both fixture output and the captured final response.
 
 A `converged` decision is not release completion. The visible output must say that release finalization remains next and must not imply commit, push, publish, or full release has happened.
 
-The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `converge` may set `continue_policy=auto_continue_allowed` only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, blocked convergence, or external release action required. If the same automatic flow produced the evaluator round, convergence requires `release(checkpoint_evaluate)` evidence with a local checkpoint commit hash; handwritten Release Round prose is not enough.
+The only allowed automatic continuation is the internal quality loop that
+`converge` owns. `converge` may set `continue_policy=auto_continue_allowed` only
+for clear loop decisions inside the current feature, below the round limit, with
+no product/design decision, scope change, missing planning evidence, blocked
+convergence, or external release action required. If the same automatic flow
+produced the evaluator round, convergence requires `release(checkpoint_evaluate)`
+evidence with a local checkpoint commit hash; handwritten Release Round prose is
+not enough.
 
 ## Route Decisions
+
+### Active Quality Loop Entry
+
+Use when a user explicitly invokes `converge` to move the current managed
+feature forward but the loaded workflow state is not yet a complete convergence
+packet.
+
+Action:
+
+- do not invent an evaluator verdict or mark the feature done;
+- append a blocker or convergence packet when there is enough review context to
+  make the missing owner auditable;
+- route to `brainstorm` for planning gaps, or drive internal `develop` or
+  `evaluate` according to the evidence owner rules above;
+- keep the visible checkpoint user-readable and avoid presenting the route as an
+  opaque routing decision.
 
 ### Converged
 
@@ -148,7 +200,10 @@ Use when evaluator findings are implementation bugs, developer evidence gaps, mi
 Action:
 
 - update selected feature to `changes_requested` or `in_develop`;
-- pass finding ids, correction scope, and replay targets to `develop`;
+- pass finding ids, correction scope, and replay targets to internal `develop`
+  under `converge` ownership;
+- after a successful developer checkpoint, run internal `evaluate` before
+  deciding convergence;
 - append a Convergence Round.
 
 ### Needs Brainstorm
@@ -187,8 +242,8 @@ Action:
 Use when required evidence is missing even if some fields look accepted:
 
 - missing brainstorm Context/Test Plan, acceptance criteria, or goals routes to `brainstorm`;
-- missing latest Developer Round routes to `develop`;
-- missing latest Evaluator Round or inconsistent evaluator signal routes to `evaluate`.
+- missing latest Developer Round runs or requests internal `develop`;
+- missing latest Evaluator Round or inconsistent evaluator signal runs or requests internal `evaluate`.
 - missing decision trace consistency evidence follows the same owner rule: brainstorm owns key decisions and decision invariants, develop owns implementation-time decisions and decision deviations, and evaluate owns decision drift or hidden decision conflict checks.
 
 When decision trace evidence is missing or inconsistent, return the appropriate evidence or planning route instead of marking the feature done.
@@ -199,7 +254,10 @@ Action:
 - keep the feature in its current safe status unless the selected evidence problem requires a blocked marker;
 - append a Convergence Round or blocker packet explaining which evidence owner must run next.
 
-The evidence route must match the missing owner. Do not send missing Developer Round evidence to `brainstorm`, and do not send missing brainstorm criteria or goals to `evaluate`.
+The evidence route must match the missing owner. Do not send missing Developer
+Round evidence to `brainstorm`, do not send missing brainstorm criteria or goals
+to internal `evaluate`, and do not expose internal `develop` or `evaluate` as a
+public next command.
 
 ## Outcome Evidence
 

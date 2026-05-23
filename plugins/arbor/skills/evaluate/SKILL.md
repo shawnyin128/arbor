@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: Independently validate an Arbor develop handoff or active Arbor code-review continuation by replaying developer evidence, adding adversarial unit/scenario checks, appending evaluator review evidence, and emitting structured output for release checkpointing before converge.
+description: Internal Arbor validation stage invoked by converge after a developer handoff; replay developer evidence, add adversarial checks, append evaluator evidence, and emit structured output for release checkpointing before the convergence decision.
 ---
 
 # Evaluate
@@ -9,25 +9,51 @@ Validate completed Arbor work by trying to break it.
 
 ## Purpose
 
-Use `evaluate` when `develop` has completed one Arbor-managed feature or managed artifact and produced a `ready_for_evaluate` handoff.
+Use `evaluate` only as an internal Arbor validation stage when `converge` or an
+equivalent workflow handoff has supplied a completed internal developer handoff.
+Do not select `evaluate` for ordinary user requests; direct public requests to
+evaluate, verify, review, or continue an Arbor-managed quality loop belong to
+`converge`.
 
-`evaluate` is the independent testing role. Its job is to attack the implementation against the brainstorm Context/Test Plan, developer self-test evidence, code/artifact diff, and likely adjacent behavior. It appends an Evaluator Round to the same review document and routes the result to `release` for an evaluator checkpoint before `converge`.
+`evaluate` is the independent testing role inside the quality loop that
+`converge` owns. Its job is to attack the implementation against the brainstorm
+Context/Test Plan, developer self-test evidence, code/artifact diff, and likely
+adjacent behavior. It appends an Evaluator Round to the same review document and
+routes the result to `release` for an evaluator checkpoint before the
+convergence decision.
 
 It does not implement fixes, approve plans, decide convergence, commit, push, tag, or release. It also does not decide whether a checkpoint can skip convergence; `release` records the evaluation checkpoint and routes onward.
 
-The terminal state is a structured `evaluate.v1` output plus, when evaluation reaches an appendable state, an Evaluator Round in the existing review document. The next workflow skill is normally `release` with `release_context.release_mode=checkpoint_evaluate`, except for missing handoff evidence, blocked execution, or route correction.
+The terminal state is a structured `evaluate.v1` output plus, when evaluation
+reaches an appendable state, an Evaluator Round in the existing review document.
+The next internal workflow stage is normally `release` with
+`release_context.release_mode=checkpoint_evaluate`, except for missing handoff
+evidence, blocked execution, or route correction.
 
-`evaluate` is a mandatory user-visible checkpoint by default. The user must be able to see the independent validation result, findings, adversarial checks, unit tests, scenario tests, evaluator judgments, and residual risks before the workflow continues into convergence.
+`evaluate` is an internal evidence checkpoint. When `converge` is orchestrating
+the public quality loop, the normal public response should be the `converge`
+checkpoint that summarizes the internal develop/evaluate cycle. If an evaluator
+checkpoint is exposed for review, the user must be able to see the independent
+validation result, findings, adversarial checks, unit tests, scenario tests,
+evaluator judgments, and residual risks before the workflow continues into
+convergence.
 
 An `accepted` evaluation is not workflow completion. Do not present evaluation-only work as done, converged, released, or finished. The visible output must make convergence explicit as pending, either by stopping at the checkpoint or by continuing only under an eligible `develop_evaluate_converge` automation policy.
 
-The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `evaluate` may continue automatically only when evaluation evidence is appendable, no blocker requires a user decision, and the next route remains inside the develop/evaluate/converge loop. Automatic continuation still goes through `release(checkpoint_evaluate)`; it must not skip directly to `converge`. If the evaluator checkpoint commit cannot be created, stop at the release checkpoint blocker instead of converging uncheckpointed evaluator evidence.
+Automatic continuation is controlled by the public `converge` quality loop.
+`evaluate` may continue internally only when evaluation evidence is appendable,
+no blocker requires a user decision, and the next route remains inside the
+current feature's internal repair/validation loop. Automatic continuation still
+goes through `release(checkpoint_evaluate)`; it must not skip directly to the
+convergence decision. If the evaluator checkpoint commit cannot be created, stop
+at the release checkpoint blocker instead of converging uncheckpointed evaluator
+evidence.
 
 ## Checklist
 
 You MUST complete these steps in order:
 
-1. **Confirm source**: accept only a valid `develop.ready_for_evaluate` handoff or equivalent evaluator-ready packet. If missing, return `needs_develop_handoff`.
+1. **Confirm internal source**: accept only a valid internal `develop.ready_for_evaluate` handoff or equivalent evaluator-ready packet selected by `converge`. If the input is an ordinary user-facing request to evaluate, verify, review, continue, or repair work, return `route_correction` to `converge`. If an internal handoff is missing, return `needs_develop_handoff`.
 2. **Load workflow state**: read the shared review document and, when present, `.arbor/workflow/features.json` for the selected feature status.
 3. **Load review context**: the review document named by the develop handoff must contain brainstorm Context/Test Plan and a Developer Round.
 4. **Inspect implementation evidence**: review changed files/artifacts, developer self-tests, planned test coverage, decision trace handoff, implementation-time decisions, decision deviations, uncovered planned tests, known risks, and replay targets.
@@ -36,7 +62,7 @@ You MUST complete these steps in order:
 7. **Find bugs, not confirmation**: prioritize behavioral regressions, missing tests, contract drift, scope creep, and untested edge cases.
 8. **Append evaluator evidence**: append an Evaluator Round to the same review document. Do not overwrite brainstorm or developer rounds.
 9. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the evaluated feature/artifact, changed evidence paths, evaluator result, unresolved findings or risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
-10. **Guard continuation semantics**: if evaluation reaches a completed evaluator state, make convergence explicit and do not use final-completion language.
+10. **Guard continuation semantics**: if evaluation reaches a completed evaluator state, make the return to the `converge` decision explicit and do not use final-completion language.
 11. **Return rendered checkpoint and runtime packet**: produce `evaluate.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Process Flow
@@ -59,11 +85,11 @@ Confirm evaluator-ready handoff
 - `accepted`: evaluation found no blocking issue; route to `release` for checkpointing before converge.
 - `changes_requested`: evaluation found actionable implementation/test defects; route to `release` for checkpointing before converge.
 - `needs_brainstorm`: evaluation found unclear requirements, invalid test plan, or scope/design mismatch; route to `release` for checkpointing before converge.
-- `needs_develop_handoff`: the developer handoff, review document, Developer Round, changed files, or replay evidence is missing or invalid; route to `develop`.
+- `needs_develop_handoff`: the developer handoff, review document, Developer Round, changed files, or replay evidence is missing or invalid; route to internal `develop` through `converge`.
 - `blocked`: evaluation cannot run because required files, dependencies, permissions, or environment are unavailable; route to `none`.
 - `route_correction`: request belongs to another skill or direct work.
 
-Only completed evaluation states (`accepted`, `changes_requested`, `needs_brainstorm`) route to `release`. The release checkpoint then routes the same evaluation evidence to `converge`.
+Only completed evaluation states (`accepted`, `changes_requested`, `needs_brainstorm`) route to `release`. The release checkpoint then routes the same evaluation evidence back to the `converge` decision.
 
 ## Core Rules
 
@@ -92,6 +118,13 @@ No. Developer self-tests are evidence to replay or challenge. Evaluation must ad
 ### "Evaluate Can Fix The Bug"
 
 No. Record findings and route to `release` for checkpointing. Implementation fixes belong to `develop` after convergence selects the next action.
+
+### "Evaluate Is A Public Review Command"
+
+No. Public requests to verify, review, continue, or repair an Arbor-managed
+feature enter through `converge`. `evaluate` runs only after `converge`,
+`release`, or an equivalent internal handoff supplies evaluator-ready developer
+evidence.
 
 ### "Evaluate Means Generic Assessment"
 
@@ -509,7 +542,7 @@ For completed evaluation states, the visible `user_response` must say that conve
 
 When adding a terminal state, update the status matrix, output enums, simulation cases, baseline JSONL, and `scripts/check_evaluate_baselines.py` in the same change.
 
-For completed evaluation states, accept either `source.from_skill=develop` with `source.develop_terminal_state=ready_for_evaluate`, or an explicitly modeled active review continuation from `intake` with `source.develop_terminal_state=active_review_continuation`, an appendable review document, changed files or artifact changes, and replayable review targets. Do not accept other evaluator-ready packet types unless they are explicitly modeled with positive and negative fixtures.
+For completed evaluation states, accept `source.from_skill=develop` with `source.develop_terminal_state=ready_for_evaluate`, or another explicitly modeled evaluator-ready packet with an appendable review document, changed files or artifact changes, and replayable review targets. Do not accept new evaluator-ready packet types unless they are explicitly modeled with positive and negative fixtures.
 
 For completed evaluation states, `review_context.acceptance_criteria` must be loaded, and at least one planned test or evaluator-focus dimension must be present. `planned_scope_coverage` must map evaluation work back to that loaded scope.
 

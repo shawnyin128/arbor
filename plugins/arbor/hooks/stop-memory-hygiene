@@ -2,17 +2,24 @@
 """Claude Code Stop hook adapter for Arbor in-session memory hygiene.
 
 Reads Claude Code ``Stop`` hook event JSON from stdin and, when the project
-is Arbor-managed and the worktree has uncommitted changes, blocks the stop
-and feeds the shared Arbor memory-hygiene packet back to the agent as the
-block ``reason``. The agent then decides -- using the packet's trigger
-policy plus conversation context -- whether to refresh ``.arbor/memory.md``
-before the turn truly ends.
+is Arbor-managed and the worktree has uncommitted changes, refreshes a bounded
+project-local memory fallback without emitting visible output.
 
 This is the Claude Code mapping of the Codex
 ``arbor.in_session_memory_hygiene`` hook (event ``conversation.checkpoint``).
-Claude Code has no native checkpoint event, and ``Stop`` is the only native
-event whose output can re-enter the agent loop, so the adapter self-gates
-instead:
+Claude Code has no native checkpoint event, and ``Stop`` output can re-enter
+the agent loop as a visible continuation. That continuation can hide the
+assistant's real final response in runtimes that display the last assistant
+message as the turn result, so the adapter defaults to a silent memory guard:
+if ``.arbor/memory.md`` is missing, empty, or has no meaningful ``In-flight``
+entry, it writes a generic resume pointer and returns non-blocking JSON.
+
+Set ``ARBOR_STOP_MEMORY_HYGIENE_MODE=block`` to opt into the older blocking
+behavior. In block mode the adapter calls ``run_memory_hygiene_hook.py`` and
+feeds the packet back as the block ``reason`` so the agent can decide whether
+to refresh ``.arbor/memory.md`` before the turn truly ends.
+
+The adapter still self-gates:
 
 * ``stop_hook_active`` is honored first -- once Claude is already continuing
   because of this hook, the adapter allows the stop so it can never loop.
@@ -20,6 +27,8 @@ instead:
   adapter stays silent rather than blocking unrelated repositories.
 * A clean worktree has no uncommitted state to recover, so the adapter
   stays silent there too.
+* Dirty Arbor worktrees stay silent by default, preventing hook prompts from
+  replacing the user-facing final answer.
 
 Any unexpected failure (missing ``cwd``, unreadable shared script, git or
 subprocess error) soft-fails on stderr with a non-zero exit code and never
@@ -32,6 +41,7 @@ import json
 import os
 import subprocess
 import sys
+import re
 from pathlib import Path
 
 
@@ -39,6 +49,29 @@ from pathlib import Path
 # dirty diff stat cannot blow up the continuation prompt; the agent can
 # always run deeper git reads on demand.
 REASON_BUDGET = 12000
+MODE_ENV = "ARBOR_STOP_MEMORY_HYGIENE_MODE"
+MEMORY_TEMPLATE_RELATIVE = Path("skills") / "arbor" / "references" / "memory-template.md"
+MEMORY_PATH_RELATIVE = Path(".arbor") / "memory.md"
+NO_OBSERVATIONS_MARKER = "- No undecided short-term observations recorded yet."
+FALLBACK_ENTRY = (
+    "- stop hook fallback: dirty Arbor worktree detected before stop; inspect "
+    "`git status --short`, current diff, and review docs before resuming."
+)
+FALLBACK_TEMPLATE = f"""# Session Memory
+
+<!--
+SCOPE: short-term, pre-triage observations only.
+Keep undecided bugs, hypotheses, concerns, risks, and notes here.
+-->
+
+## Observations
+
+<!-- Confirmed and already documented findings do not need to live here. -->
+
+## In-flight
+
+{FALLBACK_ENTRY}
+"""
 
 TRUNCATION_NOTICE = (
     "[truncated - Arbor memory hygiene packet exceeded the adapter budget; "
@@ -48,6 +81,11 @@ TRUNCATION_NOTICE = (
 
 def _emit_error(message: str) -> None:
     print(f"arbor stop-memory-hygiene: {message}", file=sys.stderr)
+
+
+def allow_stop() -> int:
+    print(json.dumps({"continue": True, "suppressOutput": True}))
+    return 0
 
 
 def resolve_plugin_root() -> Path:
@@ -81,11 +119,73 @@ def worktree_is_dirty(root: str) -> bool:
     return bool(proc.stdout.strip())
 
 
+def blocking_mode_enabled() -> bool:
+    return os.environ.get(MODE_ENV, "silent").strip().lower() == "block"
+
+
 def apply_budget(packet: str, budget: int) -> str:
     if len(packet) <= budget:
         return packet
     head = packet[: max(0, budget - len(TRUNCATION_NOTICE) - 2)].rstrip()
     return f"{head}\n\n{TRUNCATION_NOTICE}\n"
+
+
+def extract_in_flight_section(text: str) -> str:
+    match = re.search(r"(?ms)^## In-flight\s*\n(?P<body>.*?)(?=^## |\Z)", text)
+    if not match:
+        return ""
+    return match.group("body")
+
+
+def has_meaningful_in_flight(text: str) -> bool:
+    body = extract_in_flight_section(text)
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line.startswith("-"):
+            continue
+        if line == NO_OBSERVATIONS_MARKER:
+            continue
+        return True
+    return False
+
+
+def upsert_in_flight_fallback(text: str) -> str:
+    normalized = text.rstrip()
+    replacement = f"## In-flight\n\n{FALLBACK_ENTRY}\n"
+    match = re.search(r"(?ms)^## In-flight\s*\n.*?(?=^## |\Z)", normalized)
+    if match:
+        return f"{normalized[: match.start()]}{replacement}{normalized[match.end():].lstrip()}"
+    return f"{normalized}\n\n{replacement}" if normalized else FALLBACK_TEMPLATE
+
+
+def read_memory_template(plugin_root: Path) -> str:
+    template = plugin_root / MEMORY_TEMPLATE_RELATIVE
+    if template.is_file():
+        return template.read_text(encoding="utf-8")
+    return FALLBACK_TEMPLATE
+
+
+def refresh_quiet_memory_fallback(project_root: Path, plugin_root: Path) -> bool:
+    memory_path = project_root / MEMORY_PATH_RELATIVE
+    if memory_path.exists() and not memory_path.is_file():
+        raise OSError(f"{memory_path} exists but is not a file")
+
+    if memory_path.exists():
+        text = memory_path.read_text(encoding="utf-8")
+    else:
+        text = read_memory_template(plugin_root)
+
+    if text.strip() and has_meaningful_in_flight(text):
+        return False
+
+    if not text.strip():
+        text = read_memory_template(plugin_root)
+    updated = upsert_in_flight_fallback(text)
+    memory_path.parent.mkdir(parents=True, exist_ok=True)
+    if not memory_path.exists() or memory_path.read_text(encoding="utf-8") != updated:
+        memory_path.write_text(updated, encoding="utf-8")
+        return True
+    return False
 
 
 def main() -> int:
@@ -98,7 +198,7 @@ def main() -> int:
     # Claude is already continuing because of this hook; allowing the stop
     # here is what guarantees the adapter can never loop.
     if payload.get("stop_hook_active"):
-        return 0
+        return allow_stop()
 
     cwd = payload.get("cwd")
     if not cwd:
@@ -109,13 +209,24 @@ def main() -> int:
     # Only Arbor-managed projects keep an `.arbor` directory; staying silent
     # everywhere else keeps unrelated repositories unblocked.
     if not (project_root / ".arbor").is_dir():
-        return 0
+        return allow_stop()
 
     # A clean worktree has no uncommitted state to recover.
     if not worktree_is_dirty(cwd):
-        return 0
+        return allow_stop()
 
     plugin_root = resolve_plugin_root()
+    try:
+        refresh_quiet_memory_fallback(project_root, plugin_root)
+    except OSError as exc:
+        _emit_error(f"could not refresh quiet memory fallback: {exc}")
+        return 1
+
+    # Default to silence: blocking Stop hooks create a visible continuation
+    # that can hide the assistant's real final response in some runtimes.
+    if not blocking_mode_enabled():
+        return allow_stop()
+
     script = plugin_root / "skills" / "arbor" / "scripts" / "run_memory_hygiene_hook.py"
     if not script.is_file():
         _emit_error(f"shared memory hygiene script not found at {script}")

@@ -1,38 +1,86 @@
 ---
 name: converge
-description: Decide whether an Arbor develop/evaluate loop has converged, compare evaluator evidence against brainstorm goals, update feature status only after justified agreement, route correction loops, and escalate to the user when round limits or product decisions block automatic progress.
+description: Public quality-loop orchestrator for Arbor-managed features; accept bug, defect, evaluator-finding, and continuation requests after planning exists, drive the internal develop/evaluate cycle, update feature status only after justified agreement, and escalate when planning changes, round limits, or product decisions block automatic progress.
 ---
 
 # Converge
 
 ## Purpose
 
-Use `converge` after `evaluate` has appended an Evaluator Round for an Arbor-managed feature.
+Use `converge` as the public quality-loop orchestrator for an Arbor-managed
+feature after planning exists. Users should call `converge` for bug reports,
+defects, evaluator findings, failed checks, and current-loop continuation
+requests tied to an existing Arbor feature. `develop` and `evaluate` are
+internal stages owned by this loop, not normal public user entrypoints.
 
-`converge` is a workflow decision skill. It decides whether the latest developer/evaluator loop agrees and whether the result still satisfies the brainstorm Context/Test Plan. After a current feature converges, it routes to internal `release` so the feature can be finalized before the next unfinished feature is selected. It does not implement fixes, run independent adversarial tests, create the brainstorm plan, commit, push, tag, or release.
+`converge` is a workflow orchestration and decision skill. It decides where the
+current quality loop stands: whether the latest developer/evaluator loop agrees,
+whether the result still satisfies the brainstorm Context/Test Plan, or which
+internal stage must run next. For clear implementation or test defects,
+`converge` selects the correction scope and drives the internal
+`develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate)`
+cycle before deciding convergence. After a current feature converges, it routes
+to internal `release` so the feature can be finalized before the next unfinished
+feature is selected. It does not personally implement fixes, personally run
+independent adversarial evaluation, create the brainstorm plan, commit, push,
+tag, or publish.
 
 The normal terminal output is a structured `converge.v1` decision plus a Convergence Round appended to the same review document.
 
-`converge` is a mandatory user-visible checkpoint by default. Do not silently continue into release, the next feature, or another correction loop in the same final response. The user must be able to see whether the developer/evaluator loop agrees, whether the result still matches the brainstorm goal, and why the workflow is stopping, looping, or finalizing.
+`converge` is the user-visible checkpoint for the quality loop. Do not expose
+`develop` or `evaluate` as separate public instructions in the normal response.
+The user must be able to see whether the internal developer/evaluator loop
+agrees, whether the result still matches the brainstorm goal, what internal
+stage ran or must run next, and why the workflow is stopping, looping, or
+finalizing.
 
 A `converged` decision is not release completion. Do not present convergence-only work as committed, pushed, published, or fully released. The visible output must make release finalization explicit as the next step.
 
-The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `converge` may continue automatically only for clear loop decisions inside the current feature, below the round limit, with no product/design decision, scope change, missing evidence, or external release action required. Convergence must consume evaluator evidence that has passed through `release(checkpoint_evaluate)` when the same automatic flow produced the evaluator round; a handwritten Release Round without a checkpoint commit hash is not release-gate evidence.
+The only automatic continuation path is the quality loop that `converge` owns.
+It may continue through internal `develop`, checkpoint release, internal
+`evaluate`, and checkpoint release only for clear actions inside the current
+feature, below the round limit, with no product/design decision, scope change,
+missing planning evidence, or external release action required. Convergence must
+consume evaluator evidence that has passed through `release(checkpoint_evaluate)`
+when the same automatic flow produced the evaluator round; a handwritten Release
+Round without a checkpoint commit hash is not release-gate evidence.
+
+## Canonical Examples
+
+Use these examples as the quality-loop calibration before applying the checklist.
+They are canonical examples, not extra routing rules. If the request is close
+but not identical, follow the same evidence-owner reasoning and make the next
+owner visible instead of hiding the route behind a new router.
+
+| User request shape | Use `converge`? | Expected handling |
+| --- | --- | --- |
+| "Continue the current Arbor feature until the quality loop closes." | Yes, if a managed feature exists. | Load the registry and review document, locate the current loop position, then drive the missing internal `develop` or `evaluate` stage, or route to `brainstorm` when planning evidence is missing. |
+| "This bug still happens in the current feature; fix it and verify it." | Yes, if review context exists. | Treat the bug as quality-loop feedback, select a correction scope, run internal `develop` and `evaluate` with release checkpoints, then decide whether the loop converged. |
+| "The evaluator accepted the feature; decide whether it is done." | Yes. | Check feature identity, developer/evaluator agreement, brainstorm goals, acceptance criteria, done-when criteria, and checkpoint evidence before marking the feature done and routing to `release`. |
+| "The evaluator found a failing scenario; keep going." | Yes. | Run the selected actionable finding through internal `develop` and `evaluate` when it does not change product or planning scope. |
+| "The evaluator says the acceptance criteria contradict the implementation plan." | Yes. | Route to `brainstorm` because the next proof owner is planning, not implementation. |
+| "The review document has no Evaluator Round yet." | Yes only as active loop continuation. | Run or request the internal `evaluate` stage; do not mark the feature done. |
+| "Run develop" or "run evaluate" from a user prompt. | Use `converge` instead. | Treat direct public develop/evaluate requests as quality-loop continuation requests unless the caller is an internal handoff packet. |
+| "What is the project status?" | No. | Answer directly or use `arbor` for project context; do not append a Convergence Round. |
 
 ## Checklist
 
-1. **Confirm source**: accept only completed evaluator states or a valid convergence packet. If the request is not a convergence decision, return `route_correction`.
-2. **Load workflow state**: read `.arbor/workflow/features.json` and the selected feature's review document.
-3. **Load loop evidence**: identify brainstorm Context/Test Plan, latest Developer Round, latest Evaluator Round, evaluator findings, feature-registry signal, and round count.
-4. **Check identity**: confirm feature id, review document, registry row, and evaluator signal all point to the same feature.
-5. **Check agreement**: decide whether develop and evaluate agree, or whether evaluator findings require another round.
-6. **Check brainstorm alignment**: decide whether the accepted result still satisfies brainstorm goals, acceptance criteria, done-when criteria, decision invariants, non-goals, and test scope.
-7. **Apply loop policy**: route automatically while under the round limit; surface loop-health risk before automatic continuation when repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination make the next route unreliable; escalate when the limit is reached or a user/product decision is required.
-8. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature.
-9. **Append convergence evidence**: append a Convergence Round to the same review document without rewriting prior rounds.
-10. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the converged or looping feature, changed registry/review paths, decision, unresolved blockers, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
-11. **Defer continuation**: after `converged`, route to internal `release`; release selects the next unfinished feature after finalization.
-12. **Return rendered checkpoint and runtime packet**: produce `converge.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
+1. **Match canonical example**: identify the closest example above. If none fits, classify only enough context to decide whether this is a convergence/quality-loop continuation request, bug/defect feedback on an existing feature, direct status work, or another explicit workflow skill.
+2. **Confirm public entrypoint**: accept completed evaluator states, a valid convergence packet, direct user feedback tied to an existing managed feature, or an explicit request to continue the current managed quality loop from existing Arbor workflow evidence. If the request is not a convergence or quality-loop continuation decision, return `route_correction`.
+3. **Load workflow state**: read `.arbor/workflow/features.json` and the selected feature's review document.
+4. **Load loop evidence**: identify brainstorm Context/Test Plan, latest Developer Round, latest Evaluator Round, evaluator findings, feature-registry signal, checkpoint evidence, and round count.
+5. **Check identity**: confirm feature id, review document, registry row, and evaluator signal all point to the same feature.
+6. **Locate the current loop position**: decide whether the loaded evidence is ready for convergence, still waiting for development, still waiting for evaluation, missing planning evidence, or blocked by a user/product decision.
+7. **Locate the next internal stage**: when the loop is not yet evaluable, route missing or stale planning evidence to `brainstorm`, and run or request the internal `develop` or `evaluate` stage for implementation/test evidence instead of exposing those stages as public entrypoints.
+8. **Drive internal repair/validation when clear**: for implementation bugs, failing tests, evaluator findings, or direct fix feedback that does not change scope, select the correction scope, invoke internal `develop`, preserve the developer checkpoint through `release(checkpoint_develop)`, invoke internal `evaluate`, preserve the evaluator checkpoint through `release(checkpoint_evaluate)`, and then return to this convergence decision.
+9. **Check agreement**: decide whether develop and evaluate agree, or whether evaluator findings require another round.
+10. **Check brainstorm alignment**: decide whether the accepted result still satisfies brainstorm goals, acceptance criteria, done-when criteria, decision invariants, non-goals, and test scope.
+11. **Apply loop policy**: route automatically while under the round limit; surface loop-health risk before automatic continuation when repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination make the next route unreliable; escalate when the limit is reached or a user/product decision is required.
+12. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature.
+13. **Append convergence evidence**: append a Convergence Round to the same review document without rewriting prior rounds.
+14. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the converged or looping feature, changed registry/review paths, decision, unresolved blockers, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
+15. **Defer continuation**: after `converged`, route to internal `release`; release selects the next unfinished feature after finalization.
+16. **Return rendered checkpoint and runtime packet**: produce `converge.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Terminal States
 
@@ -47,7 +95,7 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 ## Core Rules
 
 1. Do not re-evaluate implementation behavior. Use evaluator evidence.
-2. Do not implement fixes. Route selected findings to `develop`.
+2. Do not expose `develop` or `evaluate` as public next steps. Select the internal stage and correction scope under `converge` ownership.
 3. Do not ask the user when an automatic correction route is clear and below the round limit.
 4. Do ask the user when the correction would change brainstorm scope, hidden decisions, or product behavior.
 5. Do not mark a feature done unless evaluator accepted and brainstorm goals plus done-when criteria remain satisfied.
@@ -60,19 +108,27 @@ The only exception is an explicit `develop_evaluate_converge` automation policy 
 12. Check decision trace consistency before marking work done. Unresolved decision drift, hidden decision conflict, or violated decision invariants must return the appropriate evidence or planning route.
 13. Do not require delegation to mark work done. When optional delegation packet evidence exists, use evaluator evidence to decide whether the objective, output format, boundaries, and effort budget were followed.
 14. Check outcome evidence before exact path matching. Mark work done only when developer and evaluator evidence agree on final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, trace evidence, and any weak-pass gaps relevant to the brainstorm goal.
+15. As the public quality-loop orchestrator, `converge` may drive internal
+    `develop` and `evaluate`, but it must not recreate a hidden universal router
+    or bypass `brainstorm` when the feedback changes requirements, acceptance
+    criteria, or test scope.
 
 ## Route Rules
 
 | Situation | Terminal state | Next skill |
 | --- | --- | --- |
 | Evaluator accepted, ids match, goals satisfied | `converged` | `release` |
-| Evaluator requested implementation/test changes | `needs_develop` | `develop` |
+| Evaluator requested implementation/test changes | `needs_develop` | internal `develop` under `converge` |
 | Evaluator found plan/requirements contradiction | `needs_brainstorm` | `brainstorm` |
-| Brainstorm, developer, or evaluator evidence is missing | `needs_evidence` | `brainstorm`, `develop`, or `evaluate` |
+| Brainstorm, developer, or evaluator evidence is missing | `needs_evidence` | `brainstorm`, internal `develop`, or internal `evaluate` |
 | Round limit or product decision blocks automation | `needs_user_decision` | `none` |
 | Environment or file access blocks the decision | `blocked` | `none` |
 
-For `needs_evidence`, route to the owner of the missing or inconsistent evidence: missing brainstorm Context/Test Plan, acceptance criteria, or goals routes to `brainstorm`; missing latest Developer Round routes to `develop`; missing latest Evaluator Round, identity mismatch, or inconsistent evaluator signal routes to `evaluate`.
+For `needs_evidence`, route to the owner of the missing or inconsistent evidence:
+missing brainstorm Context/Test Plan, acceptance criteria, or goals routes to
+`brainstorm`; missing latest Developer Round runs or requests internal
+`develop`; missing latest Evaluator Round, identity mismatch, or inconsistent
+evaluator signal runs or requests internal `evaluate`.
 
 For next feature selection after `converged`, do not choose the next feature in `converge`. Set `workflow_continuation.status=none` and route to `release`; release performs current-feature finalization and then selects the next unfinished feature.
 
@@ -153,7 +209,7 @@ If evaluator evidence labels a deterministic substitute as a weak pass, decide w
 
 `converge` closes the decision trace handoff only when developer and evaluator evidence shows decision trace consistency. Check that key decisions, rejected options, allowed implementation discretion, decision invariants, implementation-time decisions, decision deviations, decision drift checks, and hidden decision conflict checks all agree.
 
-If the trace is missing, generic, or conflicted, return the appropriate evidence or planning route instead of marking the feature done: missing brainstorm trace routes to `brainstorm`, missing developer decision evidence routes to `develop`, and missing evaluator drift checks route to `evaluate`.
+If the trace is missing, generic, or conflicted, return the appropriate evidence or planning route instead of marking the feature done: missing brainstorm trace routes to `brainstorm`, missing developer decision evidence routes internally to `develop`, and missing evaluator drift checks route internally to `evaluate`.
 
 ## Loop Health Advisory
 
@@ -169,9 +225,9 @@ Surface a loop-health risk when any of these appear in the latest rounds:
 
 The advisory changes the route only when the next safe step is no longer a clear normal correction. Use these routes:
 
-- route to `develop` with a narrower correction when the owner and replay target are clear;
+- route internally to `develop` with a narrower correction when the owner and replay target are clear;
 - route to `brainstorm` when acceptance criteria, done-when criteria, or test scope need restating;
-- route to `evaluate` when the missing proof is exact runtime replay or evidence reconciliation;
+- route internally to `evaluate` when the missing proof is exact runtime replay or evidence reconciliation;
 - route to user decision when product intent, stale context, or round-limit pressure cannot be resolved from evidence.
 
 Do not escalate a normal correction loop just because the evaluator found one new, coherent, scoped issue below the round limit. Do not automatically clear context, spawn subagents, create worktrees, or require fan-out execution. Subagents and worktrees remain optional strategies the agent may choose outside the convergence contract.

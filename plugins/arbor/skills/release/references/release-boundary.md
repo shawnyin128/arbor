@@ -5,7 +5,7 @@
 `release` sits after `develop`, `evaluate`, and `converge` as an internal checkpoint/finalization step:
 
 ```text
-intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature) -> next feature
+brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature) -> next feature
 ```
 
 It is a current-feature state-tracking and finalization gate, not a planner, developer, evaluator, convergence judge, or primary user-facing entrypoint. Its user visibility is status-only: report what checkpoint/release action happened, whether confirmation is needed, and what comes next; keep detailed release reasoning in structured fields, review docs, or debug traces.

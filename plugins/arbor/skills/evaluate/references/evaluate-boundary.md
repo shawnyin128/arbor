@@ -2,17 +2,26 @@
 
 ## Purpose
 
-`evaluate` independently validates one completed Arbor `develop` handoff. It consumes the same shared review document created by `brainstorm` and appended by `develop`, checks the selected feature in `.arbor/workflow/features.json` when present, attacks the implementation with additional tests and probes, appends an Evaluator Round, and routes the result to `release` for checkpointing before `converge`.
+`evaluate` is an internal validation stage. It independently validates one
+completed Arbor `develop` handoff selected by `converge` or an equivalent
+internal workflow handoff. It consumes the same shared review document created
+by `brainstorm` and appended by `develop`, checks the selected feature in
+`.arbor/workflow/features.json` when present, attacks the implementation with
+additional tests and probes, appends an Evaluator Round, and routes the result
+to `release` for checkpointing before the `converge` decision.
 
-It does not implement fixes, approve plans, decide convergence, commit, push, tag, or release.
+It does not implement fixes, approve plans, decide convergence, commit, push,
+tag, release, or serve as a public user entrypoint. Direct public requests to
+evaluate, verify, review, repair, or continue an Arbor-managed feature enter
+through `converge`.
 
 ## Position In The Workflow
 
 ```text
-intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature)
+brainstorm -> converge -> internal develop -> release(checkpoint_develop) -> internal evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature)
 ```
 
-`evaluate` normally receives:
+`evaluate` normally receives an internal handoff containing:
 
 - `develop.route.terminal_state=ready_for_evaluate`;
 - `source.review_doc_path` pointing to the shared review document;
@@ -25,7 +34,7 @@ Its terminal state is a structured `evaluate.v1` output plus an Evaluator Round 
 
 ## Boundary Summary
 
-Use `evaluate` for:
+Use `evaluate` internally for:
 
 - independent validation of implemented Arbor features or managed artifacts;
 - replaying developer self-tests;
@@ -41,6 +50,8 @@ Use `evaluate` for:
 
 Do not use `evaluate` for:
 
+- public user requests to verify, review, repair, or continue a managed feature;
+  those enter through `converge`;
 - generic assessment, proposal review, paper judgment, or brainstorming;
 - implementation fixes;
 - developer self-test handoff creation;
@@ -62,15 +73,22 @@ Do not use `evaluate` for:
 - developer replay targets;
 - known risks.
 
-If this contract is missing, return `needs_develop_handoff`. Do not invent developer evidence.
+If this contract is missing, return `needs_develop_handoff` for an internal run,
+or `route_correction` to `converge` for an ordinary public user request. Do not
+invent developer evidence.
 
-For completed evaluation states, require either `source.from_skill=develop` with `source.develop_terminal_state=ready_for_evaluate`, or an explicitly modeled active review continuation from `intake` with `source.develop_terminal_state=active_review_continuation`, an appendable review document, changed files or artifact changes, and replayable review targets. Future equivalent evaluator-ready packet types must be explicitly modeled with positive and negative fixtures before they can bypass the normal develop handoff.
+For completed evaluation states, require `source.from_skill=develop` with
+`source.develop_terminal_state=ready_for_evaluate`, or an explicitly modeled
+internal evaluator-ready packet with an appendable review document, changed
+files or artifact changes, and replayable review targets. Future equivalent
+evaluator-ready packet types must be explicitly modeled with positive and
+negative fixtures before they can bypass the normal develop handoff.
 
 ## Feature Registry Contract
 
 `.arbor/workflow/features.json` is the queue/status index. `evaluate` may read it to confirm which feature is under validation, but it does not finalize feature status.
 
-For a normal brainstorm/develop/evaluate flow:
+For a normal converge-owned internal develop/evaluate flow:
 
 - `source.feature_registry_path` should be `.arbor/workflow/features.json`;
 - the selected feature should correspond to `source.feature_id`;
@@ -258,7 +276,10 @@ The visible text must not require the user to know the structured schema. Do not
 
 `develop` creates implementation and developer evidence. `evaluate` consumes it, replays it, and challenges it.
 
-If developer evidence is missing, return `needs_develop_handoff`. If evaluator finds implementation defects, append findings and route to `release` for checkpointing before `converge`; do not fix the defects directly.
+If developer evidence is missing, return `needs_develop_handoff` so `converge`
+can drive internal `develop`. If evaluator finds implementation defects, append
+findings and route to `release` for checkpointing before `converge`; do not fix
+the defects directly.
 
 ### `brainstorm`
 
@@ -279,7 +300,7 @@ If evaluation reveals missing or contradictory requirements, invalid acceptance 
 | `accepted` | `passed` | `appended` | zero blocking findings | `release` |
 | `changes_requested` | `failed` or `partial` | `appended` | one or more blocking implementation/test findings | `release` |
 | `needs_brainstorm` | `blocked` or `partial` | `appended` | requirements, acceptance, or test-plan finding | `release` |
-| `needs_develop_handoff` | `not_started` or `blocked` | `not_required` or `blocker_packet` | missing/invalid developer handoff | `develop` |
+| `needs_develop_handoff` | `not_started` or `blocked` | `not_required` or `blocker_packet` | missing/invalid developer handoff | internal `develop` through `converge` |
 | `blocked` | `blocked` | `blocker_packet` or `not_required` | unavailable environment/file/dependency | `none` |
 | `route_correction` | `not_started` | `not_required` | route issue | declared route or `none` |
 
@@ -392,11 +413,17 @@ The structured `evaluate.v1` object is an internal workflow/runtime packet. `eva
 
 ## Checkpoint And Automation Policy
 
-`evaluate` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop` so the user can review findings, unit tests, scenario tests, evaluator judgments, and residual risks before convergence.
+`evaluate` is an internal evidence checkpoint. When `converge` owns the public
+quality loop, `evaluate` should append review evidence and structured handoff
+state while the normal visible response is the `converge` checkpoint. If an
+evaluator checkpoint is exposed directly for review, the output must include
+`ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`
+so the user can review findings, unit tests, scenario tests, evaluator
+judgments, and residual risks before convergence.
 
 An `accepted` evaluation is not workflow completion. The visible output must say that convergence remains next and must not imply the feature is done, released, or finally accepted.
 
-The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `evaluate` may set `continue_policy=auto_continue_allowed` only when evaluation evidence is appendable, no blocker requires a user decision, and the route remains inside the develop/evaluate/converge loop. Automatic continuation still goes through `release(checkpoint_evaluate)` and its local checkpoint commit; it must not jump directly to convergence with only an Evaluator Round.
+Automatic continuation is controlled by the public `converge` quality loop. `evaluate` may set `continue_policy=auto_continue_allowed` only when evaluation evidence is appendable, no blocker requires a user decision, and the route remains inside the current feature's internal repair/validation loop. Automatic continuation still goes through `release(checkpoint_evaluate)` and its local checkpoint commit; it must not jump directly to convergence with only an Evaluator Round.
 
 `ui.workflow_automation` records whether that policy is enabled and eligible. Missing developer handoff, blocked evaluation, route correction, plan contradiction, or a finding that needs user judgment must keep the checkpoint at `must_stop`.
 

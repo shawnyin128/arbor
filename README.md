@@ -66,40 +66,65 @@ Run `/reload-plugins` afterward to activate the skill and the bundled `SessionSt
 
 ## Skills
 
-Arbor ships the core project-context skill plus six internally stable workflow skills, available on both runtimes:
+Arbor ships the core project-context skill plus public workflow entrypoints and
+internal workflow stages, available on both runtimes:
 
 ```text
+Public entrypoints:
+
 Codex:        $arbor
 Claude Code:  /arbor:arbor
-
-Codex:        $intake
-Claude Code:  /arbor:intake
 
 Codex:        $brainstorm
 Claude Code:  /arbor:brainstorm
 
-Codex:        $develop
-Claude Code:  /arbor:develop
-
-Codex:        $evaluate
-Claude Code:  /arbor:evaluate
+Codex:        $feedback
+Claude Code:  /arbor:feedback
 
 Codex:        $converge
 Claude Code:  /arbor:converge
+
+Internal workflow stages and gates:
+
+develop, evaluate, release checkpoints
+
+Manual release/finalization gate:
 
 Codex:        $release
 Claude Code:  /arbor:release
 ```
 
-The managed development loop is:
+The public entrypoints are parallel, not a hidden intake chain:
 
 ```text
-intake -> brainstorm -> develop -> release(checkpoint_develop: local commit)
--> evaluate -> release(checkpoint_evaluate)
--> converge -> release(finalize_feature)
+arbor      -> startup, resume, and project context
+brainstorm -> plan, review context, and test plan -> converge
+feedback   -> brainstorm | converge | needs evidence | direct response
+converge   -> internal develop -> release(checkpoint_develop: local commit)
+           -> internal evaluate -> release(checkpoint_evaluate)
+           -> convergence decision -> release(finalize_feature)
+release    -> manual finalization, status, or explicitly authorized external action
 ```
 
-`intake` decides whether Arbor should manage the request. `brainstorm` turns managed work into features, acceptance criteria, done-when criteria, and test scope. `develop`, `evaluate`, and `converge` append evidence to the same review document, while `release` records checkpoints/finalization and keeps workflow state discoverable through git and the feature registry. After a successful `develop`, `release(checkpoint_develop)` creates an automatic local checkpoint commit before `evaluate`; after an appendable `evaluate`, `release(checkpoint_evaluate)` creates the evaluator checkpoint commit before `converge`. Automatic `develop_evaluate_converge` runs must pass through both release gates and stop if either checkpoint commit cannot be created.
+`brainstorm` is the public planning entrypoint for managed work: it turns
+requests into features, acceptance criteria, done-when criteria, and test scope.
+Feedback decides whether user feedback should go to `brainstorm`, `converge`,
+needs more evidence, or can be answered directly. It accepts bug reports,
+regressions, failed checks, reviewer comments, and corrections to prior Arbor
+work, then stops with a visible routing checkpoint instead of implementing or
+evaluating directly. The word "feedback" alone is not a trigger when another
+public entrypoint already fits.
+`converge` is the public quality-loop entrypoint: it owns bug, defect, review
+finding, and current-loop continuation requests after planning context exists,
+then internally drives `develop` and `evaluate` as needed. `develop`,
+`evaluate`, and `converge` append evidence to the same review document, while
+`release` records checkpoints/finalization and keeps workflow state discoverable
+through git and the feature registry. In this model, develop and evaluate are internal stages, not user-facing commands. After a successful internal `develop`,
+`release(checkpoint_develop)` creates an automatic local checkpoint commit before
+internal `evaluate`; after an appendable internal `evaluate`,
+`release(checkpoint_evaluate)` creates the evaluator checkpoint commit before
+the convergence decision. Automatic quality-loop runs must pass through both
+release gates and stop if either checkpoint commit cannot be created.
 
 Two workflow artifacts carry state between skills:
 
@@ -169,29 +194,9 @@ Use it when:
 - changing project goals, constraints, naming, architecture, or the project map;
 - building workflows where git log and project docs are part of the agent's long-term context.
 
-### `intake`
-
-Use `intake` when user input needs to be classified against Arbor's development workflow before any work begins.
-
-What it does well:
-
-- deciding whether a request belongs in Arbor-managed workflow or should stay as direct work;
-- splitting compound requests into multiple intents when some parts need Arbor and others do not;
-- distinguishing future backlog work from immediate active work;
-- attaching short fragments or constraints to the current context instead of creating new items;
-- selecting only one of the declared workflow routes: `brainstorm`, `develop`, `evaluate`, `converge`, `release`, or `none`;
-- emitting UI-ready structured output so a future interface can render boundary decisions, warnings, route choices, and review focus without parsing prose.
-
-Use it when:
-
-- a user proposes a feature, bug, optimization, or later idea;
-- a request may need planning, implementation, evaluation, convergence, or release;
-- a prompt is ambiguous and may be a context patch rather than a new work item;
-- you need to decide whether a document, codebase analysis, test request, or release instruction should enter Arbor.
-
 ### `brainstorm`
 
-Use `brainstorm` after `intake` routes an Arbor-managed request to planning, clarification, impact analysis, research/experiment design, or feature breakdown.
+Use `brainstorm` when a request needs Arbor-managed planning, clarification, impact analysis, research/experiment design, or feature breakdown before the quality loop.
 
 What it does well:
 
@@ -201,7 +206,7 @@ What it does well:
 - exposing hidden design decisions that would otherwise become silent defaults;
 - comparing approaches when there are real alternatives;
 - splitting broad work into independently testable features;
-- producing acceptance criteria and a shared review test plan before development;
+- producing acceptance criteria and a shared review test plan before the quality loop;
 - defining done-when criteria so downstream evidence can prove the requested outcome;
 - creating `docs/review/<feature>-review.md` with the Context/Test Plan section for ready implementation work;
 - returning `route_correction` when a request is too direct or belongs to another skill.
@@ -211,11 +216,64 @@ Use it when:
 - a request is too broad to implement safely in one pass;
 - a codebase, paper, proposal, reviewer comment, or project artifact must be read before planning;
 - the user wants to discuss an implementation, research, or experiment direction before coding;
-- the next development unit needs explicit scope, acceptance criteria, and tests.
+- the next managed work unit needs explicit scope, acceptance criteria, and tests.
+
+Canonical examples:
+
+- `$brainstorm think through the boundary and test plan before editing` for broad redesign, research, experiment, or workflow work.
+- `$brainstorm read this reviewer feedback and plan the change` when external/user artifacts determine the plan.
+- Do not use `brainstorm` for typo-level direct edits, completed evaluation, convergence decisions, or release gates.
+
+### `feedback`
+
+Use `feedback` when the user gives bug information, reviewer comments, failed
+checks, regression reports, or corrections to prior Arbor work and the next
+public owner is not already obvious.
+
+Trigger it from an explicit `$feedback` / `/arbor:feedback` invocation, or from
+a feedback-shaped prompt where the owner is unclear. Do not insert it in front
+of a clearly named public skill: new feature planning still belongs to
+`brainstorm`, known current-loop continuation still belongs to `converge`,
+project status still belongs to `arbor` or a direct answer, and finalization
+still belongs to `release`.
+
+What it does well:
+
+- deciding whether feedback changes requirements, acceptance criteria, or test
+  scope and should go to `brainstorm`;
+- deciding whether feedback is an actionable defect in an existing
+  Arbor-managed feature and should go to `converge`;
+- keeping prose-only or simple chat-output corrections direct;
+- asking for missing logs, tracebacks, reproduction details, reviewer comments,
+  or review context before routing when that evidence changes the owner;
+- refusing to route ordinary user feedback to public `develop` or `evaluate`;
+- avoiding keyword-only routing when another public entrypoint already fits.
+
+Use it when:
+
+- the user explicitly invokes `$feedback` or `/arbor:feedback`;
+- the user reports a bug but it is unclear whether review context already
+  exists;
+- a reviewer or evaluator comment may be either a planning change or a repair
+  finding;
+- the user corrects the last Arbor result and asks what should happen next;
+- a direct fix request might need the managed quality loop but should stay under
+  `converge`.
+
+Canonical examples:
+
+- `$feedback this bug still happens in the current Arbor feature; decide the right next step` routes to `converge` when review context exists.
+- `$feedback this crash has no review context yet; decide whether to plan or fix` routes to `brainstorm` until scope and tests exist.
+- `$feedback the reviewer says the acceptance criteria are wrong` routes to `brainstorm`.
+- `$brainstorm plan the feedback skill trigger rules` stays in `brainstorm`; the word "feedback" alone does not trigger this skill.
+- Do not use `feedback` as a general project-status command, release command, or universal technical-request router.
 
 ### `develop`
 
-Use `develop` when an Arbor-managed feature or artifact change is authorized to execute.
+`develop` is an internal implementation stage. Do not call it directly for
+ordinary user requests; call `converge` to continue, fix, or repair an
+Arbor-managed quality loop. `converge` invokes `develop` when a selected
+feature, bug, defect, or evaluator finding has enough review context to execute.
 
 What it does well:
 
@@ -225,19 +283,21 @@ What it does well:
 - running developer self-tests against the brainstorm review test scope or recording why they could not run;
 - mapping developer self-tests to accepted done-when criteria;
 - appending developer review handoff evidence to the existing review document;
-- routing only completed developer handoffs to `release` for an automatic local checkpoint commit before `evaluate`.
+- routing only completed developer handoffs to `release` for an automatic local checkpoint commit before internal `evaluate`.
 - treating automatic develop/evaluate/converge continuation as permission for internal release checkpoints, not permission to skip release or finalization gates.
 
-Use it when:
+Internal stage use:
 
-- `brainstorm` produced a selected feature and initialized review document that is ready for development;
-- `intake` routed a clear managed artifact or narrow active implementation with an existing review context directly to development;
-- `converge` selected evaluator findings for a correction loop;
+- `converge` selected an approved feature or evaluator finding for implementation;
+- `brainstorm` produced a selected feature and review context that `converge` is now driving;
 - developer self-test and review handoff evidence must be prepared for `evaluate`.
 
 ### `evaluate`
 
-Use `evaluate` when a completed Arbor develop handoff needs independent validation before convergence.
+`evaluate` is an internal validation stage. Do not call it directly for ordinary
+user requests; call `converge` to continue, verify, or repair an Arbor-managed
+quality loop. `converge` invokes `evaluate` after an internal developer handoff
+is checkpointed and ready for independent validation.
 
 What it does well:
 
@@ -250,7 +310,7 @@ What it does well:
 - appending Evaluator Round evidence to the same review document;
 - routing completed evaluation results to `converge`.
 
-Use it when:
+Internal stage use:
 
 - developer self-tests passed but need independent replay and attack;
 - a review document contains a brainstorm test plan and Developer Round ready for evaluation;
@@ -261,16 +321,20 @@ Successful evaluate handoffs route through `release` for an evaluator checkpoint
 
 ### `converge`
 
-Use `converge` after `evaluate` appends an Evaluator Round for an Arbor-managed feature.
+Use `converge` as the public quality-loop entrypoint for an Arbor-managed
+feature after planning exists. It accepts bug reports, defects, evaluator
+findings, and current-loop continuation requests, then owns the internal
+`develop`/`evaluate` cycle until the feature either converges, needs planning,
+is blocked, or needs a user decision.
 
 What it does well:
 
 - deciding whether develop and evaluate agree;
 - checking whether the accepted result still satisfies brainstorm goals, acceptance criteria, non-goals, and test scope;
 - checking whether developer and evaluator evidence satisfies the done-when criteria;
-- routing implementation/test findings back to `develop`;
+- driving implementation/test findings through internal `develop` and `evaluate`;
 - routing planning contradictions or missing brainstorm evidence back to `brainstorm`;
-- routing missing developer/evaluator evidence to the owner of that evidence;
+- routing missing developer/evaluator evidence to the correct internal stage;
 - surfacing loop-health risk for repeated same-class failures, evidence conflicts, weak replay evidence, context contamination, or round-limit pressure before continuing a broad automatic loop;
 - updating the selected feature to `done` only after convergence is justified;
 - routing converged features to internal `release` finalization.
@@ -278,9 +342,18 @@ What it does well:
 Use it when:
 
 - `evaluate` emitted a completed evaluation result for an Arbor feature;
-- the workflow needs to decide whether to loop back to develop/evaluate or close the feature;
+- the workflow needs to decide whether to run or repeat the internal develop/evaluate cycle or close the feature;
+- the user reports a bug, defect, regression, or failed check against an existing Arbor-managed feature;
 - the feature registry needs a final status update after independent evaluation;
 - the current feature should move into release finalization after convergence.
+
+Canonical examples:
+
+- `$converge continue the current Arbor quality loop` when a managed feature exists but the next owner is unclear.
+- `$converge fix this bug in the current Arbor feature and verify it` when the feedback is an implementation/test defect with existing review context.
+- `$converge decide whether the accepted evaluation proves the feature is done` after evaluator evidence exists.
+- `$converge handle this evaluator finding and keep the repair/validation loop together` when a correction loop or planning gap needs ownership.
+- Do not use `converge` for generic project status or one-off explanations.
 
 ### `release`
 
@@ -300,7 +373,7 @@ Use it directly only when a manual release request has equivalent review or conv
 
 ## Usage
 
-Invocation phrasing is the same idea on both runtimes; replace the prefix with `$arbor` on Codex or `/arbor:arbor` on Claude Code (or use natural language — both runtimes auto-trigger Arbor when the request matches its description).
+Invocation phrasing is the same idea on both runtimes; replace the prefix with `$arbor` on Codex or `/arbor:arbor` on Claude Code. Prefer explicit skill invocation for managed workflow steps; if automatic skill selection misses, call the intended skill manually.
 
 Initialize Arbor in a project:
 
@@ -326,34 +399,29 @@ Update the project guide or map:
 $arbor update AGENTS.md for the new project constraints
 ```
 
-Classify whether a request belongs in Arbor workflow:
+Plan an Arbor-managed request before the quality loop:
 
 ```text
-$intake classify this request before we decide what to do
+$brainstorm clarify and plan this feature before the implementation/review loop
+$brainstorm turn this broad workflow redesign into small reviewable features with acceptance criteria
+$brainstorm read this reviewer feedback and plan the experiment change before coding
 ```
 
-Plan an Arbor-managed request before development:
+Triage feedback before choosing a workflow owner:
 
 ```text
-$brainstorm clarify and plan this feature before develop
+$feedback this bug still happens in the current Arbor feature; decide the right next step
+$feedback the reviewer says the acceptance criteria are wrong
+$feedback your last answer missed my question; answer it directly
 ```
 
-Execute an authorized Arbor feature:
-
-```text
-$develop implement this selected feature and prepare review handoff
-```
-
-Evaluate a completed develop handoff:
-
-```text
-$evaluate independently validate this develop handoff
-```
-
-Decide whether a completed develop/evaluate loop has converged:
+Continue or repair a managed quality loop:
 
 ```text
 $converge decide whether this feature is done and route release finalization
+$converge continue the current Arbor quality loop from the available review evidence
+$converge fix this bug in the current Arbor feature and verify it
+$converge handle the evaluator's findings and keep the repair/validation loop together
 ```
 
 Finalize or checkpoint a feature when the required review evidence is already loaded:
@@ -397,7 +465,7 @@ The hooks are registered by the skill during project initialization; Arbor does 
 The installed plugin bundles two hooks in `hooks/hooks.json`:
 
 - `SessionStart` (`hooks/session-start`) fires on the `startup` and `resume` sources. Its Python adapter calls the shared `run_session_startup_hook.py`, applies a budget-aware truncation policy so the rendered packet stays under Claude Code's `additionalContext` cap, and prints the packet to stdout for automatic injection into the conversation.
-- `Stop` (`hooks/stop-memory-hygiene`) is the Claude Code mapping of the Codex `arbor.in_session_memory_hygiene` hook. Claude Code has no native checkpoint event, and `Stop` is the only native event whose output can re-enter the agent loop, so the adapter self-gates: it stays silent unless the project is Arbor-managed (an `.arbor` directory exists) and the worktree is dirty, and it honors `stop_hook_active` first so it can never loop. When it does fire, it calls the shared `run_memory_hygiene_hook.py` and blocks the stop with the hygiene packet as the block reason, letting the agent decide whether to refresh `.arbor/memory.md`.
+- `Stop` (`hooks/stop-memory-hygiene`) is the Claude Code mapping of the Codex `arbor.in_session_memory_hygiene` hook. Claude Code has no native checkpoint event, and `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard when the Arbor worktree is dirty: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It still honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into the older blocking behavior, where the adapter calls the shared `run_memory_hygiene_hook.py` and returns the hygiene packet as the block reason.
 
 Goal-constraint drift is not auto-fired on Claude Code: there is no native event that maps to `project.guide_drift`. Invoke it through the user-driven workflows above; the underlying scripts are the same on both runtimes.
 
@@ -415,9 +483,10 @@ The check validates Codex and Claude manifest identity fields, the Claude
 marketplace entry, the Claude `SessionStart` and `Stop` hook shapes, the absence
 of out-of-scope plugin-level `agents/` and `PreCompact` adapters, a synthetic
 Claude startup event with budget-aware context truncation, the `Stop`
-memory-hygiene adapter's self-gating (clean worktree, non-Arbor project, and
-`stop_hook_active` all stay silent; a dirty Arbor worktree blocks with the
-hygiene packet), and every Arbor skill package without relying on
+memory-hygiene adapter's self-gating (clean worktree, dirty Arbor worktree by
+default, non-Arbor project, and `stop_hook_active` all stay silent; dirty Arbor
+worktrees get a quiet fallback memory entry when one is missing; opt-in block
+mode returns the hygiene packet), and every Arbor skill package without relying on
 `quick_validate.py` being on the shell `PATH`.
 
 For workflow behavior, these checks are only preflight. The real release gate is
@@ -514,7 +583,7 @@ During explicit initialization, if `.arbor/memory.md` is missing and legacy `.co
 Current version:
 
 ```text
-0.5.0
+1.0.0
 ```
 
 Version files:

@@ -2,28 +2,33 @@
 
 ## Purpose
 
-`develop` executes one Arbor-managed feature or managed artifact change with a clear execution basis. It consumes a scoped plan or handoff from known Arbor skills, manually approved project context, or any other source that provides enough executable scope, authorization when needed, success criteria, test expectations, feature registry state, and review context.
+`develop` is an internal implementation stage. It executes one Arbor-managed
+feature, correction, or managed artifact change with a clear execution basis
+only after `converge` or an equivalent internal workflow handoff selects the
+scope. Direct public requests to implement, fix, repair, or continue work belong
+to `converge`, not `develop`.
 
 The skill combines implementation, developer self-test, and developer review handoff. It does not independently validate like `evaluate`, decide convergence like `converge`, create the brainstorm Context/Test Plan section, or perform git checkpoint/release gates like `release`.
 
-`develop` is intentionally light on how the agent writes code. It should not constrain implementation strategy beyond the upstream contract and the repository's own conventions. Its core value is handoff discipline: consume upstream cleanly, cover the brainstorm test scope and done-when criteria with self-tests, append developer evidence, and give downstream `release` a checkpoint packet that authorizes an automatic local developer checkpoint commit before `evaluate` attacks the work.
+`develop` is intentionally light on how the agent writes code. It should not constrain implementation strategy beyond the upstream contract and the repository's own conventions. Its core value is handoff discipline: consume upstream cleanly, cover the brainstorm test scope and done-when criteria with self-tests, append developer evidence, and give downstream `release` a checkpoint packet that authorizes an automatic local developer checkpoint commit before internal `evaluate` attacks the work under `converge` ownership.
 
 ## Position In The Workflow
 
 ```text
-intake -> brainstorm -> develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature)
+brainstorm -> converge -> internal develop -> release(checkpoint_develop) -> internal evaluate -> release(checkpoint_evaluate) -> converge -> release(finalize_feature)
 ```
 
-`develop` commonly receives one of these upstream states:
+`develop` commonly receives one of these internal upstream states:
 
-- `brainstorm.route.terminal_state=ready_for_develop`;
-- `brainstorm.route.terminal_state=ready_for_user_review` after explicit user approval;
-- `intake` direct route to `develop` for a clear managed artifact, such as release-bound README, workflow guide, project map, or session resume package;
-- `converge` route back to `develop` for changes requested after evaluation.
+- `converge` selected an approved brainstorm feature for implementation;
+- `converge` selected a bug, defect, failed check, or evaluator finding for repair;
+- an equivalent internal handoff supplies the same scope, authorization, review document, and test expectations.
 
 These are examples, not a closed list. Other upstream sources can be valid when they provide the fallback upstream contract below.
 
-Its terminal state is a `develop.v1` structured output plus code/artifact changes and a developer review entry for downstream `release` checkpointing before `evaluate`.
+Its terminal state is a `develop.v1` structured output plus code/artifact
+changes and a developer review entry for downstream `release` checkpointing
+before internal `evaluate`.
 
 ## Current Flow Being Preserved
 
@@ -34,23 +39,25 @@ The existing Arbor development flow is:
 3. Self-test the change against done-when criteria with artifact-appropriate checks, such as unit, integration, scenario, content, structure, dry-run, compile, lint, type, schema, or coverage checks.
 4. Append a structured Developer Round to the same existing review document named by `source.review_doc_path` for downstream evaluation.
 5. Update the selected feature status in `.arbor/workflow/features.json`.
-6. Route to `release` with enough evidence and policy authorization for a local developer checkpoint commit; release then routes the same feature to `evaluate`.
+6. Route to `release` with enough evidence and policy authorization for a local developer checkpoint commit; release then routes the same feature to internal `evaluate` under `converge`.
 
 This is intentionally not only coding. Documentation, project maps, workflow guides, and review artifacts can be developed when they are part of the managed development workflow.
 
 ## Boundary Summary
 
-Use `develop` for:
+Use `develop` internally for:
 
 - implementing an authorized feature;
-- fixing an active bug after diagnosis or a clear current traceback;
+- fixing an active bug after `converge` selects the correction scope;
 - updating a managed development artifact;
-- applying evaluator-requested changes after `converge`;
+- applying evaluator-requested changes selected by `converge`;
 - appending developer-side review evidence for `evaluate`;
 - running developer self-tests after implementation.
 
 Do not use `develop` for:
 
+- public user requests to fix, implement, repair, verify, or continue a managed
+  feature; those enter through `converge`;
 - unresolved requirements or broad scope that still needs `brainstorm`;
 - independent validation of completed work, which belongs to `evaluate`;
 - deciding whether developer and evaluator agree, which belongs to `converge`;
@@ -60,7 +67,9 @@ Do not use `develop` for:
 
 ## Upstream Source Contract
 
-Known upstream examples are `brainstorm`, `intake`, and `converge`. They have clear contracts and should be handled with the specific rules below.
+Known internal upstream examples are `converge` and brainstorm-approved work
+being driven by `converge`. They have clear contracts and should be handled with
+the specific rules below.
 
 Do not limit `develop` to those three sources. Every source, known or fallback, must provide enough of the same minimum contract:
 
@@ -77,36 +86,6 @@ Do not limit `develop` to those three sources. Every source, known or fallback, 
 Known source rules come first because they are the normal Arbor flows. Fallback handling is listed after them and should be used only when the source is outside the known flows.
 
 ## Known Source Flows
-
-### `intake`
-
-`intake` may route directly to `develop` only when the artifact or implementation target is already clear and Arbor-managed.
-
-Examples:
-
-- release-bound README update;
-- development guide;
-- project/data map used for future analysis or agent context;
-- session resume package;
-- active runtime error that belongs to a current fix.
-
-Consume from `intake`:
-
-- raw user request;
-- normalized classification and subtype;
-- target artifact or implementation target when present;
-- persistence decision, especially whether artifact writes are allowed;
-- active-state or context-patch information;
-- warnings, permissions, and read-only constraints;
-- selected route reason.
-
-When direct-develop input lacks enough detail for safe implementation, `develop` should not invent a full plan. It should either:
-
-- infer the minimum obvious scope when the request is narrow and low-risk;
-- return `needs_brainstorm` when requirements, acceptance criteria, or design decisions are missing;
-- return `route_correction` when the request should have stayed direct or should go to another skill.
-
-In the review handoff, record that the source was `intake_direct`, quote the raw request, and explain what scope was inferred directly from the request.
 
 ### `brainstorm`
 
@@ -193,15 +172,14 @@ Execution authorization is required when:
 
 Execution authorization can be inherited when:
 
-- `brainstorm` ended in `ready_for_develop`;
-- `intake` routed a narrow direct managed artifact and no approval gate is required;
+- `brainstorm` ended in `ready_for_converge` and `converge` or an equivalent internal handoff selected this feature for implementation;
 - `converge` selected evaluator findings for a correction loop.
 
 Record execution basis as structured evidence:
 
 - `authorization_required`: whether an explicit approval/authorization gate existed;
 - `authorization_state`: `authorized`, `not_required`, `missing`, or `rejected`;
-- `authorization_source`: where authorization came from, such as `brainstorm_ready_for_develop`, `user_approved_brainstorm_plan`, `intake_direct_request`, or `converge_decision`;
+- `authorization_source`: where authorization came from, such as `brainstorm_ready_for_converge`, `user_approved_brainstorm_plan`, or `converge_decision`;
 - `authorized_by`: usually `user`, `system`, or `not_applicable`;
 - `authorization_evidence`: short quote, message id, brainstorm terminal state, or converge decision that proves why development may proceed;
 - `authorization_evidence_refs`: stable pointers such as upstream artifact paths, message ids, review document paths, or finding ids.
@@ -252,7 +230,6 @@ This matrix captures common upstream examples, not every possible valid source.
 | Source | Main purpose | Must consume | Missing input response | Review handoff emphasis |
 | --- | --- | --- | --- | --- |
 | `brainstorm` | Implement a user-approved or ready feature plan | selected feature, approach, goals/non-goals, acceptance criteria, done-when criteria, review doc path, planned test scope, risks, authorization state | `needs_selection` for no selected feature; `needs_brainstorm` for unresolved design, missing review context, or missing approval | map implementation and self-tests to acceptance criteria, done-when criteria, and planned test scope |
-| `intake` | Direct managed artifact or narrow active implementation | raw request, classification, target artifact/implementation target, persistence/write permission, existing review context, route reason | infer only narrow obvious scope when review context exists; otherwise `needs_brainstorm` or `route_correction` | explain inferred scope from raw request and append to existing review context |
 | `converge` | Apply evaluator-requested corrections | review path, evaluator findings, requested correction scope, replay targets, prior rounds | `blocked` if review/finding evidence is missing; `needs_brainstorm` if requirements changed | append new developer round and reference evaluator finding ids |
 | fallback source | Execute a valid handoff from another source | raw handoff, scope, authorization evidence, success conditions, constraints, test expectations | `blocked` for missing authorization; `needs_selection` for missing scope; `needs_brainstorm` for missing success conditions or design decisions | explain source identity, inferred contract, and evidence pointers |
 
@@ -382,7 +359,7 @@ Downstream skills should be able to read `features.json` to know which features 
 The review entry must include:
 
 - feature identifier and title;
-- upstream source label, such as `brainstorm`, `intake`, `converge`, `manual_handoff`, `external_plan`, `project_doc`, or `unknown`;
+- upstream source label, such as `brainstorm`, `converge`, `manual_handoff`, `external_plan`, `project_doc`, or `unknown`;
 - raw request or plan pointer;
 - implementation summary;
 - changed files/artifacts;
@@ -529,18 +506,22 @@ The structured `develop.v1` object is an internal workflow/runtime packet. `deve
 
 ## Checkpoint And Automation Policy
 
-`develop` is a mandatory user-visible checkpoint by default. The output must include `ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`.
+`develop` is an internal evidence checkpoint. When `converge` owns the public
+quality loop, `develop` should append review evidence and structured handoff
+state while the normal visible response is the `converge` checkpoint. If a
+developer checkpoint is exposed directly for review, the output must include
+`ui.checkpoint.visibility=user_visible` and `ui.checkpoint.continue_policy=must_stop`.
 
 A `ready_for_evaluate` handoff is not workflow completion. The visible output must say that release will save a local checkpoint commit and independent evaluation remains next; it must not imply the feature is accepted, converged, release-ready, or complete.
 
-The only allowed automatic continuation is the explicit `develop_evaluate_converge` policy requested by the user for the current workflow. Even then, `develop` may set `continue_policy=auto_continue_allowed` only when implementation stayed in scope, all planned developer checks passed, no material hidden/default decision needs review, and no unresolved risk or deviation remains. Automatic continuation still goes through `release(checkpoint_develop)` and its local checkpoint commit; it must not jump directly to evaluation with only a Developer Round.
+Automatic continuation is controlled by the public `converge` quality loop. `develop` may set `continue_policy=auto_continue_allowed` only when `converge` supplied the current scope, implementation stayed in scope, all planned developer checks passed, no material hidden/default decision needs review, and no unresolved risk or deviation remains. Automatic continuation still goes through `release(checkpoint_develop)` and its local checkpoint commit; it must not jump directly to internal evaluation with only a Developer Round.
 
 `ui.workflow_automation` records whether that policy is enabled and eligible. Missing authorization, scope changes, failed or skipped checks, unresolved risks, or missing brainstorm context must keep the checkpoint at `must_stop`.
 
 Use these status values:
 
 - `source.authorization_state`: `authorized`, `not_required`, `missing`, `rejected`
-- `source.from_skill`: known skill name or stable fallback source label; do not treat `brainstorm`, `intake`, and `converge` as a closed list
+- `source.from_skill`: known skill name or stable fallback source label; do not treat `brainstorm` and `converge` as a closed list
 - `implementation.status`: `not_started`, `completed`, `partial`, `failed`
 - `self_test.status`: `not_run`, `passed`, `failed`, `partial`, `blocked`
 - `self_test.verification_checks`: structured artifact-appropriate evidence with `artifact`, `check`, `expected_result`, `actual_result`, and `result`; only `result=passed` counts as ready evidence, and passed evidence must not contradict itself in `actual_result`

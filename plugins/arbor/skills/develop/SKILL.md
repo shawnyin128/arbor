@@ -1,29 +1,47 @@
 ---
 name: develop
-description: Execute an authorized Arbor-managed feature or artifact change, consume upstream plan/context, run developer self-tests against the review plan, append developer review handoff evidence, and emit structured output for release checkpointing before evaluate.
+description: Internal Arbor implementation stage invoked by converge or an equivalent workflow handoff; execute authorized feature/correction work, self-test against the review plan, append developer handoff evidence, and emit structured output for release checkpointing before internal evaluate.
 ---
 
 # Develop
 
 ## Purpose
 
-Use `develop` when Arbor has an authorized implementation or managed-artifact unit ready to execute.
+Use `develop` only as an internal Arbor implementation stage when `converge` or
+an equivalent workflow handoff has selected an authorized feature, correction,
+or managed-artifact unit to execute. Do not select `develop` for ordinary user
+requests; direct public requests to implement, fix, repair, or continue an
+Arbor-managed quality loop belong to `converge`.
 
-`develop` is not a coding-style constraint. Use normal engineering judgment and the repo's conventions. The skill's job is workflow discipline: consume upstream context, preserve traceability, implement, self-test against the brainstorm review test scope, append developer evidence, and hand off to `release` for an automatic local developer checkpoint commit before `evaluate`.
+`develop` is not a coding-style constraint. Use normal engineering judgment and the repo's conventions. The skill's job is workflow discipline: consume upstream context, preserve traceability, implement, self-test against the brainstorm review test scope, append developer evidence, and hand off to `release` for an automatic local developer checkpoint commit before internal `evaluate`.
 
 It does not approve plans, independently validate like `evaluate`, decide convergence, push, tag, or publish. It also does not create the checkpoint commit itself or decide whether a checkpoint should bypass evaluation; `release(checkpoint_develop)` creates the local checkpoint commit and routes onward when the developer handoff is ready.
 
-`develop` is a mandatory user-visible checkpoint by default. The user must be able to see what changed, how the work maps to the plan, which implementation defaults were chosen, and how the developer self-tested before the workflow continues into independent evaluation.
+`develop` is an internal evidence checkpoint. When `converge` is orchestrating
+the public quality loop, the normal public response should be the `converge`
+checkpoint that summarizes the internal develop/evaluate cycle. If a developer
+checkpoint is exposed for review, the user must be able to see what changed, how
+the work maps to the plan, which implementation defaults were chosen, and how
+the developer self-tested before the workflow continues into independent
+evaluation.
 
 A `ready_for_evaluate` developer handoff is not workflow completion. Do not present develop-only work as done, accepted, converged, release-ready, or finished. The visible output must make independent evaluation explicit as pending, either by stopping at the checkpoint or by continuing only under an eligible `develop_evaluate_converge` automation policy.
 
-The only exception is an explicit `develop_evaluate_converge` automation policy requested by the user for the current workflow. Under that policy, `develop` may continue automatically only when the implementation stayed in scope, all planned developer checks passed, no material hidden decision needs review, and no unresolved risk or deviation is reported. Automatic continuation still goes through `release(checkpoint_develop)`; it must not skip directly to `evaluate`. If the local checkpoint commit cannot be created, stop at the release checkpoint blocker instead of evaluating uncheckpointed developer evidence.
+Automatic continuation is controlled by the public `converge` quality loop.
+`develop` may continue internally only when `converge` supplied the current
+correction/implementation scope, the implementation stayed in scope, all planned
+developer checks passed, no material hidden decision needs review, and no
+unresolved risk or deviation is reported. Automatic continuation still goes
+through `release(checkpoint_develop)`; it must not skip directly to internal
+`evaluate`. If the local checkpoint commit cannot be created, stop at the
+release checkpoint blocker instead of evaluating uncheckpointed developer
+evidence.
 
 ## Checklist
 
 Follow this normal sequence for develop runs. Stop early with the correct terminal state when source, execution basis, scope, or upstream context is missing.
 
-1. **Identify source**: determine whether input came from a known upstream example such as `brainstorm`, `intake`, or `converge`, or from another valid handoff source.
+1. **Identify internal source**: determine whether input came from `converge`, a `brainstorm` handoff being driven by `converge`, or another valid internal handoff source. If the input is an ordinary user-facing request to implement, fix, continue, or repair work, return `route_correction` to `converge`.
    Treat the known sources as examples, not the complete set. If the source is different, apply the fallback upstream contract below.
 2. **Record execution basis**: record why execution is allowed. If required authorization is missing, stop with `blocked`.
 3. **Select scope**: identify the selected feature or managed artifact. If multiple independent units exist with no selection, stop with `needs_selection`.
@@ -33,7 +51,7 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
 7. **Append handoff**: append a Developer Round to the same existing review document named by `source.review_doc_path`. Do not create the Context/Test Plan section. Include a detailed self-test table so `evaluate` can see what was tested, what passed or failed, what was skipped, and which planned checks or done-when criteria each row covers.
 8. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the selected feature/artifact, changed paths, current developer checkpoint, unresolved risks, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
 9. **Set checkpoint policy**: default to `must_stop`; use `auto_continue_allowed` only when the user explicitly enabled `develop_evaluate_converge` automation and no material decisions, deviations, skipped checks, or risks need user review. Auto-continuation authorizes the next `release(checkpoint_develop)` gate, not direct evaluation.
-10. **Guard continuation semantics**: if implementation reaches `ready_for_evaluate`, make the next independent evaluation step explicit and do not use final-completion language.
+10. **Guard continuation semantics**: if implementation reaches `ready_for_evaluate`, make the next internal independent evaluation step explicit and do not use final-completion language.
 11. **Return rendered checkpoint and runtime packet**: produce `develop.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` checkpoint, not raw JSON.
 
 ## Terminal States
@@ -46,7 +64,7 @@ Follow this normal sequence for develop runs. Stop early with the correct termin
 - `ready_for_evaluate`: implementation, self-test, and developer review handoff are complete.
 - `route_correction`: request belongs to another skill or direct work.
 
-Only `ready_for_evaluate` may route to `release`, and the release handoff must identify `release_context.release_mode=checkpoint_develop` so `release` creates a local checkpoint commit before the next workflow step continues to `evaluate`.
+Only `ready_for_evaluate` may route to `release`, and the release handoff must identify `release_context.release_mode=checkpoint_develop` so `release` creates a local checkpoint commit before the next workflow step continues to internal `evaluate` under `converge` ownership.
 
 ## User-Facing Development Packet
 
@@ -62,7 +80,7 @@ Write it in plain natural language with these sections:
 4. **Implementation Defaults I Chose**: expose implementation-time decisions the user did not explicitly specify, such as fallback behavior, scope interpretation, test substitution, naming, file placement, or engineering tradeoffs. If there were no material hidden decisions, say so explicitly.
 5. **How I Self-Tested**: show the developer-side checks, what each check was meant to prove, and the observed result.
 6. **Risks And Gaps**: list unresolved risks, skipped checks, blockers, or deviations from the plan.
-7. **Next Step**: describe the next workflow step in plain language, such as saving a local checkpoint commit before independent evaluation, returning to planning, or stopping because authorization is missing.
+7. **Next Step**: describe the next workflow step in plain language, such as saving a local checkpoint commit before internal independent evaluation, returning to planning, routing a public request back to `converge`, or stopping because authorization is missing.
 
 The normal visible final response MUST include these exact Markdown headings for
 English prompts, in this order, even when a section has only one sentence. When
@@ -83,8 +101,8 @@ check the captured final text, not just the internal `user_response` draft. If
 any required English heading is missing for an English prompt, any localized
 heading equivalent is missing for a non-English prompt, headings are out of
 order, or the checkpoint is replaced by a prose-only summary, rewrite the
-visible response before finishing. The final message must also make independent
-evaluation explicit when implementation reaches handoff state.
+visible response before finishing. The final message must also make internal
+independent evaluation explicit when implementation reaches handoff state.
 
 For non-success states, keep the same readable shape but make the blocker clear. For example, say "the plan has not been confirmed yet, so implementation cannot start" instead of exposing the internal authorization state.
 
@@ -92,7 +110,10 @@ Never expose machine-oriented labels in `user_response`. Avoid schema field name
 
 ## Upstream Source Contract
 
-`brainstorm`, `intake`, and `converge` are the common Arbor upstream sources. They are not a closed list and are not the only possible valid sources.
+`converge` is the normal Arbor upstream source for implementation after public
+quality-loop entry. `brainstorm` handoffs are accepted only when the selected
+plan is being driven through the same managed quality loop. These are not a
+closed list and are not the only possible valid internal sources.
 
 For any upstream source, known or fallback, consume the same minimum contract:
 
@@ -106,15 +127,20 @@ For any upstream source, known or fallback, consume the same minimum contract:
 - feature registry path, normally `.arbor/workflow/features.json`, when the source is part of a split feature plan;
 - stable pointers to artifacts, messages, findings, or prior review evidence.
 
-Set `source.from_skill` to the known skill name when the source is `brainstorm`, `intake`, or `converge`. For other sources, use a stable source label such as `manual_handoff`, `external_plan`, `project_doc`, or `unknown` if the source cannot be identified.
+Set `source.from_skill` to the known skill name when the source is `brainstorm` or `converge`. For other sources, use a stable source label such as `manual_handoff`, `external_plan`, `project_doc`, or `unknown` if the source cannot be identified.
 
 ## Known Source Flows
 
 ### `brainstorm`
 
-Consume the selected feature, recommended approach, goals, non-goals, constraints, acceptance criteria, done-when criteria, decision trace handoff, feature registry path, review document path, brainstorm verification scope, risks, evidence pointers, and execution basis.
+Consume the selected feature, recommended approach, goals, non-goals,
+constraints, acceptance criteria, done-when criteria, decision trace handoff,
+feature registry path, review document path, brainstorm verification scope,
+risks, evidence pointers, and execution basis only when the plan is approved and
+is entering the internal quality loop owned by `converge` or an equivalent
+workflow handoff.
 
-If `brainstorm` ended in `ready_for_user_review`, require user approval evidence. If it ended in `ready_for_develop`, record that terminal state as the authorization source.
+If `brainstorm` ended in `ready_for_user_review`, require user approval evidence. If it ended in `ready_for_converge`, record that terminal state as the authorization source for the converge-owned internal implementation stage.
 
 If the brainstorm handoff lacks `docs/review/<feature>-review.md` or an equivalent review context with test scope, return `needs_brainstorm` instead of creating it inside `develop`.
 
@@ -146,15 +172,12 @@ Rules:
 
 For workflow-facing changes, record which observable outcomes the developer checks cover: final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, and trace evidence when available. If exact runtime telemetry or live proof is deferred to `evaluate` or `release`, record the deferred proof or weak-pass gap instead of hiding it. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
 
-### `intake`
-
-Use only for clear managed artifacts or narrow active implementation. Consume raw request, classification, target artifact or implementation target, persistence/write permission, active context, warnings, and route reason.
-
-Infer only narrow obvious scope. If the request needs design or acceptance criteria first, return `needs_brainstorm`. If it should not be Arbor-managed, return `route_correction`.
-
 ### `converge`
 
-Use for correction loops from evaluator findings. Consume review document path, evaluator finding ids, requested correction scope, prior rounds, reproduction steps, failing tests, and replay targets.
+Use for correction loops, bug reports, failed checks, and evaluator findings
+selected by `converge`. Consume review document path, finding ids or feedback
+summary, requested correction scope, prior rounds, reproduction steps, failing
+tests, and replay targets.
 
 Append a new developer round. Do not rewrite old developer/evaluator evidence.
 
@@ -171,6 +194,12 @@ Fallback is not a shortcut around planning. It is a compatibility path for manua
 ### "Develop Can Approve The Plan"
 
 No. `brainstorm` gets user approval. `develop` only records execution authorization evidence.
+
+### "Develop Is A Public Fix Command"
+
+No. Public requests to fix, continue, or repair an Arbor-managed feature enter
+through `converge`. `develop` runs only after `converge` or an equivalent
+internal handoff selects an executable scope.
 
 ### "Developer Self-Test Is Independent Evaluation"
 
@@ -362,7 +391,7 @@ Produce this structure for internal workflow handoff:
 
 Use these enums:
 
-- `source.from_skill`: known skill name or stable fallback source label, such as `brainstorm`, `intake`, `converge`, `manual_handoff`, `external_plan`, `project_doc`, or `unknown`
+- `source.from_skill`: known skill name or stable fallback source label, such as `brainstorm`, `converge`, `manual_handoff`, `external_plan`, `project_doc`, or `unknown`
 - `source.authorization_state`: `authorized`, `not_required`, `missing`, `rejected`
 - `implementation.status`: `not_started`, `completed`, `partial`, `failed`
 - `self_test.status`: `not_run`, `passed`, `failed`, `partial`, `blocked`

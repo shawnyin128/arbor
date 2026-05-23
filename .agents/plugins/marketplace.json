@@ -1,7 +1,8 @@
 {
   "name": "arbor",
   "interface": {
-    "displayName": "Arbor"
+    "displayName": "Arbor",
+    "description": "Project memory plus explicit brainstorm, feedback, and converge workflow entrypoints"
   },
   "plugins": [
     {
