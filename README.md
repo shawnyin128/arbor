@@ -10,6 +10,8 @@ Arbor creates and maintains:
 - `AGENTS.md`: durable project guide and map.
 - `.arbor/memory.md`: short-term unresolved session memory.
 - `.codex/hooks.json`: Codex project hook intent file when initialized.
+- `.claude/settings.json` and `.claude/hooks/`: Claude Code project hook files
+  when initialized in Claude Code.
 - `CLAUDE.md`: Claude Code bridge to `AGENTS.md` and `.arbor/memory.md`.
 
 Arbor is intentionally lightweight. It controls workflow shape and context
@@ -53,9 +55,9 @@ Inside Claude Code:
 /reload-plugins
 ```
 
-The Claude plugin includes `SessionStart` and `Stop` hooks. `SessionStart`
-injects startup context on startup/resume. `Stop` quietly guards
-`.arbor/memory.md` when an Arbor-managed dirty worktree is about to stop.
+After installing the Claude plugin, run Arbor initialization in the project so
+Claude project hooks are written under `.claude/`. The initialized hooks include
+`SessionStart` startup context and a quiet `Stop` memory guard.
 
 ## Workflow Model
 
@@ -103,7 +105,11 @@ Managed workflow state lives in:
 
 Use `arbor` for startup and project context:
 
-- initialize `AGENTS.md`, `.arbor/memory.md`, hooks, and Claude bridge files;
+- initialize `AGENTS.md`, `.arbor/memory.md`, and runtime-specific adapters;
+- register Codex project hook intents in `.codex/hooks.json`;
+- register Claude Code project hooks in `.claude/settings.json` with wrappers
+  under `.claude/hooks/`, and create the `CLAUDE.md` bridge in Claude Code even
+  after Codex already created the canonical Arbor files;
 - load startup context in order: `AGENTS.md`, recent formatted git history,
   `.arbor/memory.md`, and `git status --short`;
 - refresh short-term memory before handoff or commit;
@@ -231,7 +237,8 @@ Treat `.codex/hooks.json` as a contract/replay target, not proof that startup
 context has already been injected. `AGENTS.md` remains the reliable native
 bootstrap.
 
-Claude Code ships:
+Claude Code project initialization writes `.claude/settings.json` plus wrappers
+under `.claude/hooks/`:
 
 - `SessionStart`: injects startup context for `startup` and `resume`;
 - `Stop`: defaults to a silent memory guard and can use
@@ -288,7 +295,7 @@ automatically.
 Current version:
 
 ```text
-1.0.1
+1.0.2
 ```
 
 Version files:

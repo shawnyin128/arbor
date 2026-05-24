@@ -1,6 +1,6 @@
 {
   "name": "arbor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Maintain project-local Arbor memory, load startup context for project overview/resume requests, and guide explicit Arbor workflow entrypoints from brainstorm, feedback, and converge through internal release finalization; normal checkpoints render user_response/ui while raw workflow JSON and route labels stay hidden unless debug output is requested.",
   "author": {
     "name": "Shawn",

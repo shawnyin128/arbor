@@ -12,6 +12,8 @@ CLAUDE_GUIDE_PATH = Path("CLAUDE.md")
 CANONICAL_MEMORY_PATH = Path(".arbor") / "memory.md"
 LEGACY_CODEX_MEMORY_PATH = Path(".codex") / "memory.md"
 CODEX_HOOK_CONFIG_PATH = Path(".codex") / "hooks.json"
+CLAUDE_SETTINGS_PATH = Path(".claude") / "settings.json"
+CLAUDE_HOOKS_DIR = Path(".claude") / "hooks"
 
 INSTALL_RUNTIME_CODEX = "codex"
 INSTALL_RUNTIME_CLAUDE = "claude"

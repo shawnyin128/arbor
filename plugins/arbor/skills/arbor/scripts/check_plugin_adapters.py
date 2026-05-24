@@ -85,6 +85,7 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
     claude = load_json(plugin_root / ".claude-plugin" / "plugin.json", errors)
     agents_template = (plugin_root / "skills" / "arbor" / "references" / "agents-template.md").read_text(encoding="utf-8")
     arbor_skill = (plugin_root / "skills" / "arbor" / "SKILL.md").read_text(encoding="utf-8")
+    init_script = (plugin_root / "skills" / "arbor" / "scripts" / "init_project_memory.py").read_text(encoding="utf-8")
 
     for term in (
         "## Startup Protocol",
@@ -102,8 +103,24 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         "project-overview prompts",
         "Do not assume `.codex/hooks.json` has already injected",
         "`AGENTS.md` Startup Protocol",
+        "Runtime-specific adapter initialization is separate from canonical project state",
+        "existing `AGENTS.md` and `.arbor/memory.md` are not proof that the Claude adapter was initialized",
+        "`.codex/hooks.json` is not a Claude hook registration",
+        ".claude/settings.json",
+        ".claude/hooks/",
+        "plugin-bundled hooks are not proof that Claude project hooks are active",
     ):
         check(errors, term in arbor_skill, f"arbor skill missing startup bootstrap term `{term}`")
+
+    for term in (
+        "runtime-specific bridge files",
+        "idempotent across runtimes",
+        "Existing canonical files therefore do not short-circuit adapter setup",
+        "Hook setup is runtime-specific and separate",
+        ".claude/settings.json",
+        ".claude/hooks",
+    ):
+        check(errors, term in init_script, f"init_project_memory missing cross-runtime initialization term `{term}`")
 
     for manifest_name, manifest in (("Codex", codex), ("Claude", claude)):
         description = str(manifest.get("description", ""))
@@ -122,6 +139,58 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
             errors,
             "Resume or explain this repo with Arbor context" in default_prompt,
             "Codex defaultPrompt must include project overview startup-context example",
+        )
+
+
+def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: list[str]) -> None:
+    import sys
+
+    scripts_dir = plugin_root / "skills" / "arbor" / "scripts"
+    sys.path.insert(0, str(scripts_dir))
+    try:
+        from init_project_memory import CLAUDE_BRIDGE_OFF, CLAUDE_BRIDGE_ON, init_project_memory
+        from register_project_hooks import INSTALL_RUNTIME_CLAUDE, INSTALL_RUNTIME_CODEX, register_project_hooks
+    finally:
+        sys.path.pop(0)
+
+    with tempfile.TemporaryDirectory(prefix="arbor-cross-runtime-init-") as tmp:
+        project = Path(tmp) / "project"
+        project.mkdir()
+
+        init_project_memory(project, claude_bridge=CLAUDE_BRIDGE_OFF)
+        agents = project / "AGENTS.md"
+        memory = project / ".arbor" / "memory.md"
+        claude = project / "CLAUDE.md"
+        resolved_claude = claude.resolve()
+        check(errors, agents.is_file(), "Codex-style initialization should create AGENTS.md")
+        check(errors, memory.is_file(), "Codex-style initialization should create .arbor/memory.md")
+        check(errors, not claude.exists(), "Codex-style initialization should not create CLAUDE.md by default")
+
+        register_project_hooks(project, runtime=INSTALL_RUNTIME_CODEX)
+        codex_hooks = project / ".codex" / "hooks.json"
+        check(errors, codex_hooks.is_file(), "Codex hook registration should create .codex/hooks.json")
+
+        custom_agents = "# Custom Guide\n\nKeep me.\n"
+        agents.write_text(custom_agents, encoding="utf-8")
+        actions = init_project_memory(project, claude_bridge=CLAUDE_BRIDGE_ON)
+        register_project_hooks(project, runtime=INSTALL_RUNTIME_CLAUDE)
+        claude_settings = project / ".claude" / "settings.json"
+        claude_session = project / ".claude" / "hooks" / "arbor-session-start"
+        claude_stop = project / ".claude" / "hooks" / "arbor-stop-memory-hygiene"
+        check(errors, claude.is_file(), "Claude initialization after Codex initialization should create CLAUDE.md")
+        check(errors, claude_settings.is_file(), "Claude hook initialization after Codex initialization should create .claude/settings.json")
+        check(errors, claude_session.is_file(), "Claude hook initialization should create .claude/hooks/arbor-session-start")
+        check(errors, claude_stop.is_file(), "Claude hook initialization should create .claude/hooks/arbor-stop-memory-hygiene")
+        check(errors, agents.read_text(encoding="utf-8") == custom_agents, "Claude bridge initialization must not overwrite AGENTS.md")
+        check(errors, codex_hooks.is_file(), "Claude follow-up initialization must not remove Codex hook intents")
+        settings = json.loads(claude_settings.read_text(encoding="utf-8"))
+        settings_text = json.dumps(settings)
+        for term in ("SessionStart", "Stop", ".claude/hooks/arbor-session-start", ".claude/hooks/arbor-stop-memory-hygiene"):
+            check(errors, term in settings_text, f"Claude project hook settings missing `{term}`")
+        check(
+            errors,
+            any(action.path == resolved_claude and action.status == "created" for action in actions),
+            "Claude follow-up initialization should report created CLAUDE.md",
         )
 
 
@@ -368,19 +437,11 @@ def validate_agents_guide_drift_smoke(plugin_root: Path, errors: list[str]) -> N
 
 
 def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None:
-    hooks_json = load_json(plugin_root / "hooks" / "hooks.json", errors)
-    hooks = hooks_json.get("hooks")
-    check(errors, isinstance(hooks, dict), "hooks/hooks.json must define hooks object")
-    if isinstance(hooks, dict):
-        check(
-            errors,
-            set(hooks) == {"SessionStart", "Stop"},
-            "Claude adapter should define exactly the SessionStart and Stop hooks",
-        )
-        session_hooks = hooks.get("SessionStart")
-        check(errors, isinstance(session_hooks, list) and bool(session_hooks), "SessionStart hook must be a non-empty list")
-        stop_hooks = hooks.get("Stop")
-        check(errors, isinstance(stop_hooks, list) and bool(stop_hooks), "Stop hook must be a non-empty list")
+    check(
+        errors,
+        not (plugin_root / "hooks" / "hooks.json").exists(),
+        "Claude hooks must be registered into project .claude/settings.json, not auto-registered from plugin hooks/hooks.json",
+    )
 
     session_start = plugin_root / "hooks" / "session-start"
     check(errors, session_start.is_file(), "hooks/session-start must exist")
@@ -442,11 +503,18 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
     for term in (
         "Workflow Entrypoint Protocol",
         "explicit Arbor public entrypoint",
-        "Feedback should decide only between `brainstorm`, `converge`,",
-        "`develop` and `evaluate` are internal stages owned by `converge`",
-        "`release` is also internal",
+        "skill frontmatter, canonical examples, and checklist",
+        "Public entrypoints are `brainstorm`, `feedback`, and `converge`",
+        "`develop` and `evaluate` are internal stages owned by `converge`; `release` is internal",
     ):
         check(errors, contains_term(agents_template, term), f"agents template missing public entrypoint term `{term}`")
+    for forbidden in (
+        "Describe the stable project objective here",
+        "Record durable engineering, workflow, validation, style, and collaboration constraints here",
+        "Use this as the entrypoint to durable project context, not as the whole long-term memory store.",
+        "Document major directories, modules, commands, architecture boundaries, and where to start reading.",
+    ):
+        check(errors, forbidden not in agents_template, f"agents template still exposes placeholder text `{forbidden}`")
 
     for forbidden in ("Codex:        $release", "Claude Code:  /arbor:release", "$release finalize"):
         check(errors, forbidden not in readme, f"README must not advertise public release invocation `{forbidden}`")
@@ -1627,6 +1695,7 @@ def main() -> int:
     validate_outcome_eval_observability_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_release_version_management_contract(plugin_root, errors)
+    validate_cross_runtime_initialization_contract(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 
     if errors:

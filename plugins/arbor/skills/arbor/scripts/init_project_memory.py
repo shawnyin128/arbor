@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Initialize project-local Arbor memory files."""
+"""Initialize project-local Arbor memory, guide, and bridge files."""
 
 from __future__ import annotations
 
@@ -48,6 +48,18 @@ def init_project_memory(
     dry_run: bool = False,
     claude_bridge: str = CLAUDE_BRIDGE_AUTO,
 ) -> list[ProjectFileAction]:
+    """Create missing canonical Arbor files and runtime-specific bridge files.
+
+    This function is intentionally idempotent across runtimes. A project can be
+    initialized from Codex first, creating ``AGENTS.md`` and
+    ``.arbor/memory.md`` without a Claude bridge. A later Claude Code
+    initialization must still create ``CLAUDE.md`` when the bridge is enabled.
+    Existing canonical files therefore do not short-circuit adapter setup.
+    Hook setup is runtime-specific and separate: Codex uses project-local
+    ``.codex/hooks.json`` registered by ``register_project_hooks.py``; Claude
+    Code uses project-local ``.claude/settings.json`` plus wrappers under
+    ``.claude/hooks`` registered by the same script.
+    """
     root = resolve_project_root(root)
     actions: list[ProjectFileAction] = [
         *ensure_memory_file(root, read_template("memory-template.md"), dry_run),
@@ -76,7 +88,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=CLAUDE_BRIDGE_AUTO,
         help=(
             "Whether to create a Claude-native CLAUDE.md bridge. "
-            "auto (default): create only when this script lives in a Claude Code plugin cache. "
+            "auto (default): create when this script lives in a Claude Code plugin cache, "
+            "even if AGENTS.md and .arbor/memory.md already exist. "
             "on: always create when missing. off: never create."
         ),
     )
