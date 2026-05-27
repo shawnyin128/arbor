@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Claude Code Stop hook adapter for Arbor in-session memory hygiene.
+"""Stop hook adapter for Arbor in-session memory hygiene.
 
-Reads Claude Code ``Stop`` hook event JSON from stdin and, when the project
-is Arbor-managed and the worktree has uncommitted changes, refreshes a bounded
-project-local memory fallback without emitting visible output.
+Reads Codex or Claude Code ``Stop`` hook event JSON from stdin and, when the
+project is Arbor-managed and the worktree has uncommitted changes, refreshes a
+bounded project-local memory fallback without emitting visible output.
 
-This is the Claude Code mapping of the Codex
-``arbor.in_session_memory_hygiene`` hook (event ``conversation.checkpoint``).
-Claude Code has no native checkpoint event, and ``Stop`` output can re-enter
-the agent loop as a visible continuation. That continuation can hide the
-assistant's real final response in runtimes that display the last assistant
-message as the turn result, so the adapter defaults to a silent memory guard:
-if ``.arbor/memory.md`` is missing, empty, or has no meaningful ``In-flight``
+This is Arbor's runtime mapping of the
+``arbor.in_session_memory_hygiene`` hook. ``Stop`` output can re-enter the
+agent loop as a visible continuation. That continuation can hide the assistant's
+real final response in runtimes that display the last assistant message as the
+turn result, so the adapter defaults to a silent memory guard: if
+``.arbor/memory.md`` is missing, empty, or has no meaningful ``In-flight``
 entry, it writes a generic resume pointer and returns non-blocking JSON.
 
 Set ``ARBOR_STOP_MEMORY_HYGIENE_MODE=block`` to opt into the older blocking
@@ -21,7 +20,7 @@ to refresh ``.arbor/memory.md`` before the turn truly ends.
 
 The adapter still self-gates:
 
-* ``stop_hook_active`` is honored first -- once Claude is already continuing
+* ``stop_hook_active`` is honored first -- once the runtime is already continuing
   because of this hook, the adapter allows the stop so it can never loop.
 * Projects without an ``.arbor`` directory are not Arbor-managed; the
   adapter stays silent rather than blocking unrelated repositories.
@@ -89,9 +88,10 @@ def allow_stop() -> int:
 
 
 def resolve_plugin_root() -> Path:
-    env = os.environ.get("CLAUDE_PLUGIN_ROOT")
-    if env:
-        return Path(env).resolve()
+    for env_name in ("ARBOR_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "PLUGIN_ROOT"):
+        env = os.environ.get(env_name)
+        if env:
+            return Path(env).resolve()
     return Path(__file__).resolve().parent.parent
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Register Arbor hook intents in project-local hook configuration."""
+"""Register Arbor runtime hooks in project-local hook configuration."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from arbor_project_state import (
     CLAUDE_HOOKS_DIR,
     CLAUDE_SETTINGS_PATH,
     CODEX_HOOK_CONFIG_PATH,
+    CODEX_HOOKS_DIR,
     INSTALL_RUNTIME_CLAUDE,
     INSTALL_RUNTIME_CODEX,
     PROJECT_GUIDE_PATH,
@@ -24,10 +25,11 @@ from arbor_project_state import (
     resolve_project_root,
 )
 
-HOOK_CONFIG_VERSION = 1
 RUNTIME_AUTO = "auto"
 RUNTIME_BOTH = "both"
 RUNTIME_CHOICES = (RUNTIME_AUTO, RUNTIME_BOTH, INSTALL_RUNTIME_CODEX, INSTALL_RUNTIME_CLAUDE)
+CODEX_SESSION_START_WRAPPER = CODEX_HOOKS_DIR / "arbor-session-start"
+CODEX_STOP_WRAPPER = CODEX_HOOKS_DIR / "arbor-stop-memory-hygiene"
 CLAUDE_SESSION_START_WRAPPER = CLAUDE_HOOKS_DIR / "arbor-session-start"
 CLAUDE_STOP_WRAPPER = CLAUDE_HOOKS_DIR / "arbor-stop-memory-hygiene"
 
@@ -470,10 +472,45 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
 ]
 
 ARBOR_HOOK_IDS = {hook["id"] for hook in ARBOR_HOOKS}
+ARBOR_CODEX_COMMAND_MARKERS = (
+    ".codex/hooks/arbor-session-start",
+    ".codex/hooks/arbor-stop-memory-hygiene",
+)
 ARBOR_CLAUDE_COMMAND_MARKERS = (
     ".claude/hooks/arbor-session-start",
     ".claude/hooks/arbor-stop-memory-hygiene",
 )
+CODEX_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
+    "SessionStart": [
+        {
+            "matcher": "startup|resume",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": (
+                        'python3 "$(git rev-parse --show-toplevel 2>/dev/null || pwd)'
+                        '/.codex/hooks/arbor-session-start"'
+                    ),
+                    "statusMessage": "Loading Arbor startup context",
+                }
+            ],
+        }
+    ],
+    "Stop": [
+        {
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": (
+                        'python3 "$(git rev-parse --show-toplevel 2>/dev/null || pwd)'
+                        '/.codex/hooks/arbor-stop-memory-hygiene"'
+                    ),
+                    "timeout": 30,
+                }
+            ],
+        }
+    ],
+}
 CLAUDE_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
     "SessionStart": [
         {
@@ -531,9 +568,16 @@ def claude_hook_wrapper_path(root: Path, relative_path: Path) -> Path:
         raise HookRegistrationError(str(exc)) from exc
 
 
-def load_hook_config(path: Path) -> dict[str, Any]:
+def codex_hook_wrapper_path(root: Path, relative_path: Path) -> Path:
+    try:
+        return project_path(resolve_project_root(root), relative_path)
+    except ValueError as exc:
+        raise HookRegistrationError(str(exc)) from exc
+
+
+def load_codex_hook_config(path: Path) -> dict[str, Any]:
     if not path.exists():
-        return {"version": HOOK_CONFIG_VERSION, "hooks": []}
+        return {}
     if not path.is_file():
         raise HookRegistrationError(f"cannot register hooks at {path}: expected a file but found a directory")
     try:
@@ -544,22 +588,31 @@ def load_hook_config(path: Path) -> dict[str, Any]:
         raise HookRegistrationError(f"cannot read {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise HookRegistrationError(f"cannot register hooks at {path}: expected a JSON object")
-    hooks = data.get("hooks", [])
-    if not isinstance(hooks, list):
-        raise HookRegistrationError(f"cannot register hooks at {path}: expected 'hooks' to be a list")
     return data
 
 
-def merge_arbor_hooks(config: dict[str, Any]) -> dict[str, Any]:
+def is_legacy_arbor_intent(hook: Any) -> bool:
+    return isinstance(hook, dict) and hook.get("owner") == "arbor" and hook.get("id") in ARBOR_HOOK_IDS
+
+
+def normalize_codex_hook_config(config: dict[str, Any]) -> dict[str, Any]:
     merged = deepcopy(config)
-    merged.setdefault("version", HOOK_CONFIG_VERSION)
-    existing_hooks = merged.get("hooks", [])
-    preserved_hooks = [
-        hook
-        for hook in existing_hooks
-        if not (isinstance(hook, dict) and hook.get("owner") == "arbor" and hook.get("id") in ARBOR_HOOK_IDS)
-    ]
-    merged["hooks"] = [*preserved_hooks, *deepcopy(ARBOR_HOOKS)]
+    existing_hooks = merged.get("hooks", {})
+    if existing_hooks is None:
+        merged["hooks"] = {}
+        return merged
+    if isinstance(existing_hooks, list):
+        non_arbor = [hook for hook in existing_hooks if not is_legacy_arbor_intent(hook)]
+        if non_arbor:
+            raise HookRegistrationError(
+                "cannot convert legacy Codex hook intent list: non-Arbor list entries cannot be preserved "
+                "in Codex's executable hook schema"
+            )
+        merged.pop("version", None)
+        merged["hooks"] = {}
+        return merged
+    if not isinstance(existing_hooks, dict):
+        raise HookRegistrationError("cannot register Codex hooks: expected 'hooks' to be an object")
     return merged
 
 
@@ -586,6 +639,13 @@ def load_claude_settings(path: Path) -> dict[str, Any]:
     return data
 
 
+def is_arbor_codex_handler(handler: Any) -> bool:
+    if not isinstance(handler, dict):
+        return False
+    command = str(handler.get("command", ""))
+    return any(marker in command for marker in ARBOR_CODEX_COMMAND_MARKERS)
+
+
 def is_arbor_claude_handler(handler: Any) -> bool:
     if not isinstance(handler, dict):
         return False
@@ -593,7 +653,11 @@ def is_arbor_claude_handler(handler: Any) -> bool:
     return any(marker in command for marker in ARBOR_CLAUDE_COMMAND_MARKERS)
 
 
-def remove_existing_arbor_claude_handlers(hooks: dict[str, Any]) -> dict[str, Any]:
+def remove_existing_arbor_handlers(
+    hooks: dict[str, Any],
+    *,
+    is_arbor_handler: Any,
+) -> dict[str, Any]:
     cleaned: dict[str, Any] = {}
     for event, groups in hooks.items():
         if not isinstance(groups, list):
@@ -604,7 +668,7 @@ def remove_existing_arbor_claude_handlers(hooks: dict[str, Any]) -> dict[str, An
             if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
                 new_groups.append(group)
                 continue
-            filtered_handlers = [handler for handler in group["hooks"] if not is_arbor_claude_handler(handler)]
+            filtered_handlers = [handler for handler in group["hooks"] if not is_arbor_handler(handler)]
             if filtered_handlers:
                 updated = deepcopy(group)
                 updated["hooks"] = filtered_handlers
@@ -612,6 +676,31 @@ def remove_existing_arbor_claude_handlers(hooks: dict[str, Any]) -> dict[str, An
         if new_groups:
             cleaned[event] = new_groups
     return cleaned
+
+
+def remove_existing_arbor_codex_handlers(hooks: dict[str, Any]) -> dict[str, Any]:
+    return remove_existing_arbor_handlers(hooks, is_arbor_handler=is_arbor_codex_handler)
+
+
+def remove_existing_arbor_claude_handlers(hooks: dict[str, Any]) -> dict[str, Any]:
+    return remove_existing_arbor_handlers(hooks, is_arbor_handler=is_arbor_claude_handler)
+
+
+def merge_codex_project_hooks(config: dict[str, Any]) -> dict[str, Any]:
+    merged = normalize_codex_hook_config(config)
+    existing_hooks = merged.get("hooks", {})
+    if existing_hooks is None:
+        existing_hooks = {}
+    if not isinstance(existing_hooks, dict):
+        raise HookRegistrationError("cannot register Codex hooks: expected 'hooks' to be an object")
+    hooks = remove_existing_arbor_codex_handlers(existing_hooks)
+    for event, groups in CODEX_PROJECT_HOOKS.items():
+        existing_groups = hooks.get(event, [])
+        if not isinstance(existing_groups, list):
+            raise HookRegistrationError(f"cannot register Codex hooks: expected hooks.{event} to be a list")
+        hooks[event] = [*existing_groups, *deepcopy(groups)]
+    merged["hooks"] = hooks
+    return merged
 
 
 def merge_claude_project_hooks(settings: dict[str, Any]) -> dict[str, Any]:
@@ -631,14 +720,15 @@ def merge_claude_project_hooks(settings: dict[str, Any]) -> dict[str, Any]:
     return merged
 
 
-def render_claude_hook_wrapper(adapter_name: str) -> str:
+def render_project_hook_wrapper(adapter_name: str, runtime: str) -> str:
+    runtime_label = "Claude Code" if runtime == INSTALL_RUNTIME_CLAUDE else "Codex"
+    cache_home = f".{runtime}"
     return f'''#!/usr/bin/env python3
-"""Project-local Arbor Claude Code hook wrapper.
+"""Project-local Arbor {runtime_label} hook wrapper.
 
-This wrapper is installed under ``.claude/hooks`` by Arbor initialization.
+This wrapper is installed under the project's runtime-specific hook directory.
 It locates the enabled Arbor plugin cache at runtime and delegates to the
-shared adapter script so project-level Claude hooks mirror Codex's
-project-local hook setup without duplicating adapter logic.
+shared adapter script so project-local hooks do not duplicate adapter logic.
 """
 
 from __future__ import annotations
@@ -650,6 +740,7 @@ from pathlib import Path
 
 
 ADAPTER_NAME = "{adapter_name}"
+CACHE_HOME = "{cache_home}"
 
 
 def version_key(path: Path) -> tuple[int, ...]:
@@ -664,10 +755,13 @@ def version_key(path: Path) -> tuple[int, ...]:
 
 def candidate_roots() -> list[Path]:
     roots: list[Path] = []
-    env_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
-    if env_root:
-        roots.append(Path(env_root).expanduser().resolve())
-    cache = Path.home() / ".claude" / "plugins" / "cache" / "arbor" / "arbor"
+    for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
+        env_root = os.environ.get(env_name)
+        if env_root:
+            root = Path(env_root).expanduser().resolve()
+            if root not in roots:
+                roots.append(root)
+    cache = Path.home() / CACHE_HOME / "plugins" / "cache" / "arbor" / "arbor"
     if cache.is_dir():
         roots.extend(sorted((child.resolve() for child in cache.iterdir() if child.is_dir()), key=version_key, reverse=True))
     return roots
@@ -678,7 +772,7 @@ def resolve_adapter() -> tuple[Path, Path]:
         adapter = root / "hooks" / ADAPTER_NAME
         if adapter.is_file():
             return root, adapter
-    raise RuntimeError(f"could not locate Arbor Claude hook adapter {{ADAPTER_NAME!r}}")
+    raise RuntimeError(f"could not locate Arbor hook adapter {{ADAPTER_NAME!r}}")
 
 
 def main() -> int:
@@ -688,6 +782,8 @@ def main() -> int:
         print(f"arbor project hook: {{exc}}", file=sys.stderr)
         return 1
     env = os.environ.copy()
+    env["ARBOR_PLUGIN_ROOT"] = str(root)
+    env["PLUGIN_ROOT"] = str(root)
     env["CLAUDE_PLUGIN_ROOT"] = str(root)
     proc = subprocess.run([sys.executable, str(adapter)], input=sys.stdin.read(), text=True, env=env, check=False)
     return proc.returncode
@@ -743,9 +839,22 @@ def register_codex_project_hooks(root: Path, dry_run: bool = False) -> list[Hook
     root = root.resolve()
     path = hook_config_path(root)
 
-    config = load_hook_config(path)
-    merged = merge_arbor_hooks(config)
-    return [write_json_file(path, config, merged, dry_run, "registered 3 Arbor Codex hook intents")]
+    config = load_codex_hook_config(path)
+    merged = merge_codex_project_hooks(config)
+    actions = [
+        write_json_file(path, config, merged, dry_run, "registered 2 Arbor Codex executable project hooks"),
+        ensure_executable_file(
+            codex_hook_wrapper_path(root, CODEX_SESSION_START_WRAPPER),
+            render_project_hook_wrapper("session-start", INSTALL_RUNTIME_CODEX),
+            dry_run,
+        ),
+        ensure_executable_file(
+            codex_hook_wrapper_path(root, CODEX_STOP_WRAPPER),
+            render_project_hook_wrapper("stop-memory-hygiene", INSTALL_RUNTIME_CODEX),
+            dry_run,
+        ),
+    ]
+    return actions
 
 
 def register_claude_project_hooks(root: Path, dry_run: bool = False) -> list[HookRegistrationAction]:
@@ -757,12 +866,12 @@ def register_claude_project_hooks(root: Path, dry_run: bool = False) -> list[Hoo
         write_json_file(settings_path, settings, merged, dry_run, "registered 2 Arbor Claude project hooks"),
         ensure_executable_file(
             claude_hook_wrapper_path(root, CLAUDE_SESSION_START_WRAPPER),
-            render_claude_hook_wrapper("session-start"),
+            render_project_hook_wrapper("session-start", INSTALL_RUNTIME_CLAUDE),
             dry_run,
         ),
         ensure_executable_file(
             claude_hook_wrapper_path(root, CLAUDE_STOP_WRAPPER),
-            render_claude_hook_wrapper("stop-memory-hygiene"),
+            render_project_hook_wrapper("stop-memory-hygiene", INSTALL_RUNTIME_CLAUDE),
             dry_run,
         ),
     ]
@@ -805,7 +914,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Which project hook surface to initialize. auto detects the installed plugin cache "
             "runtime and falls back to Codex in development checkouts; both initializes .codex "
-            "and .claude project hook files."
+            "hooks plus .claude project hook files."
         ),
     )
     return parser

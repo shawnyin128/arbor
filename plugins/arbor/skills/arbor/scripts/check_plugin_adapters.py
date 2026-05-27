@@ -104,6 +104,9 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         "Do not assume `.codex/hooks.json` has already injected",
         "`AGENTS.md` Startup Protocol",
         "Runtime-specific adapter initialization is separate from canonical project state",
+        ".codex/hooks/",
+        "trust those hooks through `/hooks`",
+        "non-interactive `codex exec` runs are not a reliable proof",
         "existing `AGENTS.md` and `.arbor/memory.md` are not proof that the Claude adapter was initialized",
         "`.codex/hooks.json` is not a Claude hook registration",
         ".claude/settings.json",
@@ -121,6 +124,32 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         ".claude/hooks",
     ):
         check(errors, term in init_script, f"init_project_memory missing cross-runtime initialization term `{term}`")
+
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is not None:
+        readme = (repo_root / "README.md").read_text(encoding="utf-8")
+        for term in (
+            "trusted interactive Codex session",
+            "non-interactive `codex exec` runs are not a reliable hook runtime proof",
+        ):
+            check(errors, contains_term(readme, term), f"README missing Codex hook runtime proof term `{term}`")
+
+    project_hooks = (plugin_root / "skills" / "arbor" / "references" / "project-hooks-template.md").read_text(
+        encoding="utf-8"
+    )
+    real_review = (plugin_root / "skills" / "arbor" / "references" / "real-workflow-chain-review.md").read_text(
+        encoding="utf-8"
+    )
+    for label, text in (
+        ("project hook contract", project_hooks),
+        ("real workflow chain review", real_review),
+    ):
+        for term in (
+            "trusted interactive Codex",
+            "`codex exec`",
+            "not a reliable",
+        ):
+            check(errors, term in text, f"{label} missing Codex hook runtime proof term `{term}`")
 
     for manifest_name, manifest in (("Codex", codex), ("Claude", claude)):
         description = str(manifest.get("description", ""))
@@ -149,7 +178,7 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
     sys.path.insert(0, str(scripts_dir))
     try:
         from init_project_memory import CLAUDE_BRIDGE_OFF, CLAUDE_BRIDGE_ON, init_project_memory
-        from register_project_hooks import INSTALL_RUNTIME_CLAUDE, INSTALL_RUNTIME_CODEX, register_project_hooks
+        from register_project_hooks import ARBOR_HOOKS, INSTALL_RUNTIME_CLAUDE, INSTALL_RUNTIME_CODEX, register_project_hooks
     finally:
         sys.path.pop(0)
 
@@ -168,7 +197,72 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
 
         register_project_hooks(project, runtime=INSTALL_RUNTIME_CODEX)
         codex_hooks = project / ".codex" / "hooks.json"
+        codex_session = project / ".codex" / "hooks" / "arbor-session-start"
+        codex_stop = project / ".codex" / "hooks" / "arbor-stop-memory-hygiene"
         check(errors, codex_hooks.is_file(), "Codex hook registration should create .codex/hooks.json")
+        check(errors, codex_session.is_file(), "Codex hook registration should create .codex/hooks/arbor-session-start")
+        check(errors, codex_stop.is_file(), "Codex hook registration should create .codex/hooks/arbor-stop-memory-hygiene")
+        check(errors, os.access(codex_session, os.X_OK), "Codex SessionStart wrapper should be executable")
+        check(errors, os.access(codex_stop, os.X_OK), "Codex Stop wrapper should be executable")
+        codex_settings = json.loads(codex_hooks.read_text(encoding="utf-8"))
+        codex_text = json.dumps(codex_settings)
+        for term in ("SessionStart", "Stop", ".codex/hooks/arbor-session-start", ".codex/hooks/arbor-stop-memory-hygiene"):
+            check(errors, term in codex_text, f"Codex project hook settings missing `{term}`")
+        for forbidden in ('"owner": "arbor"', '"entrypoint":'):
+            check(errors, forbidden not in codex_text, f"Codex project hook config must not contain legacy intent field `{forbidden}`")
+
+        codex_env = os.environ.copy()
+        codex_env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
+        session_payload = {
+            "session_id": "codex-project-wrapper-smoke",
+            "transcript_path": str(project / "transcript.jsonl"),
+            "cwd": str(project),
+            "hook_event_name": "SessionStart",
+            "source": "startup",
+        }
+        session_proc = subprocess.run(
+            [str(codex_session)],
+            input=json.dumps(session_payload),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            env=codex_env,
+        )
+        check(errors, session_proc.returncode == 0, f"Codex SessionStart wrapper smoke failed: {session_proc.stderr.strip()}")
+        check(
+            errors,
+            "# Project Startup Context" in session_proc.stdout,
+            "Codex SessionStart wrapper should emit Arbor startup context",
+        )
+
+        _git(["init"], project)
+        _git(["add", "-A"], project)
+        _git(["commit", "-m", "init"], project)
+        (project / "dirty.txt").write_text("dirty codex hook smoke\n", encoding="utf-8")
+        stop_payload = {
+            "session_id": "codex-project-wrapper-smoke",
+            "transcript_path": str(project / "transcript.jsonl"),
+            "cwd": str(project),
+            "hook_event_name": "Stop",
+            "stop_hook_active": False,
+        }
+        stop_proc = subprocess.run(
+            [str(codex_stop)],
+            input=json.dumps(stop_payload),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            env=codex_env,
+        )
+        check(errors, stop_proc.returncode == 0, f"Codex Stop wrapper smoke failed: {stop_proc.stderr.strip()}")
+        assert_stop_allows(errors, stop_proc, "Codex Stop wrapper smoke")
+        check(
+            errors,
+            "stop hook fallback: dirty Arbor worktree detected before stop" in memory.read_text(encoding="utf-8"),
+            "Codex Stop wrapper should quietly add a fallback In-flight memory entry when one is missing",
+        )
 
         custom_agents = "# Custom Guide\n\nKeep me.\n"
         agents.write_text(custom_agents, encoding="utf-8")
@@ -182,7 +276,9 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         check(errors, claude_session.is_file(), "Claude hook initialization should create .claude/hooks/arbor-session-start")
         check(errors, claude_stop.is_file(), "Claude hook initialization should create .claude/hooks/arbor-stop-memory-hygiene")
         check(errors, agents.read_text(encoding="utf-8") == custom_agents, "Claude bridge initialization must not overwrite AGENTS.md")
-        check(errors, codex_hooks.is_file(), "Claude follow-up initialization must not remove Codex hook intents")
+        check(errors, codex_hooks.is_file(), "Claude follow-up initialization must not remove Codex hook config")
+        check(errors, codex_session.is_file(), "Claude follow-up initialization must not remove Codex SessionStart wrapper")
+        check(errors, codex_stop.is_file(), "Claude follow-up initialization must not remove Codex Stop wrapper")
         settings = json.loads(claude_settings.read_text(encoding="utf-8"))
         settings_text = json.dumps(settings)
         for term in ("SessionStart", "Stop", ".claude/hooks/arbor-session-start", ".claude/hooks/arbor-stop-memory-hygiene"):
@@ -192,6 +288,21 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             any(action.path == resolved_claude and action.status == "created" for action in actions),
             "Claude follow-up initialization should report created CLAUDE.md",
         )
+
+    with tempfile.TemporaryDirectory(prefix="arbor-codex-legacy-hooks-") as tmp:
+        project = Path(tmp) / "project"
+        project.mkdir()
+        legacy_path = project / ".codex" / "hooks.json"
+        legacy_path.parent.mkdir()
+        legacy_path.write_text(json.dumps({"version": 1, "hooks": ARBOR_HOOKS}, indent=2), encoding="utf-8")
+        register_project_hooks(project, runtime=INSTALL_RUNTIME_CODEX)
+        migrated = json.loads(legacy_path.read_text(encoding="utf-8"))
+        migrated_text = json.dumps(migrated)
+        check(errors, isinstance(migrated.get("hooks"), dict), "Legacy Codex intent hooks should migrate to executable schema")
+        for term in ("SessionStart", "Stop", ".codex/hooks/arbor-session-start", ".codex/hooks/arbor-stop-memory-hygiene"):
+            check(errors, term in migrated_text, f"migrated Codex hook settings missing `{term}`")
+        for forbidden in ('"owner": "arbor"', '"entrypoint":'):
+            check(errors, forbidden not in migrated_text, f"migrated Codex hook config must not contain `{forbidden}`")
 
 
 def validate_project_hook_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -537,6 +648,7 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
 
 def run_session_start(plugin_root: Path, project_root: Path, source: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
+    env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
     payload = {
         "session_id": "adapter-smoke",
@@ -584,6 +696,7 @@ def run_stop_hook(
     memory_hygiene_mode: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
+    env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
     if memory_hygiene_mode is not None:
         env["ARBOR_STOP_MEMORY_HYGIENE_MODE"] = memory_hygiene_mode

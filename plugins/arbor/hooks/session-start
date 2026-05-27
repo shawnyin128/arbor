@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Claude Code SessionStart hook adapter for Arbor.
+"""SessionStart hook adapter for Arbor on Codex and Claude Code.
 
-Reads Claude Code hook event JSON from stdin, invokes the shared Arbor
-startup-context script with the project root, applies a truncation policy
-sized for Claude Code's ``additionalContext`` injection cap (10K chars),
-and emits the trimmed packet to stdout. Plain stdout from a SessionStart
-hook is automatically treated as ``additionalContext`` by Claude Code, so
-no JSON envelope is needed for the success path.
+Reads hook event JSON from stdin, invokes the shared Arbor startup-context
+script with the project root, applies a conservative truncation policy sized
+for runtime context injection, and emits the trimmed packet to stdout. Plain
+stdout from a SessionStart hook is automatically treated as additional context
+by both Codex and Claude Code, so no JSON envelope is needed for the success
+path.
 
 Soft-fails on stderr with a non-zero exit code rather than blocking the
 session: a missing ``cwd``, an unreadable shared script, or a downstream
@@ -43,9 +43,10 @@ def _emit_error(message: str) -> None:
 
 
 def resolve_plugin_root() -> Path:
-    env = os.environ.get("CLAUDE_PLUGIN_ROOT")
-    if env:
-        return Path(env).resolve()
+    for env_name in ("ARBOR_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "PLUGIN_ROOT"):
+        env = os.environ.get(env_name)
+        if env:
+            return Path(env).resolve()
     return Path(__file__).resolve().parent.parent
 
 

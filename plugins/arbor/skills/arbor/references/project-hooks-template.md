@@ -3,6 +3,7 @@
 Arbor registers runtime-specific project-local hooks:
 
 - Codex: `.codex/hooks.json`
+- Codex wrapper scripts: `.codex/hooks/`
 - Claude Code: `.claude/settings.json` plus wrappers under `.claude/hooks/`
 
 Hook files are visible project artifacts, not user-global state. Each runtime
@@ -28,6 +29,7 @@ current repository.
    - Positive cases include brainstorm/develop/evaluate/converge/release artifact changes, failed checks, scope changes, local cache sync, ignored review or fixture edits, and any pause/stop with dirty Arbor work.
    - Negative cases include clean git status, direct one-off explanations, read-only inspection with no unresolved Arbor state, committed-and-pruned work, AGENTS-only stable guide updates, explicit no-write turns, and unrelated dirty files outside Arbor scope.
    - The registered policy includes a machine-checkable `case_corpus`; adapter validation checks trigger/suppress counts, unique ids, required fields, and required scenario classes.
+   - Codex mapping: the project hook in `.codex/hooks.json` calls the `.codex/hooks/arbor-stop-memory-hygiene` wrapper, which delegates to `hooks/stop-memory-hygiene`. Codex requires configured command hooks to be trusted through `/hooks`; an initialized file alone is not proof the hook ran.
    - Claude Code mapping: the project hook in `.claude/settings.json` calls the `.claude/hooks/arbor-stop-memory-hygiene` wrapper, which delegates to `hooks/stop-memory-hygiene`. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard for dirty Arbor worktrees: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the packet as the block reason.
 
 3. `arbor.goal_constraint_drift`
@@ -46,7 +48,11 @@ current repository.
 - Project root must be resolved before registering or executing hooks.
 - Hook state belongs in the project.
 - Existing non-Arbor hooks must be preserved in both `.codex/hooks.json` and `.claude/settings.json`.
-- Only canonical hooks with `owner=arbor` are replaced during registration; non-Arbor hooks are preserved even if ids collide.
+- Codex re-registration replaces only Arbor wrapper commands under `.codex/hooks/arbor-*`; unrelated Codex hook events, matcher groups, handlers, and settings are preserved.
+- Legacy Arbor-only Codex hook intent lists are converted to Codex's executable hook schema during registration.
 - Claude project hook re-registration replaces only Arbor wrapper commands under `.claude/hooks/arbor-*`; unrelated Claude hooks and settings are preserved.
 - Re-registering Arbor hooks must be idempotent.
 - Hook execution fixes workflow order, not read depth.
+- Codex hook execution proof must come from a trusted interactive Codex or
+  desktop session; non-interactive `codex exec` is useful for ordinary workflow
+  replay but is not a reliable project-hook firing oracle.

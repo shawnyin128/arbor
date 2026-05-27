@@ -14,7 +14,7 @@ Fix the workflow order, not the agent's reading depth. Keep Arbor outcome-first:
 When initializing, resuming, or orienting in a project:
 
 1. Ensure `AGENTS.md`, `.arbor/memory.md`, and the current runtime's bootstrap files exist. Use `scripts/init_project_memory.py --root <project-root>` when useful, even when `AGENTS.md` and `.arbor/memory.md` already exist. This explicit initialization flow migrates legacy `.codex/memory.md` by copying it to `.arbor/memory.md` when the canonical file is missing. Runtime-specific adapter initialization is separate from canonical project state: a project first initialized from Codex still needs a later Claude Code initialization to create the short `CLAUDE.md` bridge pointing at `AGENTS.md` and `.arbor/memory.md`. When the script lives inside a Claude Code plugin cache, it creates that bridge automatically; the `--claude-bridge on|off` flag overrides this default.
-2. Initialize hooks through the current runtime's own project surface. On Codex, register project-local Arbor hook intents with `scripts/register_project_hooks.py --root <project-root>` when useful; this writes `.codex/hooks.json` in the project and preserves unrelated hook entries. On Claude Code, the same script writes `.claude/settings.json` and project-local wrappers under `.claude/hooks/`. `.codex/hooks.json` is not a Claude hook registration, and installed plugin hooks are not a substitute for project-level `.claude` initialization.
+2. Initialize hooks through the current runtime's own project surface. On Codex, register project-local Arbor hooks with `scripts/register_project_hooks.py --root <project-root>` when useful; this writes executable `.codex/hooks.json` entries plus project-local wrappers under `.codex/hooks/` and preserves unrelated hook entries. Codex may still require the user to trust those hooks through `/hooks`, so file presence is not proof that a hook fired. On Claude Code, the same script writes `.claude/settings.json` and project-local wrappers under `.claude/hooks/`. `.codex/hooks.json` is not a Claude hook registration, and installed plugin hooks are not a substitute for project-level `.claude` initialization.
 3. Load startup context in this order:
    - `AGENTS.md`
    - formatted `git log`
@@ -130,27 +130,28 @@ The advisory is not an automatic reset mechanism. It must not automatically clea
 
 Arbor runs the same workflow on Codex and Claude Code, but each runtime carries it through a different project-local entrypoint surface. The shared project state is always `AGENTS.md` plus `.arbor/memory.md`; everything else is adapter-side and not universal across runtimes.
 
-- **Codex** auto-loads `AGENTS.md` natively. Project-level hook intents are registered in `.codex/hooks.json` via `scripts/register_project_hooks.py`, but they are hook contracts rather than proof that startup context has already entered the model input. The `AGENTS.md` Startup Protocol is the reliable Codex bootstrap and must tell the agent to run or manually reproduce `arbor.session_startup_context` on fresh/resumed/project-overview turns.
+- **Codex** auto-loads `AGENTS.md` natively. Project-level executable hooks are registered in `.codex/hooks.json` with wrappers under `.codex/hooks/` via `scripts/register_project_hooks.py`, but Codex may skip untrusted hooks until the user reviews them in `/hooks`. Validate hook firing in a trusted interactive Codex or desktop session; non-interactive `codex exec` runs are not a reliable proof that project hooks fired. The `AGENTS.md` Startup Protocol is the reliable Codex bootstrap and must tell the agent to run or manually reproduce `arbor.session_startup_context` on fresh/resumed/project-overview turns.
 - **Claude Code** reads `CLAUDE.md` natively. When `init_project_memory.py` runs from a Claude Code plugin install, it generates a short `CLAUDE.md` bridge that points at `AGENTS.md` and `.arbor/memory.md` (the canonical Arbor state). This must still happen when Codex already created the canonical files; existing `AGENTS.md` and `.arbor/memory.md` are not proof that the Claude adapter was initialized. Project-level Claude hooks must be registered under `.claude/settings.json` with wrappers under `.claude/hooks/`; `.codex/hooks.json` and plugin-bundled hooks are not proof that Claude project hooks are active. Goal/constraint drift is not auto-fired on Claude Code (no native event maps to it); invoke it through the user-driven workflows above.
 
 The runtime is auto-detected from the script's installed cache path (`~/.codex/plugins/cache/...` vs `~/.claude/plugins/cache/...`). Override with `--claude-bridge on|off` on `init_project_memory.py` when needed.
 
 ## Project Hooks
 
-Arbor hook registration is project-level. `.codex/hooks.json` is the Codex project contract for three hook intents:
+Arbor hook registration is project-level. `.codex/hooks.json` plus `.codex/hooks/` is the Codex project surface for two executable hooks:
 
-- `arbor.session_startup_context`: load startup context in the required order.
-- `arbor.in_session_memory_hygiene`: emit memory hygiene context so the agent can refresh `.arbor/memory.md` when uncommitted work or conversation state makes it stale.
-- `arbor.goal_constraint_drift`: emit AGENTS drift context so the agent can update stable `AGENTS.md` goal, constraint, or map sections when needed.
+- `SessionStart`: delegates to `hooks/session-start`, which loads startup context in the required order.
+- `Stop`: delegates to `hooks/stop-memory-hygiene`, which quietly refreshes `.arbor/memory.md` fallback state when a dirty Arbor worktree would otherwise stop without a resume pointer.
+
+The underlying Arbor hook intents remain `arbor.session_startup_context`, `arbor.in_session_memory_hygiene`, and `arbor.goal_constraint_drift`, but Codex has no native project-guide drift event. Guide drift stays skill-driven through `run_agents_guide_drift_hook.py`.
 
 The memory hygiene hook should be treated as high-recall around dirty Arbor workflow state. Prefer triggering it before stops, handoffs, release gates, commits, cache syncs, failed checks, or user review checkpoints when Arbor-managed changes are uncommitted. Suppress it for clean direct answers, read-only inspections with no unresolved Arbor state, explicit no-write turns, and unrelated dirty files outside Arbor scope.
 
 Do not store Arbor hook state in user-global memory. Re-register hooks when needed; registration is idempotent and should preserve unrelated project hooks.
 
-Claude Code project hooks are registered in `.claude/settings.json` and call wrappers under `.claude/hooks/`. Those wrappers locate the installed Arbor plugin cache and delegate to the shared adapter scripts:
+Codex project hooks are registered in `.codex/hooks.json` and call wrappers under `.codex/hooks/`. Claude Code project hooks are registered in `.claude/settings.json` and call wrappers under `.claude/hooks/`. Those wrappers locate the installed Arbor plugin cache and delegate to the shared adapter scripts:
 
-- `hooks/session-start` (`SessionStart`) calls `run_session_startup_hook.py` and applies a runtime-specific injection budget so the rendered packet stays under Claude Code's `additionalContext` cap.
-- `hooks/stop-memory-hygiene` (`Stop`) is the Claude Code mapping of `arbor.in_session_memory_hygiene`. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard for dirty Arbor worktrees: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the `run_memory_hygiene_hook.py` packet as the block reason.
+- `hooks/session-start` (`SessionStart`) calls `run_session_startup_hook.py` and applies a conservative runtime injection budget.
+- `hooks/stop-memory-hygiene` (`Stop`) maps `arbor.in_session_memory_hygiene` onto each runtime's Stop event. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard for dirty Arbor worktrees: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the `run_memory_hygiene_hook.py` packet as the block reason.
 
 `arbor.goal_constraint_drift` has no native Claude Code event; it stays user/skill-driven there.
 
@@ -175,5 +176,5 @@ Claude Code project hooks are registered in `.claude/settings.json` and call wra
 - `scripts/run_memory_hygiene_hook.py`: execute Hook 2 and forward optional agent-selected diff arguments
 - `scripts/run_agents_guide_drift_hook.py`: execute Hook 3 and forward optional agent-selected project doc paths
 - `scripts/check_process_state.py`: validate Arbor workflow state facts without mutating implementation or routing decisions
-- `scripts/register_project_hooks.py`: create or update `.codex/hooks.json` on Codex, or `.claude/settings.json` plus `.claude/hooks/` wrappers on Claude Code
+- `scripts/register_project_hooks.py`: create or update `.codex/hooks.json` plus `.codex/hooks/` wrappers on Codex, or `.claude/settings.json` plus `.claude/hooks/` wrappers on Claude Code
 - `scripts/check_real_workflow_chains.py`: execute real Codex/Claude workflow chain review cases

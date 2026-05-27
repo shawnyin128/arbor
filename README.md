@@ -9,7 +9,7 @@ Arbor creates and maintains:
 
 - `AGENTS.md`: durable project guide and map.
 - `.arbor/memory.md`: short-term unresolved session memory.
-- `.codex/hooks.json`: Codex project hook intent file when initialized.
+- `.codex/hooks.json` and `.codex/hooks/`: Codex project hook files when initialized.
 - `.claude/settings.json` and `.claude/hooks/`: Claude Code project hook files
   when initialized in Claude Code.
 - `CLAUDE.md`: Claude Code bridge to `AGENTS.md` and `.arbor/memory.md`.
@@ -106,7 +106,8 @@ Managed workflow state lives in:
 Use `arbor` for startup and project context:
 
 - initialize `AGENTS.md`, `.arbor/memory.md`, and runtime-specific adapters;
-- register Codex project hook intents in `.codex/hooks.json`;
+- register Codex project hooks in `.codex/hooks.json` with wrappers under
+  `.codex/hooks/`;
 - register Claude Code project hooks in `.claude/settings.json` with wrappers
   under `.claude/hooks/`, and create the `CLAUDE.md` bridge in Claude Code even
   after Codex already created the canonical Arbor files;
@@ -226,16 +227,17 @@ the version source files match the target version.
 
 ## Hooks
 
-Codex initialization writes three hook intents into target-project
-`.codex/hooks.json`:
+Codex initialization writes executable project hooks into target-project
+`.codex/hooks.json` plus wrappers under `.codex/hooks/`:
 
-- `arbor.session_startup_context`
-- `arbor.in_session_memory_hygiene`
-- `arbor.goal_constraint_drift`
+- `SessionStart`: injects startup context for `startup` and `resume`;
+- `Stop`: defaults to a silent memory guard for dirty Arbor worktrees.
 
-Treat `.codex/hooks.json` as a contract/replay target, not proof that startup
-context has already been injected. `AGENTS.md` remains the reliable native
-bootstrap.
+Codex still requires hook trust through `/hooks`; an initialized
+`.codex/hooks.json` is not proof that startup context or Stop memory hygiene has
+already run. Validate Codex hook firing in a trusted interactive Codex session
+or desktop session; non-interactive `codex exec` runs are not a reliable hook
+runtime proof. `AGENTS.md` remains the reliable native bootstrap.
 
 Claude Code project initialization writes `.claude/settings.json` plus wrappers
 under `.claude/hooks/`:
@@ -295,7 +297,7 @@ automatically.
 Current version:
 
 ```text
-1.0.2
+1.0.3
 ```
 
 Version files:
