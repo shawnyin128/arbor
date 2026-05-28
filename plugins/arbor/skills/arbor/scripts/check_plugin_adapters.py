@@ -592,6 +592,9 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
         "Accept and route as feedback only",
         "does not force a non-feedback request",
         "Do not trigger from keywords alone",
+        "Closure Modes",
+        "Choose the closure mode",
+        "user confirmation question",
         "The next owner is limited to `brainstorm`, `converge`, or direct response",
         "Do not expose `develop`, `evaluate`, or `release` as public next steps",
     ):
@@ -910,11 +913,15 @@ def validate_rendered_checkpoint_contract(plugin_root: Path, errors: list[str]) 
             "Final response preflight",
             "captured final text",
             "prose-only summary",
+            "user confirmation question",
+            "Do not put bullet lists",
         ],
         "skills/feedback/references/feedback-boundary.md": [
             "Do not print the raw `feedback.v1` packet",
             "route fields",
             "terminal-state labels",
+            "Closure Contract",
+            "Next Step` must be a short user question",
             "localized heading equivalents",
             "Final response preflight",
             "prose-only summary",
@@ -1705,6 +1712,14 @@ def validate_release_version_management_contract(plugin_root: Path, errors: list
             "PLUGIN_VERSION",
             'Path.home() / ".codex/plugins/cache/arbor/arbor" / PLUGIN_VERSION',
             'Path.home() / ".claude/plugins/cache/arbor/arbor" / PLUGIN_VERSION',
+            "CODEX_MARKETPLACE_PLUGIN",
+            "CLAUDE_INSTALLED_PLUGINS",
+            "assert_runtime_installation_metadata_current",
+        ],
+        "skills/arbor/references/real-workflow-chain-review.md": [
+            "marketplace snapshots",
+            "installed records",
+            "installed_plugins.json",
         ],
     }
     if repo_root is not None:

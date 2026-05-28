@@ -155,6 +155,8 @@ def plugin_version_from_manifest() -> str:
 PLUGIN_VERSION = plugin_version_from_manifest()
 CODEX_CACHE = Path.home() / ".codex/plugins/cache/arbor/arbor" / PLUGIN_VERSION
 CLAUDE_CACHE = Path.home() / ".claude/plugins/cache/arbor/arbor" / PLUGIN_VERSION
+CODEX_MARKETPLACE_PLUGIN = Path.home() / ".codex/.tmp/marketplaces/arbor/plugins/arbor"
+CLAUDE_INSTALLED_PLUGINS = Path.home() / ".claude/plugins/installed_plugins.json"
 RAW_CHECKPOINT_LEAK_RE = re.compile(
     r"schema_version|```json|\"(?:source|route|ui|evaluation|review_context|release_context)\"\s*:|"
     r"\b(?:brainstorm|feedback|develop|evaluate|converge|release)\.v1\b|"
@@ -165,6 +167,7 @@ RAW_CHECKPOINT_LEAK_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 TABLE_SEPARATOR_RE = re.compile(r"^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$", re.MULTILINE)
+BULLET_LINE_RE = re.compile(r"(?m)^\s*(?:[-*]|\d+[.)])\s+")
 CJK_RE = re.compile(r"[\u3400-\u9fff]")
 SKILL_RENDER_CONTRACTS = {
     "brainstorm": {
@@ -814,6 +817,13 @@ def assert_skill_rendered_checkpoint(skill: str) -> Callable[[CaseContext, Runti
                 "|" in section_text and TABLE_SEPARATOR_RE.search(section_text) is not None,
                 f"{skill} final response section `{section}` must contain a Markdown table",
             )
+        if skill == "feedback":
+            next_text = rendered_section(text, headings, "Next Step")
+            require("?" in next_text, "feedback final response Next Step must ask the user to confirm or provide evidence")
+            require(
+                BULLET_LINE_RE.search(next_text) is None,
+                "feedback final response Next Step must not contain a downstream plan list",
+            )
 
     return _assert
 
@@ -896,6 +906,14 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
     for cache in (CODEX_CACHE, CLAUDE_CACHE):
         require(cache.exists(), f"cache missing: {cache}")
         for rel in (
+            ".codex-plugin/plugin.json",
+            ".claude-plugin/plugin.json",
+            "hooks/session-start",
+            "hooks/stop-memory-hygiene",
+            "skills/arbor/SKILL.md",
+            "skills/arbor/scripts/register_project_hooks.py",
+            "skills/arbor/scripts/run_session_startup_hook.py",
+            "skills/arbor/scripts/run_memory_hygiene_hook.py",
             "skills/brainstorm/SKILL.md",
             "skills/feedback/SKILL.md",
             "skills/develop/SKILL.md",
@@ -917,6 +935,38 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
             cached = cache / rel
             require(cached.exists(), f"cache file missing: {cached}")
             require(source.read_text(encoding="utf-8") == cached.read_text(encoding="utf-8"), f"cache differs from source: {rel}")
+    assert_runtime_installation_metadata_current()
+
+
+def assert_runtime_installation_metadata_current() -> None:
+    if CODEX_MARKETPLACE_PLUGIN.exists():
+        codex_manifest = CODEX_MARKETPLACE_PLUGIN / ".codex-plugin/plugin.json"
+        require(codex_manifest.exists(), f"Codex marketplace plugin manifest missing: {codex_manifest}")
+        data = json.loads(codex_manifest.read_text(encoding="utf-8"))
+        require(
+            data.get("version") == PLUGIN_VERSION,
+            f"Codex marketplace snapshot version {data.get('version')!r} != source manifest version {PLUGIN_VERSION!r}",
+        )
+
+    require(CLAUDE_INSTALLED_PLUGINS.exists(), f"Claude installed plugin registry missing: {CLAUDE_INSTALLED_PLUGINS}")
+    installed = json.loads(CLAUDE_INSTALLED_PLUGINS.read_text(encoding="utf-8"))
+    plugins = installed.get("plugins")
+    require(isinstance(plugins, dict), "Claude installed plugin registry missing plugins object")
+    records = plugins.get("arbor@arbor")
+    require(isinstance(records, list) and records, "Claude installed plugin registry missing arbor@arbor record")
+
+    expected_path = str(CLAUDE_CACHE)
+    summaries = []
+    for record in records:
+        if isinstance(record, dict):
+            summaries.append(f"version={record.get('version')!r} installPath={record.get('installPath')!r}")
+            if record.get("version") == PLUGIN_VERSION and record.get("installPath") == expected_path:
+                return
+    require(
+        False,
+        "Claude installed plugin registry stale for arbor@arbor: "
+        f"expected version={PLUGIN_VERSION!r} installPath={expected_path!r}; found {', '.join(summaries)}",
+    )
 
 
 def assert_session_start_hook(ctx: CaseContext, _: RuntimeResult | None) -> None:

@@ -26,7 +26,32 @@ needed or already available, and the next step in readable language.
 `feedback` is a user-visible routing checkpoint. Do not silently continue into
 `brainstorm` or `converge` in the same final response. Use
 `"continue_policy": "must_stop"` in the checkpoint UI so the user can inspect
-or correct the routing decision before downstream workflow work starts.
+or correct the routing decision before downstream workflow work starts. The
+visible `Next Step` must stop with a user confirmation question for downstream
+workflow routes, not a downstream plan or acceptance-criteria list.
+
+## Closure Modes
+
+Feedback has three normal blocking closure modes before any downstream workflow
+starts:
+
+1. **Unclear or under-evidenced feedback**: when the problem cannot be safely
+   identified, explain the likely interpretation, name the missing evidence or
+   ambiguity, and ask the user what evidence or direction they want to provide.
+2. **Clear broad or design-level issue**: when the issue is well identified but
+   changes scope, requirements, acceptance criteria, proof strength, or a
+   finalized feature's repair target, recommend `brainstorm` with one concise
+   objective and ask whether the user wants to start `brainstorm` with that
+   scope.
+3. **Clear small current-loop repair**: when the issue is well identified,
+   contained within an active/reopenable review context, and does not change the
+   plan, recommend `converge` with one concise repair objective and ask whether
+   the user wants to start `converge` with that scope.
+
+Do not write the downstream plan inside feedback. In particular, do not list
+acceptance criteria, test plans, or multi-step repair instructions in the
+visible feedback checkpoint. Those belong to `brainstorm` or `converge` after
+the user confirms the route.
 
 ## Invocation And Acceptance Contract
 
@@ -70,16 +95,16 @@ close but not identical, follow the same evidence-owner reasoning.
 
 | User request shape | Use `feedback`? | Expected handling |
 | --- | --- | --- |
-| "Bug: the new command still crashes, but we have not created review context for it yet." | Yes. | Route to `brainstorm` so the bug gets scope, acceptance criteria, reproduction notes, and a test plan before repair. |
-| "This bug still happens in the current Arbor feature; fix it and verify it." | Yes, when review context exists. | Route to `converge`, which owns the internal repair and validation loop for the existing feature. |
-| "The evaluator found this failing scenario; keep going." | Yes. | Route to `converge` when the finding is within the accepted plan; route to `brainstorm` if the finding changes requirements or acceptance criteria. |
-| "The reviewer says the acceptance criteria are wrong." | Yes. | Route to `brainstorm` because the feedback changes planning evidence, not implementation evidence. |
+| "Bug: the new command still crashes, but we have not created review context for it yet." | Yes. | Recommend `brainstorm` with a scoped bug-planning objective, then stop and ask whether to start `brainstorm`. |
+| "This bug still happens in the current Arbor feature; fix it and verify it." | Yes, when review context exists. | Recommend `converge` with a scoped repair objective, then stop and ask whether to start `converge`. |
+| "The evaluator found this failing scenario; keep going." | Yes. | Recommend `converge` when the finding is within the accepted plan; recommend `brainstorm` and ask for confirmation if the finding changes requirements or acceptance criteria. |
+| "The reviewer says the acceptance criteria are wrong." | Yes. | Recommend `brainstorm` because the feedback changes planning evidence, then stop and ask whether to start `brainstorm`. |
 | "Your last answer did not answer my question; answer it directly." | Yes. | Respond directly if no workflow artifact, feature state, test plan, or future development decision is affected. |
 | "Run develop" or "Run evaluate" from a user prompt. | Use `feedback` only if the prompt is feedback-shaped. | Route to `converge` when an existing quality loop is present; otherwise route to `brainstorm` or direct correction. Never route to public `develop` or `evaluate`. |
 | "Use brainstorm to plan this new feedback workflow." | No. | Respect the named public planning entrypoint; do not insert feedback just because the word "feedback" appears. |
 | "Use converge to keep fixing the current feature." | No. | Respect the named quality-loop entrypoint when current review context is already clear. |
-| "The released feature regressed after finalization." | Yes. | Route to `brainstorm` unless the user explicitly wants to reopen the same active review loop and the review context is still current. A finalized feature usually needs a new scoped fix plan. |
-| "This feedback could refer to two current features." | Yes. | Return `needs_evidence` and ask for the feature or review document identity; do not guess a quality loop. |
+| "The released feature regressed after finalization." | Yes. | Recommend `brainstorm` unless the user explicitly wants to reopen the same active review loop and the review context is still current. A finalized feature usually needs a new scoped fix plan; stop and ask for confirmation. |
+| "This feedback could refer to two current features." | Yes. | Return `needs_evidence`, state the routing opinion and ambiguity, and ask for the feature or review document identity; do not guess a quality loop. |
 | "What is the project status?" | No. | Answer directly or use `arbor` startup context; do not emit a feedback checkpoint. |
 
 ## Checklist
@@ -116,21 +141,27 @@ close but not identical, follow the same evidence-owner reasoning.
    defects, failed checks, evaluator findings, and repair requests tied to
    existing review context to `converge`; keep prose-only or simple response
    corrections direct.
-9. **Answer direct feedback when possible**: for `direct_response`, include the
+9. **Choose the closure mode**: for `needs_evidence`, state the best current
+   opinion and ask the user what evidence or direction they want to provide; for
+   `needs_brainstorm`, ask whether to start `brainstorm` with one concise
+   objective; for `needs_converge`, ask whether to start `converge` with one
+   concise repair objective. Do not include acceptance criteria, test plans, or
+   multi-step downstream instructions in feedback.
+10. **Answer direct feedback when possible**: for `direct_response`, include the
    direct answer in the visible response when the answer is already known and no
    workflow evidence is needed. If the direct answer needs missing facts, ask
    for those facts instead of creating Arbor workflow state.
-10. **Reject public internal-stage routes**: never route user feedback to public
+11. **Reject public internal-stage routes**: never route user feedback to public
    `develop`, public `evaluate`, or public `release`. `converge` owns internal
    repair and validation after review context exists.
-11. **Decide persistence**: feedback itself normally does not create or update
+12. **Decide persistence**: feedback itself normally does not create or update
    `.arbor/workflow/features.json` or review documents. `brainstorm` creates or
    updates planning artifacts; `converge` appends quality-loop evidence.
-12. **Update in-flight memory when needed**: if uncommitted Arbor workflow
+13. **Update in-flight memory when needed**: if uncommitted Arbor workflow
    changes remain because this feedback decision created local evidence or
    state, ensure `.arbor/memory.md` records the active feature, changed paths,
    current checkpoint, risks, and next expected step before stopping.
-13. **Return rendered checkpoint and runtime packet**: produce `feedback.v1` for
+14. **Return rendered checkpoint and runtime packet**: produce `feedback.v1` for
     runtime handoff, and make the normal visible response the rendered
     `user_response` checkpoint, not raw JSON.
 
@@ -151,10 +182,15 @@ Confirm invocation
 ## Terminal States
 
 - `needs_brainstorm`: feedback changes planning, scope, acceptance criteria, or
-  test scope, or a bug lacks review context.
+  test scope, or a bug lacks review context. The visible response recommends
+  `brainstorm` and asks whether to start it with a concise objective.
 - `needs_converge`: feedback is an actionable defect, failed check, evaluator
-  finding, or repair request tied to existing Arbor review context.
-- `needs_evidence`: required feedback evidence is missing or inaccessible.
+  finding, or repair request tied to existing Arbor review context. The visible
+  response recommends `converge` and asks whether to start it with a concise
+  repair objective.
+- `needs_evidence`: required feedback evidence is missing or inaccessible. The
+  visible response states the current routing opinion, names the gap, and asks
+  the user what to provide or how to proceed.
 - `direct_response`: feedback can be answered without Arbor workflow state.
 - `route_correction`: the request is not feedback-shaped.
 - `blocked`: required files, permissions, or environment prevent a routing
@@ -226,10 +262,18 @@ For `direct_response`, the `Next Step` section may include the direct answer
 itself when the answer is known. Do not force the user to ask again for a simple
 conversation correction.
 
+For `needs_brainstorm`, `needs_converge`, and `needs_evidence`, `Next Step`
+must be a short question, not a plan. It must either ask whether the user wants
+to start the recommended public owner with one concise objective, or ask for the
+missing evidence/direction needed before routing. Do not put bullet lists,
+numbered lists, acceptance criteria, test plans, or multi-step repair
+instructions in `Next Step`.
+
 Final response preflight: before returning, inspect the captured final text that
 will be sent to the user. It must contain the required headings in order, include
-the required table, avoid raw `feedback.v1` or route fields, and avoid a
-prose-only summary. If any required visible section is missing, rewrite the
+the required table, avoid raw `feedback.v1` or route fields, avoid a
+prose-only summary, and ensure any downstream route stops with a user
+confirmation question. If any required visible section is missing, rewrite the
 visible response before finishing.
 
 ## Structured Output Contract

@@ -2,7 +2,7 @@
 
 `feedback` exists so users can explicitly hand Arbor feedback without relying on
 an implicit universal router. It is intentionally narrow: it accepts feedback,
-decides the next owner, and stops.
+decides the next owner, and stops with a concrete user-facing question.
 
 ## Invocation And Acceptance Boundary
 
@@ -46,6 +46,27 @@ Ask these questions in order:
    existing review context?
 7. Is the feature still an active or explicitly reopenable quality loop?
 8. Can the feedback be answered directly without Arbor workflow state?
+
+## Closure Contract
+
+After choosing the route owner, feedback must choose one of three blocking
+closure modes:
+
+- **Needs evidence or user direction**: if the issue is ambiguous or lacks the
+  evidence needed to route safely, state the current opinion, name the missing
+  evidence or ambiguity, and ask what the user wants to provide or do next.
+- **Recommend brainstorm**: if the issue is clear but broad, design-level,
+  post-finalization, or changes requirements, acceptance criteria, or proof
+  scope, recommend `brainstorm` with one concise objective and ask whether the
+  user wants to start `brainstorm`.
+- **Recommend converge**: if the issue is clear, small, and inside an active or
+  reopenable review context, recommend `converge` with one concise repair
+  objective and ask whether the user wants to start `converge`.
+
+Feedback must not write the downstream plan. Do not include acceptance criteria,
+test plans, bullet-list repair steps, or multi-step implementation guidance in
+the visible feedback checkpoint. Those belong to `brainstorm` or `converge`
+after the user confirms the route.
 
 ## Route Table
 
@@ -148,5 +169,9 @@ paths as the normal visible answer.
 The visible checkpoint should use the user's active chat language. English
 prompts use `Feedback Decision`, `Why This Route`, `What I Need Or Will Use`,
 and `Next Step`; non-English prompts use localized heading equivalents in the
-same order. Final response preflight must inspect the exact final text and
-reject a prose-only summary.
+same order. For `needs_brainstorm`, `needs_converge`, and `needs_evidence`,
+`Next Step` must be a short user question: ask whether to start the recommended
+public owner with the concise objective, or ask for the missing
+evidence/direction needed before routing. Final response preflight must inspect
+the exact final text and reject a prose-only summary or a downstream plan that
+does not ask the user what to do next.

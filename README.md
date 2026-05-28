@@ -138,6 +138,8 @@ Canonical examples:
 
 Feedback decides whether user feedback should go to `brainstorm`, `converge`,
 needs more evidence, or can be answered directly.
+For downstream workflow routes, it stops and asks the user to confirm the
+recommended owner instead of writing the downstream plan itself.
 
 Trigger it from an explicit `$feedback` / `/arbor:feedback` invocation, or from
 a feedback-shaped prompt where the next public owner is unclear. The word
@@ -297,7 +299,7 @@ automatically.
 Current version:
 
 ```text
-1.0.3
+1.0.4
 ```
 
 Version files:
