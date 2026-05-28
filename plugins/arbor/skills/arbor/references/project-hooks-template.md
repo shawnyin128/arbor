@@ -4,7 +4,8 @@ Arbor registers runtime-specific project-local hooks:
 
 - Codex: `.codex/hooks.json`
 - Codex wrapper scripts: `.codex/hooks/`
-- Claude Code: `.claude/settings.json` plus wrappers under `.claude/hooks/`
+- Claude Code plugin: `hooks/hooks.json`
+- Claude Code project wrappers: optional `.claude/settings.json` plus wrappers under `.claude/hooks/`
 
 Hook files are visible project artifacts, not user-global state. Each runtime
 gets its own project hook surface while shared project memory remains in the
@@ -30,7 +31,7 @@ current repository.
    - Negative cases include clean git status, direct one-off explanations, read-only inspection with no unresolved Arbor state, committed-and-pruned work, AGENTS-only stable guide updates, explicit no-write turns, and unrelated dirty files outside Arbor scope.
    - The registered policy includes a machine-checkable `case_corpus`; adapter validation checks trigger/suppress counts, unique ids, required fields, and required scenario classes.
    - Codex mapping: the project hook in `.codex/hooks.json` calls the `.codex/hooks/arbor-stop-memory-hygiene` wrapper, which delegates to `hooks/stop-memory-hygiene`. Codex requires configured command hooks to be trusted through `/hooks`; an initialized file alone is not proof the hook ran.
-   - Claude Code mapping: the project hook in `.claude/settings.json` calls the `.claude/hooks/arbor-stop-memory-hygiene` wrapper, which delegates to `hooks/stop-memory-hygiene`. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard for dirty Arbor worktrees: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the packet as the block reason.
+   - Claude Code plugin mapping: the packaged `hooks/hooks.json` calls `hooks/stop-memory-hygiene` through `CLAUDE_PLUGIN_ROOT`. Project-level `.claude/settings.json` can also call `.claude/hooks/arbor-stop-memory-hygiene` wrappers when explicit per-project control is desired. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard for dirty Arbor worktrees: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the packet as the block reason.
 
 3. `arbor.goal_constraint_drift`
    - Event: `project.guide_drift`
@@ -51,8 +52,12 @@ current repository.
 - Codex re-registration replaces only Arbor wrapper commands under `.codex/hooks/arbor-*`; unrelated Codex hook events, matcher groups, handlers, and settings are preserved.
 - Legacy Arbor-only Codex hook intent lists are converted to Codex's executable hook schema during registration.
 - Claude project hook re-registration replaces only Arbor wrapper commands under `.claude/hooks/arbor-*`; unrelated Claude hooks and settings are preserved.
+- The plugin-level Claude hook manifest must ship with the plugin package; project-level Claude hooks are optional wrappers, not the only registration path.
 - Re-registering Arbor hooks must be idempotent.
 - Hook execution fixes workflow order, not read depth.
 - Codex hook execution proof must come from a trusted interactive Codex or
   desktop session; non-interactive `codex exec` is useful for ordinary workflow
   replay but is not a reliable project-hook firing oracle.
+- Use `scripts/diagnose_project_hooks.py` to distinguish hook intent files,
+  executable wrappers, Claude plugin manifest state, project-level Claude hook
+  state, and Codex trust gaps before claiming a runtime hook is configured.

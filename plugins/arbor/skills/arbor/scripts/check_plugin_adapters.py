@@ -109,9 +109,10 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         "non-interactive `codex exec` runs are not a reliable proof",
         "existing `AGENTS.md` and `.arbor/memory.md` are not proof that the Claude adapter was initialized",
         "`.codex/hooks.json` is not a Claude hook registration",
-        ".claude/settings.json",
+        "plugin package ships `hooks/hooks.json`",
+        "Project-level `.claude/settings.json`",
         ".claude/hooks/",
-        "plugin-bundled hooks are not proof that Claude project hooks are active",
+        "`.codex/hooks.json` is not a Claude hook registration",
     ):
         check(errors, term in arbor_skill, f"arbor skill missing startup bootstrap term `{term}`")
 
@@ -178,6 +179,7 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
     sys.path.insert(0, str(scripts_dir))
     try:
         from init_project_memory import CLAUDE_BRIDGE_OFF, CLAUDE_BRIDGE_ON, init_project_memory
+        from diagnose_project_hooks import diagnose
         from register_project_hooks import ARBOR_HOOKS, INSTALL_RUNTIME_CLAUDE, INSTALL_RUNTIME_CODEX, register_project_hooks
     finally:
         sys.path.pop(0)
@@ -303,6 +305,36 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             check(errors, term in migrated_text, f"migrated Codex hook settings missing `{term}`")
         for forbidden in ('"owner": "arbor"', '"entrypoint":'):
             check(errors, forbidden not in migrated_text, f"migrated Codex hook config must not contain `{forbidden}`")
+        diagnosed = diagnose(project, plugin_root, codex_trusted=False)
+        check(
+            errors,
+            diagnosed.codex.status == "executable-untrusted",
+            f"diagnosed migrated Codex hook state should be executable-untrusted, got {diagnosed.codex.status}",
+        )
+
+    with tempfile.TemporaryDirectory(prefix="arbor-codex-intent-diagnosis-") as tmp:
+        project = Path(tmp) / "project"
+        project.mkdir()
+        legacy_path = project / ".codex" / "hooks.json"
+        legacy_path.parent.mkdir()
+        legacy_path.write_text(json.dumps({"version": 1, "hooks": ARBOR_HOOKS}, indent=2), encoding="utf-8")
+        diagnosed = diagnose(project, plugin_root, codex_trusted=False)
+        check(errors, diagnosed.codex.status == "intent-only", "diagnostic should classify legacy Codex hook intents")
+
+    with tempfile.TemporaryDirectory(prefix="arbor-claude-project-diagnosis-") as tmp:
+        project = Path(tmp) / "project"
+        project.mkdir()
+        diagnosed = diagnose(project, plugin_root, codex_trusted=False)
+        check(
+            errors,
+            diagnosed.claude_project.status == "project-Claude-missing",
+            "diagnostic should classify missing project-level Claude hooks",
+        )
+        check(
+            errors,
+            diagnosed.claude_plugin.status == "Claude-plugin-ready",
+            "diagnostic should classify packaged Claude plugin hooks as ready",
+        )
 
 
 def validate_project_hook_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -548,11 +580,16 @@ def validate_agents_guide_drift_smoke(plugin_root: Path, errors: list[str]) -> N
 
 
 def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None:
-    check(
-        errors,
-        not (plugin_root / "hooks" / "hooks.json").exists(),
-        "Claude hooks must be registered into project .claude/settings.json, not auto-registered from plugin hooks/hooks.json",
-    )
+    hooks_manifest = plugin_root / "hooks" / "hooks.json"
+    manifest = load_json(hooks_manifest, errors)
+    manifest_text = json.dumps(manifest)
+    for term in (
+        "SessionStart",
+        "Stop",
+        "${CLAUDE_PLUGIN_ROOT}/hooks/session-start",
+        "${CLAUDE_PLUGIN_ROOT}/hooks/stop-memory-hygiene",
+    ):
+        check(errors, term in manifest_text, f"Claude plugin hook manifest missing `{term}`")
 
     session_start = plugin_root / "hooks" / "session-start"
     check(errors, session_start.is_file(), "hooks/session-start must exist")

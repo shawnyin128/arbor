@@ -241,12 +241,28 @@ already run. Validate Codex hook firing in a trusted interactive Codex session
 or desktop session; non-interactive `codex exec` runs are not a reliable hook
 runtime proof. `AGENTS.md` remains the reliable native bootstrap.
 
-Claude Code project initialization writes `.claude/settings.json` plus wrappers
-under `.claude/hooks/`:
+Claude Code plugin installation ships a plugin-level `hooks/hooks.json` manifest
+for:
 
 - `SessionStart`: injects startup context for `startup` and `resume`;
 - `Stop`: defaults to a silent memory guard and can use
   `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` for the older blocking behavior.
+
+Claude Code project initialization can also write `.claude/settings.json` plus
+wrappers under `.claude/hooks/` when explicit per-project wrappers are desired.
+
+When hook state is unclear, run the diagnostic helper and inspect the status:
+
+```bash
+python3 plugins/arbor/skills/arbor/scripts/diagnose_project_hooks.py \
+  --root /path/to/project \
+  --plugin-root plugins/arbor
+```
+
+The diagnostic distinguishes stale intent-only Codex files, executable wrapper
+state, Claude plugin manifest state, project-level Claude hooks, and Codex
+trust gaps. File presence is not the same thing as proof that a runtime fired a
+hook.
 
 ## Validation
 
@@ -299,7 +315,7 @@ automatically.
 Current version:
 
 ```text
-1.0.4
+1.0.5
 ```
 
 Version files:
