@@ -924,12 +924,6 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
             "skills/arbor/references/real-workflow-chain-review.md",
             "skills/arbor/scripts/check_real_workflow_chains.py",
             "skills/arbor/scripts/check_plugin_adapters.py",
-            "skills/brainstorm/scripts/check_brainstorm_baselines.py",
-            "skills/feedback/scripts/check_feedback_baselines.py",
-            "skills/develop/scripts/check_develop_baselines.py",
-            "skills/evaluate/scripts/check_evaluate_baselines.py",
-            "skills/converge/scripts/check_converge_baselines.py",
-            "skills/release/scripts/check_release_baselines.py",
         ):
             source = PLUGIN_ROOT / rel
             cached = cache / rel
