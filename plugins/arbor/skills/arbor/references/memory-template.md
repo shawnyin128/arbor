@@ -1,21 +1,32 @@
 # Session Memory
 
 <!--
-SCOPE: short-term, pre-triage observations only.
-Keep undecided bugs, hypotheses, concerns, risks, and notes here.
+Use this file to help the next agent resume current Arbor work.
 
-TRIAGE BEFORE ADDING:
-  1. Check git log/status/diff for whether the item is already resolved.
-  2. Check project trackers/docs for whether the item is already captured.
-  3. Still undecided? Keep it here. Otherwise remove it or move it to the durable home.
+Update it when closing the session would otherwise lose Arbor-relevant context
+that is not already recoverable from committed history, durable docs, stable
+project guidance, and git status.
 
-HARD RULES:
-  - No duplication with AGENTS.md, project docs, task trackers, or committed history.
-  - Any uncommitted Arbor-managed workflow state must have a short in-flight entry here.
-  - Keep stable project-guide and map updates in AGENTS.md.
-  - Keep completed implementation details in project docs or git history, not here.
-  - Do not duplicate durable context that already lives in AGENTS.md, git history, or project docs.
-  - Keep this file under 30 lines when practical.
+Do not add direct one-off answers, stable project rules, detailed review
+evidence, release history, cache/scratch notes, or anything already committed or
+durable elsewhere.
+
+Each In-flight note should briefly answer:
+  - What are we discussing?
+  - What local files or artifacts matter?
+  - What is not decided or not finished?
+  - What should the next agent do first?
+
+Good:
+  - memory-resume-boundary: user wants Stop hooks to maintain memory and
+    AGENTS drift automatically. Relevant files are `hooks/stop-memory-hygiene`
+    and `docs/review/memory-resume-boundary.md`. Next: verify Codex/Claude Stop
+    replay before release.
+
+Bad:
+  - work in progress
+  - memory needs update
+  - continue previous task
 -->
 
 ## Observations
@@ -24,4 +35,4 @@ HARD RULES:
 
 ## In-flight
 
-- No undecided short-term observations recorded yet.
+- No active Arbor resume context recorded yet.

@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Stop hook adapter for Arbor in-session memory hygiene.
+"""Stop hook adapter for Arbor context maintenance.
 
-Reads Codex or Claude Code ``Stop`` hook event JSON from stdin and, when the
-project is Arbor-managed and the worktree has uncommitted changes, refreshes a
-bounded project-local memory fallback without emitting visible output.
+Reads Codex or Claude Code ``Stop`` hook event JSON from stdin and quietly
+keeps project-local Arbor context recoverable before the session stops.
 
-This is Arbor's runtime mapping of the
-``arbor.in_session_memory_hygiene`` hook. ``Stop`` output can re-enter the
-agent loop as a visible continuation. That continuation can hide the assistant's
-real final response in runtimes that display the last assistant message as the
-turn result, so the adapter defaults to a silent memory guard: if
-``.arbor/memory.md`` is missing, empty, or has no meaningful ``In-flight``
-entry, it writes a generic resume pointer and returns non-blocking JSON.
+This adapter is the Stop-time maintenance path for both:
 
-Set ``ARBOR_STOP_MEMORY_HYGIENE_MODE=block`` to opt into the older blocking
-behavior. In block mode the adapter calls ``run_memory_hygiene_hook.py`` and
-feeds the packet back as the block ``reason`` so the agent can decide whether
-to refresh ``.arbor/memory.md`` before the turn truly ends.
+* ``.arbor/memory.md`` recovery notes, when current Arbor context would be hard
+  for the next agent to recover from committed history, durable docs, startup
+  guidance, and git status alone.
+* conservative ``AGENTS.md`` Project Map drift updates, when durable top-level
+  entrypoints are missing from or stale in the map.
+
+``Stop`` output can re-enter the agent loop as a visible continuation. That can
+hide the assistant's real final response in runtimes that display the last
+assistant message as the turn result, so the default path is silent and
+non-blocking. Set ``ARBOR_STOP_MEMORY_HYGIENE_MODE=block`` to opt into the old
+memory-hygiene packet continuation for debugging.
 
 The adapter still self-gates:
 
@@ -24,8 +24,9 @@ The adapter still self-gates:
   because of this hook, the adapter allows the stop so it can never loop.
 * Projects without an ``.arbor`` directory are not Arbor-managed; the
   adapter stays silent rather than blocking unrelated repositories.
-* A clean worktree has no uncommitted state to recover, so the adapter
-  stays silent there too.
+* Explicit no-write payloads or ``ARBOR_STOP_NO_WRITE=1`` suppress mutation.
+* Clean direct turns do not mutate memory unless bounded transcript context
+  proves Arbor recovery context is present.
 * Dirty Arbor worktrees stay silent by default, preventing hook prompts from
   replacing the user-facing final answer.
 
@@ -51,16 +52,27 @@ REASON_BUDGET = 12000
 MODE_ENV = "ARBOR_STOP_MEMORY_HYGIENE_MODE"
 MEMORY_TEMPLATE_RELATIVE = Path("skills") / "arbor" / "references" / "memory-template.md"
 MEMORY_PATH_RELATIVE = Path(".arbor") / "memory.md"
-NO_OBSERVATIONS_MARKER = "- No undecided short-term observations recorded yet."
-FALLBACK_ENTRY = (
-    "- stop hook fallback: dirty Arbor worktree detected before stop; inspect "
-    "`git status --short`, current diff, and review docs before resuming."
-)
-FALLBACK_TEMPLATE = f"""# Session Memory
+PROJECT_GUIDE_PATH = Path("AGENTS.md")
+NO_OBSERVATIONS_MARKERS = {
+    "- No undecided short-term observations recorded yet.",
+    "- No active Arbor resume context recorded yet.",
+}
+PLACEHOLDER_LINES = {
+    "none",
+    "none.",
+    "n/a",
+    "not applicable",
+    "no unresolved state",
+    "no active arbor resume context recorded yet.",
+    "no undecided short-term observations recorded yet.",
+}
+OLD_FALLBACK_PREFIX = "stop hook fallback: dirty Arbor worktree detected before stop"
+HOOK_FALLBACK_MARKER = "[hook:fallback]"
+FALLBACK_TEMPLATE = """# Session Memory
 
 <!--
-SCOPE: short-term, pre-triage observations only.
-Keep undecided bugs, hypotheses, concerns, risks, and notes here.
+Use this file to help the next agent resume current Arbor work that is not
+committed or durable elsewhere.
 -->
 
 ## Observations
@@ -69,8 +81,44 @@ Keep undecided bugs, hypotheses, concerns, risks, and notes here.
 
 ## In-flight
 
-{FALLBACK_ENTRY}
+- No active Arbor resume context recorded yet.
 """
+PROJECT_MAP_HEADING = "Project Map"
+MAP_TOKEN_RE = re.compile(r"`([^`\n]+)`")
+LIST_ITEM_RE = re.compile(r"^\s*[-*]\s+")
+MAP_LIST_PATH_RE = re.compile(r"^\s*[-*]\s+([A-Za-z0-9._/-]+/?)(?=\s*(?::|-|--|$))")
+SKIP_PROJECT_MAP_NAMES = {
+    ".DS_Store",
+    ".arbor",
+    ".claude",
+    ".codex",
+    ".git",
+    ".gitignore",
+    ".meridian",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "LICENSE",
+    "artifacts",
+    "build",
+    "dist",
+    "fixture",
+    "fixtures",
+    "logs",
+    "node_modules",
+    "output",
+    "outputs",
+    "scratch",
+    "temp",
+    "tmp",
+    "venv",
+}
+INCLUDE_PROJECT_MAP_FILES = {"Makefile", "README.md", "package.json", "pyproject.toml"}
+TRANSCRIPT_BUDGET = 64000
 
 TRUNCATION_NOTICE = (
     "[truncated - Arbor memory hygiene packet exceeded the adapter budget; "
@@ -119,6 +167,19 @@ def worktree_is_dirty(root: str) -> bool:
     return bool(proc.stdout.strip())
 
 
+def git_status_lines(root: Path) -> list[str]:
+    proc = subprocess.run(
+        ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=all"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return []
+    return [line for line in proc.stdout.splitlines() if line.strip()]
+
+
 def blocking_mode_enabled() -> bool:
     return os.environ.get(MODE_ENV, "silent").strip().lower() == "block"
 
@@ -137,21 +198,94 @@ def extract_in_flight_section(text: str) -> str:
     return match.group("body")
 
 
-def has_meaningful_in_flight(text: str) -> bool:
+def memory_entry_state(text: str) -> str:
+    if not text.strip():
+        return "empty"
     body = extract_in_flight_section(text)
+    if not body.strip():
+        return "missing_section"
+
+    bullets: list[str] = []
     for raw_line in body.splitlines():
         line = raw_line.strip()
         if not line.startswith("-"):
             continue
-        if line == NO_OBSERVATIONS_MARKER:
+        bullets.append(line)
+
+    if not bullets:
+        return "placeholder"
+
+    non_placeholder: list[str] = []
+    for line in bullets:
+        normalized = line.strip("-* ").strip().lower()
+        if line in NO_OBSERVATIONS_MARKERS or normalized in PLACEHOLDER_LINES:
             continue
-        return True
-    return False
+        if normalized.startswith(OLD_FALLBACK_PREFIX):
+            continue
+        non_placeholder.append(line)
+
+    if not non_placeholder:
+        return "placeholder"
+    if all(HOOK_FALLBACK_MARKER in line for line in non_placeholder):
+        return "hook_fallback"
+    return "explicit"
 
 
-def upsert_in_flight_fallback(text: str) -> str:
+def has_current_resume_memory(text: str) -> bool:
+    return memory_entry_state(text) == "explicit"
+
+
+def parse_status_path(line: str) -> str:
+    path = line[3:] if len(line) > 3 else line
+    if " -> " in path:
+        path = path.split(" -> ", 1)[1]
+    return path.strip()
+
+
+def compact_paths(status_lines: list[str], limit: int = 5) -> list[str]:
+    paths = [parse_status_path(line) for line in status_lines if parse_status_path(line)]
+    return paths[:limit]
+
+
+def likely_area(paths: list[str], transcript_context: bool) -> str:
+    joined = "\n".join(paths)
+    if "AGENTS.md" in paths or "AGENTS.md" in joined:
+        return "AGENTS.md guide drift"
+    if ".arbor/memory.md" in paths or ".arbor/" in joined:
+        return "Arbor memory or workflow state"
+    if "plugins/arbor/hooks" in joined or ".codex/hooks" in joined or ".claude/hooks" in joined:
+        return "Arbor Stop hook behavior"
+    if "plugins/arbor/skills" in joined:
+        return "Arbor skill contract"
+    if "docs/review" in joined:
+        return "Arbor review checkpoint"
+    if transcript_context:
+        return "recent Arbor conversation"
+    return "dirty Arbor worktree"
+
+
+def build_fallback_entry(status_lines: list[str], transcript_context: bool, transcript_path: Path | None) -> str:
+    paths = compact_paths(status_lines)
+    area = likely_area(paths, transcript_context)
+    if paths:
+        files = ", ".join(f"`{path}`" for path in paths)
+        if len(status_lines) > len(paths):
+            files = f"{files}, and {len(status_lines) - len(paths)} more path(s)"
+    elif transcript_context and transcript_path is not None:
+        files = f"recent Stop transcript `{transcript_path}`"
+    else:
+        files = "no specific dirty path was available"
+    return (
+        f"- {HOOK_FALLBACK_MARKER} Discussion: {area}. Files: {files}. "
+        "Unresolved: Stop detected Arbor resume context but memory was missing, "
+        "placeholder-only, or stale. Next: inspect the named context and continue "
+        "the active Arbor workflow before making release or handoff claims."
+    )
+
+
+def upsert_in_flight_fallback(text: str, entry: str) -> str:
     normalized = text.rstrip()
-    replacement = f"## In-flight\n\n{FALLBACK_ENTRY}\n"
+    replacement = f"## In-flight\n\n{entry}\n"
     match = re.search(r"(?ms)^## In-flight\s*\n.*?(?=^## |\Z)", normalized)
     if match:
         return f"{normalized[: match.start()]}{replacement}{normalized[match.end():].lstrip()}"
@@ -165,7 +299,27 @@ def read_memory_template(plugin_root: Path) -> str:
     return FALLBACK_TEMPLATE
 
 
-def refresh_quiet_memory_fallback(project_root: Path, plugin_root: Path) -> bool:
+def prune_hook_fallback_memory(project_root: Path) -> bool:
+    memory_path = project_root / MEMORY_PATH_RELATIVE
+    if not memory_path.is_file():
+        return False
+    text = memory_path.read_text(encoding="utf-8")
+    if memory_entry_state(text) != "hook_fallback":
+        return False
+    updated = upsert_in_flight_fallback(text, "- No active Arbor resume context recorded yet.")
+    if updated != text:
+        memory_path.write_text(updated, encoding="utf-8")
+        return True
+    return False
+
+
+def refresh_quiet_memory_fallback(
+    project_root: Path,
+    plugin_root: Path,
+    status_lines: list[str],
+    transcript_context: bool,
+    transcript_path: Path | None,
+) -> bool:
     memory_path = project_root / MEMORY_PATH_RELATIVE
     if memory_path.exists() and not memory_path.is_file():
         raise OSError(f"{memory_path} exists but is not a file")
@@ -175,15 +329,214 @@ def refresh_quiet_memory_fallback(project_root: Path, plugin_root: Path) -> bool
     else:
         text = read_memory_template(plugin_root)
 
-    if text.strip() and has_meaningful_in_flight(text):
+    if text.strip() and has_current_resume_memory(text):
         return False
 
     if not text.strip():
         text = read_memory_template(plugin_root)
-    updated = upsert_in_flight_fallback(text)
+    updated = upsert_in_flight_fallback(text, build_fallback_entry(status_lines, transcript_context, transcript_path))
     memory_path.parent.mkdir(parents=True, exist_ok=True)
     if not memory_path.exists() or memory_path.read_text(encoding="utf-8") != updated:
         memory_path.write_text(updated, encoding="utf-8")
+        return True
+    return False
+
+
+def read_tail(path: Path, budget: int) -> str:
+    if not path.is_file():
+        return ""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            if size > budget:
+                fh.seek(max(0, size - budget))
+            data = fh.read(budget)
+        return data.decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def transcript_suggests_arbor_resume_context(payload: dict) -> tuple[bool, Path | None]:
+    raw_path = payload.get("transcript_path")
+    if not isinstance(raw_path, str) or not raw_path:
+        return False, None
+    path = Path(raw_path)
+    text = read_tail(path, TRANSCRIPT_BUDGET)
+    if not text:
+        return False, path
+    lowered = text.lower()
+    arbor_terms = (".arbor/memory.md", "agents.md", "arbor", "stop hook", "guide drift")
+    continuation_terms = (
+        "resume",
+        "continue",
+        "next step",
+        "converge",
+        "brainstorm",
+        "feedback",
+        "fix",
+        "bug",
+        "problem",
+        "boundary",
+        "update",
+        "memory",
+        "hook",
+    )
+    return any(term in lowered for term in arbor_terms) and any(term in lowered for term in continuation_terms), path
+
+
+def no_write_requested(payload: dict) -> bool:
+    if os.environ.get("ARBOR_STOP_NO_WRITE", "").strip().lower() in {"1", "true", "yes"}:
+        return True
+    if payload.get("no_write") is True or payload.get("read_only") is True:
+        return True
+    mode = str(payload.get("permissionMode", "") or payload.get("permission_mode", "")).strip().lower()
+    return mode in {"read-only", "readonly", "plan", "no-write"}
+
+
+def extract_agents_section_bounds(text: str, heading: str) -> tuple[int, int, int] | None:
+    pattern = re.compile(rf"(?m)^##\s+{re.escape(heading)}\s*$")
+    match = pattern.search(text)
+    if not match:
+        return None
+    body_start = match.end()
+    if body_start < len(text) and text[body_start] == "\n":
+        body_start += 1
+    next_heading = re.search(r"(?m)^##\s+", text[body_start:])
+    body_end = body_start + next_heading.start() if next_heading else len(text)
+    return match.start(), body_start, body_end
+
+
+def normalize_map_token(raw: str) -> str:
+    token = raw.strip().strip("'\"")
+    while token.startswith("./"):
+        token = token[2:]
+    return token
+
+
+def is_project_map_entry_token(token: str) -> bool:
+    if not token or token.startswith("#"):
+        return False
+    if any(char.isspace() for char in token):
+        return False
+    if "://" in token:
+        return False
+    path = Path(token.rstrip("/"))
+    if path.is_absolute():
+        return False
+    return bool(path.parts)
+
+
+def map_line_token(line: str) -> str | None:
+    if not LIST_ITEM_RE.match(line):
+        return None
+    backtick_match = MAP_TOKEN_RE.search(line)
+    if backtick_match:
+        token = normalize_map_token(backtick_match.group(1))
+        return token if is_project_map_entry_token(token) else None
+    match = MAP_LIST_PATH_RE.match(line)
+    if match:
+        token = normalize_map_token(match.group(1))
+        return token if is_project_map_entry_token(token) else None
+    return None
+
+
+def project_map_tokens(project_map: str) -> set[str]:
+    tokens: set[str] = set()
+    for line in project_map.splitlines():
+        token = map_line_token(line)
+        if token:
+            tokens.add(token)
+    return tokens
+
+
+def candidate_is_mapped(candidate: str, tokens: set[str]) -> bool:
+    normalized = normalize_map_token(candidate)
+    variants = {normalized}
+    if normalized.endswith("/"):
+        variants.add(normalized.rstrip("/"))
+    else:
+        variants.add(f"{normalized}/")
+    if variants & tokens:
+        return True
+    if normalized.endswith("/"):
+        return any(token.startswith(normalized) for token in tokens)
+    return False
+
+
+def project_map_token_exists(root: Path, token: str) -> bool:
+    normalized = normalize_map_token(token)
+    target = root / normalized.rstrip("/")
+    if normalized.endswith("/"):
+        return target.is_dir()
+    return target.exists()
+
+
+def project_map_candidates(root: Path) -> list[str]:
+    candidates: list[str] = []
+    try:
+        children = sorted(root.iterdir(), key=lambda item: item.name.lower())
+    except OSError:
+        return []
+    for child in children:
+        if child.name in SKIP_PROJECT_MAP_NAMES or child.name.startswith("."):
+            continue
+        if child.is_dir():
+            candidates.append(f"{child.name}/")
+        elif child.is_file() and child.name in INCLUDE_PROJECT_MAP_FILES:
+            candidates.append(child.name)
+    return candidates
+
+
+def describe_project_map_candidate(candidate: str) -> str:
+    descriptions = {
+        "README.md": "public project overview and usage notes",
+        "Makefile": "repository command entrypoint",
+        "package.json": "JavaScript package metadata and scripts",
+        "pyproject.toml": "Python project metadata and tooling config",
+        "docs/": "durable project documentation",
+        "plugins/": "plugin packages and runtime integration code",
+        "scripts/": "repository-level scripts and validation helpers",
+        "src/": "source code",
+        "tests/": "test suite",
+        "tools/": "durable project tools",
+    }
+    return descriptions.get(candidate, "durable project entrypoint detected by Arbor Stop guide drift")
+
+
+def refresh_agents_project_map(root: Path) -> bool:
+    agents_path = root / PROJECT_GUIDE_PATH
+    if not agents_path.is_file():
+        return False
+    text = agents_path.read_text(encoding="utf-8")
+    bounds = extract_agents_section_bounds(text, PROJECT_MAP_HEADING)
+    if bounds is None:
+        return False
+    _heading_start, body_start, body_end = bounds
+    body = text[body_start:body_end]
+    tokens = project_map_tokens(body)
+    missing = [candidate for candidate in project_map_candidates(root) if not candidate_is_mapped(candidate, tokens)]
+    stale = {token for token in tokens if not project_map_token_exists(root, token)}
+    if not missing and not stale:
+        return False
+
+    kept_lines: list[str] = []
+    for line in body.splitlines():
+        token = map_line_token(line)
+        if token and token in stale:
+            continue
+        kept_lines.append(line.rstrip())
+
+    while kept_lines and not kept_lines[-1].strip():
+        kept_lines.pop()
+    if missing and kept_lines:
+        kept_lines.append("")
+    for candidate in missing:
+        kept_lines.append(f"- `{candidate}`: {describe_project_map_candidate(candidate)}.")
+
+    new_body = "\n".join(kept_lines).rstrip() + "\n"
+    updated = f"{text[:body_start]}{new_body}{text[body_end:].lstrip()}"
+    if updated != text:
+        agents_path.write_text(updated, encoding="utf-8")
         return True
     return False
 
@@ -211,15 +564,21 @@ def main() -> int:
     if not (project_root / ".arbor").is_dir():
         return allow_stop()
 
-    # A clean worktree has no uncommitted state to recover.
-    if not worktree_is_dirty(cwd):
+    if no_write_requested(payload):
         return allow_stop()
 
     plugin_root = resolve_plugin_root()
+    status_lines = git_status_lines(project_root)
+    dirty = bool(status_lines)
+    transcript_context, transcript_path = transcript_suggests_arbor_resume_context(payload)
     try:
-        refresh_quiet_memory_fallback(project_root, plugin_root)
+        if dirty or transcript_context:
+            refresh_quiet_memory_fallback(project_root, plugin_root, status_lines, transcript_context, transcript_path)
+        else:
+            prune_hook_fallback_memory(project_root)
+        refresh_agents_project_map(project_root)
     except OSError as exc:
-        _emit_error(f"could not refresh quiet memory fallback: {exc}")
+        _emit_error(f"could not refresh quiet Stop context maintenance: {exc}")
         return 1
 
     # Default to silence: blocking Stop hooks create a visible continuation
@@ -247,7 +606,7 @@ def main() -> int:
     output = {
         "decision": "block",
         "reason": apply_budget(proc.stdout, REASON_BUDGET),
-        "systemMessage": "Arbor: checking in-flight memory before stop (worktree is dirty).",
+        "systemMessage": "Arbor: checking in-flight memory before stop.",
     }
     print(json.dumps(output))
     return 0

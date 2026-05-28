@@ -57,7 +57,7 @@ Inside Claude Code:
 
 After installing the Claude plugin, run Arbor initialization in the project so
 Claude project hooks are written under `.claude/`. The initialized hooks include
-`SessionStart` startup context and a quiet `Stop` memory guard.
+`SessionStart` startup context and quiet `Stop` context maintenance.
 
 ## Workflow Model
 
@@ -233,19 +233,20 @@ Codex initialization writes executable project hooks into target-project
 `.codex/hooks.json` plus wrappers under `.codex/hooks/`:
 
 - `SessionStart`: injects startup context for `startup` and `resume`;
-- `Stop`: defaults to a silent memory guard for dirty Arbor worktrees.
+- `Stop`: defaults to silent context maintenance for `.arbor/memory.md` recovery
+  notes and conservative `AGENTS.md` Project Map drift updates.
 
 Codex still requires hook trust through `/hooks`; an initialized
-`.codex/hooks.json` is not proof that startup context or Stop memory hygiene has
-already run. Validate Codex hook firing in a trusted interactive Codex session
-or desktop session; non-interactive `codex exec` runs are not a reliable hook
-runtime proof. `AGENTS.md` remains the reliable native bootstrap.
+`.codex/hooks.json` is not proof that startup context or Stop context
+maintenance has already run. Validate Codex hook firing in a trusted interactive
+Codex session or desktop session; non-interactive `codex exec` runs are not a
+reliable hook runtime proof. `AGENTS.md` remains the reliable native bootstrap.
 
 Claude Code plugin installation ships a plugin-level `hooks/hooks.json` manifest
 for:
 
 - `SessionStart`: injects startup context for `startup` and `resume`;
-- `Stop`: defaults to a silent memory guard and can use
+- `Stop`: defaults to silent context maintenance and can use
   `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` for the older blocking behavior.
 
 Claude Code project initialization can also write `.claude/settings.json` plus
@@ -315,7 +316,7 @@ automatically.
 Current version:
 
 ```text
-1.0.5
+1.0.6
 ```
 
 Version files:

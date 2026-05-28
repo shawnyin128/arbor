@@ -164,10 +164,32 @@ def section_has_content(section: str) -> bool:
         if not line:
             continue
         normalized = line.strip("-* ").lower()
-        if normalized in {"none", "n/a", "not applicable", "no unresolved state"}:
+        if normalized in {
+            "none",
+            "n/a",
+            "not applicable",
+            "no unresolved state",
+            "no active arbor resume context recorded yet.",
+            "no undecided short-term observations recorded yet.",
+        }:
+            continue
+        if normalized.startswith("stop hook fallback: dirty arbor worktree detected before stop"):
             continue
         meaningful.append(line)
     return bool(meaningful)
+
+
+def worktree_has_uncommitted_state(root: Path) -> bool:
+    proc = subprocess.run(
+        ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=all"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return False
+    return bool(proc.stdout.strip())
 
 
 def validate_project_guide(root: Path, managed: bool, findings: list[Finding]) -> None:
@@ -411,7 +433,7 @@ def validate_memory(root: Path, features: list[FeatureRow], findings: list[Findi
             )
         return
 
-    if terminal_features and memory_path.exists() and memory_path.is_file():
+    if terminal_features and memory_path.exists() and memory_path.is_file() and not worktree_has_uncommitted_state(root):
         in_flight = extract_markdown_section(read_text(memory_path), "In-flight")
         if section_has_content(in_flight):
             add_finding(

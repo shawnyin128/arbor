@@ -262,7 +262,7 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         assert_stop_allows(errors, stop_proc, "Codex Stop wrapper smoke")
         check(
             errors,
-            "stop hook fallback: dirty Arbor worktree detected before stop" in memory.read_text(encoding="utf-8"),
+            "[hook:fallback]" in memory.read_text(encoding="utf-8"),
             "Codex Stop wrapper should quietly add a fallback In-flight memory entry when one is missing",
         )
 
@@ -734,6 +734,7 @@ def run_stop_hook(
     project_root: Path,
     stop_hook_active: bool,
     memory_hygiene_mode: str | None = None,
+    extra_payload: dict[str, Any] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
@@ -747,6 +748,8 @@ def run_stop_hook(
         "hook_event_name": "Stop",
         "stop_hook_active": stop_hook_active,
     }
+    if extra_payload:
+        payload.update(extra_payload)
     return subprocess.run(
         [str(plugin_root / "hooks" / "stop-memory-hygiene")],
         input=json.dumps(payload),
@@ -788,7 +791,8 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         project = Path(tmp)
         (project / ".arbor").mkdir()
         (project / ".arbor" / "memory.md").write_text("# Arbor Memory\n\n- Pending note.\n", encoding="utf-8")
-        (project / "AGENTS.md").write_text("# Project Guide\n", encoding="utf-8")
+        (project / "AGENTS.md").write_text("# Project Guide\n\n## Project Map\n\n- `src/`: existing source.\n", encoding="utf-8")
+        (project / "src").mkdir()
         _git(["init"], project)
         _git(["add", "-A"], project)
         _git(["commit", "-m", "init"], project)
@@ -797,6 +801,28 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         clean_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
         check(errors, clean_proc.returncode == 0, f"Stop clean smoke failed: {clean_proc.stderr.strip()}")
         assert_stop_allows(errors, clean_proc, "Stop clean smoke")
+
+        transcript = project.parent / "arbor-stop-transcript.jsonl"
+        transcript.write_text(
+            '{"type":"message","text":"We need to fix Arbor memory resume boundary next."}\n',
+            encoding="utf-8",
+        )
+        (project / ".arbor" / "memory.md").write_text("# Session Memory\n\n## In-flight\n\n- None.\n", encoding="utf-8")
+        _git(["add", ".arbor/memory.md"], project)
+        _git(["commit", "-m", "placeholder memory"], project)
+        transcript_proc = run_stop_hook(
+            plugin_root,
+            project,
+            stop_hook_active=False,
+            extra_payload={"transcript_path": str(transcript)},
+        )
+        check(errors, transcript_proc.returncode == 0, f"Stop transcript-context smoke failed: {transcript_proc.stderr.strip()}")
+        transcript_memory = (project / ".arbor" / "memory.md").read_text(encoding="utf-8")
+        check(
+            errors,
+            "[hook:fallback]" in transcript_memory and "recent Arbor conversation" in transcript_memory,
+            "Stop adapter must use bounded transcript context for clean-worktree Arbor resume notes",
+        )
 
         # Dirty worktree: the adapter must allow stop by default so Stop hook
         # continuations cannot replace the assistant's real final response. It
@@ -808,8 +834,21 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         memory_after_dirty = (project / ".arbor" / "memory.md").read_text(encoding="utf-8")
         check(
             errors,
-            "stop hook fallback: dirty Arbor worktree detected before stop" in memory_after_dirty,
-            "Stop adapter must quietly add a fallback In-flight memory entry when one is missing",
+            "[hook:fallback]" in memory_after_dirty
+            and "Discussion:" in memory_after_dirty
+            and "Files:" in memory_after_dirty
+            and "Next:" in memory_after_dirty,
+            "Stop adapter must quietly add a readable fallback In-flight memory entry when one is missing",
+        )
+
+        (project / ".arbor" / "memory.md").write_text("# Session Memory\n\n## In-flight\n\n- None.\n", encoding="utf-8")
+        placeholder_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, placeholder_proc.returncode == 0, f"Stop placeholder-memory smoke failed: {placeholder_proc.stderr.strip()}")
+        placeholder_memory = (project / ".arbor" / "memory.md").read_text(encoding="utf-8")
+        check(
+            errors,
+            "[hook:fallback]" in placeholder_memory and "- None." not in placeholder_memory,
+            "Stop adapter must refresh placeholder-only In-flight memory",
         )
 
         # Opt-in blocking mode keeps the old memory-hygiene packet path
@@ -844,6 +883,41 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
             "Stop adapter must not overwrite an existing meaningful In-flight memory entry",
         )
 
+        # Guide drift shares the same Stop path: safe Project Map additions are
+        # applied silently, while ordinary edits under mapped directories do not
+        # churn AGENTS.md.
+        (project / "tools").mkdir()
+        guide_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, guide_proc.returncode == 0, f"Stop guide-drift smoke failed: {guide_proc.stderr.strip()}")
+        agents_after_guide = (project / "AGENTS.md").read_text(encoding="utf-8")
+        check(errors, "`tools/`" in agents_after_guide, "Stop adapter must auto-apply safe AGENTS Project Map additions")
+
+        before_ordinary_edit = agents_after_guide
+        (project / "src" / "new_module.py").write_text("print('mapped source edit')\n", encoding="utf-8")
+        ordinary_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, ordinary_proc.returncode == 0, f"Stop ordinary-edit smoke failed: {ordinary_proc.stderr.strip()}")
+        check(
+            errors,
+            (project / "AGENTS.md").read_text(encoding="utf-8") == before_ordinary_edit,
+            "Stop adapter must not add file-level AGENTS entries for ordinary edits under mapped directories",
+        )
+
+        (project / "AGENTS.md").write_text(f"{before_ordinary_edit}- `legacy/`: removed code.\n", encoding="utf-8")
+        stale_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, stale_proc.returncode == 0, f"Stop stale-map smoke failed: {stale_proc.stderr.strip()}")
+        agents_after_stale = (project / "AGENTS.md").read_text(encoding="utf-8")
+        check(errors, "`legacy/`" not in agents_after_stale, "Stop adapter must prune stale AGENTS Project Map entries")
+
+        before_no_write = agents_after_stale
+        (project / "docs").mkdir()
+        no_write_proc = run_stop_hook(plugin_root, project, stop_hook_active=False, extra_payload={"no_write": True})
+        check(errors, no_write_proc.returncode == 0, f"Stop no-write smoke failed: {no_write_proc.stderr.strip()}")
+        check(
+            errors,
+            (project / "AGENTS.md").read_text(encoding="utf-8") == before_no_write,
+            "Stop adapter must not mutate AGENTS.md during explicit no-write turns",
+        )
+
     # Non-Arbor project: the adapter must allow stop even when dirty.
     with tempfile.TemporaryDirectory(prefix="arbor-claude-stop-nonarbor-") as tmp:
         project = Path(tmp)
@@ -857,11 +931,12 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
 def validate_in_flight_memory_contract(plugin_root: Path, errors: list[str]) -> None:
     required = {
         "skills/arbor/SKILL.md": [
-            "Every Arbor-managed workflow that leaves uncommitted project changes must ensure `.arbor/memory.md` exists",
-            "Do not rely only on runtime hooks",
+            "Use `.arbor/memory.md` as the recovery file",
+            "The Stop hook is the automatic safety net",
         ],
         "skills/arbor/references/memory-template.md": [
-            "Any uncommitted Arbor-managed workflow state must have a short in-flight entry here",
+            "Use this file to help the next agent resume current Arbor work",
+            "What should the next agent do first?",
         ],
         "skills/brainstorm/SKILL.md": [
             "Before stopping with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists",

@@ -25,24 +25,24 @@ current repository.
    - Optional argument channel: `--diff-args "${DIFF_ARGS}"`
    - Emits a memory hygiene packet with current memory, git status, unstaged diff stat, staged diff stat, and optional selected diff.
    - Rejects side-effecting selected diff options such as `--output`.
-   - The running agent decides whether to edit project-local `.arbor/memory.md` using the packet plus conversation context.
+   - The running agent decides whether `.arbor/memory.md` would help the next agent resume current Arbor work that is not committed or durable elsewhere.
    - Trigger policy: high recall when Arbor-managed work is dirty or about to cross a checkpoint, handoff, release gate, commit, or session boundary.
    - Positive cases include brainstorm/develop/evaluate/converge/release artifact changes, failed checks, scope changes, local cache sync, ignored review or fixture edits, and any pause/stop with dirty Arbor work.
    - Negative cases include clean git status, direct one-off explanations, read-only inspection with no unresolved Arbor state, committed-and-pruned work, AGENTS-only stable guide updates, explicit no-write turns, and unrelated dirty files outside Arbor scope.
    - The registered policy includes a machine-checkable `case_corpus`; adapter validation checks trigger/suppress counts, unique ids, required fields, and required scenario classes.
    - Codex mapping: the project hook in `.codex/hooks.json` calls the `.codex/hooks/arbor-stop-memory-hygiene` wrapper, which delegates to `hooks/stop-memory-hygiene`. Codex requires configured command hooks to be trusted through `/hooks`; an initialized file alone is not proof the hook ran.
-   - Claude Code plugin mapping: the packaged `hooks/hooks.json` calls `hooks/stop-memory-hygiene` through `CLAUDE_PLUGIN_ROOT`. Project-level `.claude/settings.json` can also call `.claude/hooks/arbor-stop-memory-hygiene` wrappers when explicit per-project control is desired. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard for dirty Arbor worktrees: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the packet as the block reason.
+   - Claude Code plugin mapping: the packaged `hooks/hooks.json` calls `hooks/stop-memory-hygiene` through `CLAUDE_PLUGIN_ROOT`. Project-level `.claude/settings.json` can also call `.claude/hooks/arbor-stop-memory-hygiene` wrappers when explicit per-project control is desired. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to silent non-blocking context maintenance: it refreshes `.arbor/memory.md` recovery notes when needed and applies conservative `AGENTS.md` Project Map drift updates for durable entrypoint changes. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the memory packet as the block reason.
 
 3. `arbor.goal_constraint_drift`
    - Event: `project.guide_drift`
    - Entrypoint: `scripts/run_agents_guide_drift_hook.py --root ${PROJECT_ROOT}`
    - Optional argument channel: repeat `--doc "${DOC_PATH}"` for each agent-selected project-local doc.
    - Emits an AGENTS drift packet with `AGENTS.md`, git status, top-level project structure, mapped path validation, `Project Map Drift Candidates`, and optional project-local docs.
-   - The running agent decides whether to edit only `Project Goal`, `Project Constraints`, or `Project Map` in `AGENTS.md`.
+   - The running agent decides whether to edit only `Project Goal`, `Project Constraints`, or `Project Map` in `AGENTS.md` when invoked manually.
    - Trigger with high recall after adding, removing, or renaming durable project entrypoints, after adding a new skill or runtime adapter, and before release/publish/handoff when project structure changed.
    - When `Project Map Drift Candidates` reports `update-needed`, update `AGENTS.md` Project Map before handoff or release unless the listed missing or stale path is intentionally excluded.
    - `AGENTS.md` should remain the stable guide and map, not a complete long-term memory dump.
-   - Claude Code mapping: none. Claude Code has no native event for project-guide drift, so this intent stays user/skill-driven there.
+   - Stop-time mapping: safe Project Map drift is also checked by the shared Stop context-maintenance adapter in both Codex and Claude Code. Project Goal and Project Constraints remain explicit/manual unless a future design proves a safe automatic rule.
 
 ## Policy
 

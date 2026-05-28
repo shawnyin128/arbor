@@ -29,17 +29,23 @@ Collector sections include `Status`, `Source`, optional `Detail`, and raw body. 
 
 ## Session Memory
 
-Use `.arbor/memory.md` for short-term, pre-triage observations only:
+Use `.arbor/memory.md` as the recovery file for current Arbor context that a
+fresh agent needs to resume but cannot recover from committed history, durable
+docs, stable project guidance, and git status alone.
 
-- Undecided bugs, hypotheses, concerns, risks, and notes.
-- Items not already resolved by git history.
-- Items not already captured in `AGENTS.md`, project docs, review docs, task trackers, or committed history.
-
-Before adding an item, triage whether it is already resolved or captured elsewhere. Remove items once they are resolved, committed, or moved to their durable home. Keep the file under 30 lines when practical.
+Before adding an item, ask whether closing the session now would make the next
+agent lose Arbor-relevant discussion, checkpoint files, unresolved decisions, or
+the first resume action. Remove or shrink items once they are committed or moved
+to a durable home. Keep the file short enough to read during startup.
 
 ### In-Flight Memory Guard
 
-Every Arbor-managed workflow that leaves uncommitted project changes must ensure `.arbor/memory.md` exists and records the current in-flight state before the assistant stops or hands off to another skill. This is mandatory even when review documents or feature registry rows were updated: those artifacts hold evidence, while `.arbor/memory.md` keeps the short-term resume pointer for uncommitted work.
+Every Arbor-managed workflow that leaves uncommitted or otherwise non-durable
+resume context must ensure `.arbor/memory.md` exists and records the current
+in-flight state before the assistant stops. This is mandatory even when review
+documents or feature registry rows were updated: those artifacts hold evidence,
+while `.arbor/memory.md` keeps the recovery pointer until startup context can
+recover the state without conversation memory.
 
 Use this guard whenever `git status --short` is non-empty because of Arbor workflow work:
 
@@ -48,7 +54,9 @@ Use this guard whenever `git status --short` is non-empty because of Arbor workf
 - keep the entry short and pre-triage; do not duplicate full review evidence;
 - after a successful commit or after the state is moved to durable docs, remove or shrink resolved entries so memory reflects only unresolved uncommitted work.
 
-Do not rely only on runtime hooks. Hooks may emit a hygiene packet, but the active Arbor skill is still responsible for making sure memory is current before ending with uncommitted work.
+The Stop hook is the automatic safety net and should run memory maintenance at
+session boundaries, but active Arbor workflows should still avoid stopping with
+known stale recovery context.
 
 ## Long-Term Context
 
@@ -140,18 +148,33 @@ The runtime is auto-detected from the script's installed cache path (`~/.codex/p
 Arbor has runtime-specific hook surfaces. `.codex/hooks.json` plus `.codex/hooks/` is the Codex project surface for two executable hooks:
 
 - `SessionStart`: delegates to `hooks/session-start`, which loads startup context in the required order.
-- `Stop`: delegates to `hooks/stop-memory-hygiene`, which quietly refreshes `.arbor/memory.md` fallback state when a dirty Arbor worktree would otherwise stop without a resume pointer.
+- `Stop`: delegates to `hooks/stop-memory-hygiene`, which quietly runs Arbor
+  context maintenance. The Stop path refreshes `.arbor/memory.md` recovery
+  state when needed and applies conservative `AGENTS.md` Project Map drift
+  updates for durable entrypoint changes.
 
 The underlying Arbor hook intents remain `arbor.session_startup_context`, `arbor.in_session_memory_hygiene`, and `arbor.goal_constraint_drift`, but Codex has no native project-guide drift event. Guide drift stays skill-driven through `run_agents_guide_drift_hook.py`.
 
-The memory hygiene hook should be treated as high-recall around dirty Arbor workflow state. Prefer triggering it before stops, handoffs, release gates, commits, cache syncs, failed checks, or user review checkpoints when Arbor-managed changes are uncommitted. Suppress it for clean direct answers, read-only inspections with no unresolved Arbor state, explicit no-write turns, and unrelated dirty files outside Arbor scope.
+The Stop context-maintenance hook should be treated as high-recall around Arbor
+resume state and durable guide drift. It should run before stops, handoffs,
+release gates, commits, cache syncs, failed checks, or user review checkpoints
+when Arbor-managed changes or guide/map drift may exist. Suppress mutation for
+clean direct answers, read-only inspections with no unresolved Arbor state,
+explicit no-write turns, and unrelated dirty files outside Arbor scope.
 
 Do not store Arbor hook state in user-global memory. Re-register hooks when needed; registration is idempotent and should preserve unrelated project hooks.
 
 Claude Code also has a packaged plugin hook manifest at `hooks/hooks.json` that calls the same shared adapters through `CLAUDE_PLUGIN_ROOT`. Codex project hooks are registered in `.codex/hooks.json` and call wrappers under `.codex/hooks/`. Claude Code project hooks are optionally registered in `.claude/settings.json` and call wrappers under `.claude/hooks/`. Those wrappers locate the installed Arbor plugin cache and delegate to the shared adapter scripts:
 
 - `hooks/session-start` (`SessionStart`) calls `run_session_startup_hook.py` and applies a conservative runtime injection budget.
-- `hooks/stop-memory-hygiene` (`Stop`) maps `arbor.in_session_memory_hygiene` onto each runtime's Stop event. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to a silent memory guard for dirty Arbor worktrees: if `.arbor/memory.md` is missing, empty, or lacks a meaningful `In-flight` entry, it writes a generic resume pointer and returns non-blocking JSON with suppressed hook output. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the `run_memory_hygiene_hook.py` packet as the block reason.
+- `hooks/stop-memory-hygiene` (`Stop`) is the compatibility-named Stop
+  context-maintenance adapter. It maps memory hygiene and conservative
+  `AGENTS.md` Project Map drift maintenance onto each runtime's Stop event.
+  `Stop` output can re-enter the agent loop as a visible continuation, so the
+  adapter defaults to silent, non-blocking JSON with suppressed hook output. It
+  honors `stop_hook_active` first so it can never loop. Set
+  `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the
+  `run_memory_hygiene_hook.py` packet as the block reason for memory debugging.
 
 `arbor.goal_constraint_drift` has no native Claude Code event; it stays user/skill-driven there.
 

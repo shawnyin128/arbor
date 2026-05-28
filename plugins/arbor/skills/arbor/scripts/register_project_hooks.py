@@ -257,7 +257,7 @@ MEMORY_HYGIENE_CASE_CORPUS: list[dict[str, Any]] = [
         "git_state": "dirty",
         "arbor_managed": False,
         "checkpoint": "guide_drift",
-        "rationale": "stable guide drift uses the AGENTS hook instead",
+        "rationale": "stable guide drift belongs to the AGENTS phase of Stop context maintenance, not memory",
     },
     {
         "id": "suppress-committed-review",
@@ -394,7 +394,7 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
         "id": "arbor.in_session_memory_hygiene",
         "owner": "arbor",
         "event": "conversation.checkpoint",
-        "description": "Refresh project-local short-term memory when uncommitted work or conversation state makes it stale.",
+        "description": "Refresh project-local recovery memory when current Arbor context would be hard to resume from durable state.",
         "entrypoint": {
             "type": "skill-script",
             "skill": "arbor",
@@ -432,7 +432,7 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
         "id": "arbor.goal_constraint_drift",
         "owner": "arbor",
         "event": "project.guide_drift",
-        "description": "Update the stable project guide or map when goals, constraints, or map pointers change.",
+        "description": "Update the stable project guide or map when goals, constraints, or map pointers change; safe Project Map drift is also checked during Stop context maintenance.",
         "entrypoint": {
             "type": "skill-script",
             "skill": "arbor",
