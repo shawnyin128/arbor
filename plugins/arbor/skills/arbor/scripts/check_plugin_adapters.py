@@ -1758,6 +1758,69 @@ def validate_outcome_eval_observability_contract(plugin_root: Path, errors: list
             check(errors, term in text, f"{rel_path} missing outcome eval observability term `{term}`")
 
 
+def validate_evaluate_verification_method_examples_contract(plugin_root: Path, errors: list[str]) -> None:
+    reference = plugin_root / "skills" / "evaluate" / "references" / "verification-method-examples.md"
+    check(errors, reference.is_file(), "evaluate verification method examples reference must exist")
+    if reference.is_file():
+        text = reference.read_text(encoding="utf-8")
+        for term in (
+            "outcome-first",
+            "Do not force one test type",
+            "Pure functions",
+            "CLI commands",
+            "Backend APIs",
+            "Database schema",
+            "Frontend or UI behavior",
+            "browser automation",
+            "responsive viewport",
+            "console error inspection",
+            "Workflow, hook, router, plugin, or prompt-routing behavior",
+            "Prompt, skill, or documentation contracts",
+            "External API, connector, or hosted service behavior",
+            "weak pass",
+            "negative case",
+            "mutation probe",
+            "static contract probe",
+            "tests pass",
+            "looks good",
+        ):
+            check(errors, contains_term(text, term), f"evaluate verification examples missing term `{term}`")
+
+    required = {
+        "skills/evaluate/SKILL.md": [
+            "references/verification-method-examples.md",
+            "scenario-calibrated examples",
+            "artifact-appropriate checks",
+            "one universal test type",
+            "browser-observable behavior",
+            "browser automation",
+            "DOM assertions",
+            "rendered-output inspection",
+            "responsive viewport checks",
+            "console error inspection",
+            "Do not force browser automation",
+        ],
+        "skills/evaluate/references/evaluate-boundary.md": [
+            "verification-method-examples.md",
+            "scenario-calibrated examples",
+            "one universal test type",
+            "browser-observable behavior",
+            "browser automation",
+            "DOM assertions",
+            "rendered-output inspection",
+            "responsive viewport checks",
+            "console error inspection",
+            "pure state logic",
+            "static contract checks",
+        ],
+    }
+
+    for rel_path, terms in required.items():
+        text = (plugin_root / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, contains_term(text, term), f"{rel_path} missing evaluate verification example term `{term}`")
+
+
 def validate_develop_checkpoint_commit_contract(plugin_root: Path, errors: list[str]) -> None:
     repo_root = repo_root_from_plugin(plugin_root)
     required = {
@@ -1933,6 +1996,7 @@ def main() -> int:
     validate_decision_trace_handoff_contract(plugin_root, errors)
     validate_delegation_packet_effort_budget_contract(plugin_root, errors)
     validate_outcome_eval_observability_contract(plugin_root, errors)
+    validate_evaluate_verification_method_examples_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_release_version_management_contract(plugin_root, errors)
     validate_cross_runtime_initialization_contract(plugin_root, errors)

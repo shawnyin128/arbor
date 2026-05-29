@@ -134,6 +134,11 @@ For completed evaluation states, the loaded review context must include acceptan
 
 Evaluation should be adversarial. It should try to disprove the developer handoff, not merely confirm it.
 
+When the right verification surface is not obvious, read
+`verification-method-examples.md` for scenario-calibrated examples. The examples
+are advisory: they help choose artifact-appropriate checks without forcing one
+universal test type.
+
 Minimum evaluation surface:
 
 - replay important developer commands or explain why they were not replayed;
@@ -151,6 +156,13 @@ Minimum evaluation surface:
 Use repo conventions for commands. Do not add permanent implementation changes. Temporary probes should be cleaned up or clearly recorded.
 
 Evaluator evidence lists such as `developer_replay`, `additional_unit_tests`, `additional_scenario_tests`, `edge_negative_tests`, and `mutation_or_static_probes` must contain replayable commands, checks, scenarios, or inspection targets plus an observed result. Do not use vague entries such as `checked output`, `checked parser output`, `manually reviewed UI`, `looks good`, or `good enough`.
+
+For frontend or UI-facing changes, browser automation, DOM assertions,
+rendered-output inspection, responsive viewport checks, console error
+inspection, and screenshots are strong evidence when the accepted outcome
+depends on browser-observable behavior. Prefer cheaper unit, component, content,
+or static contract checks when the change is pure state logic, prompt text, data
+mapping, or a non-rendered contract.
 
 ### Strict Acceptance Gate
 

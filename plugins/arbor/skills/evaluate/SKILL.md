@@ -165,6 +165,9 @@ No. `accepted` only means independent evaluation did not find a blocking issue. 
 
 - Treat the brainstorm test plan as the minimum scope.
 - Inspect changed files/artifacts before deciding what to test.
+- When the strongest verification method is not obvious, read
+  `references/verification-method-examples.md` for scenario-calibrated examples
+  instead of defaulting to one universal test type.
 - Compare developer implementation-time decisions and decision deviations against the brainstorm decision trace handoff.
 - Compare developer self-tests against required unit tests, required scenario tests, edge cases, negative cases, and evaluator focus.
 - Compare developer self-tests against done-when criteria and identify any verification gap before choosing an acceptance verdict.
@@ -177,6 +180,11 @@ No. `accepted` only means independent evaluation did not find a blocking issue. 
 - Prefer targeted checks over broad expensive checks unless the blast radius justifies breadth.
 - Add adversarial probes for contract-critical behavior, negative cases, boundary cases, schema drift, or route mistakes.
 - For documentation or managed artifacts, use content, structure, and workflow scenario checks instead of pretending code tests are required.
+- For frontend or UI-facing changes whose accepted outcome depends on
+  browser-observable behavior, prefer browser automation, DOM assertions,
+  rendered-output inspection, responsive viewport checks, console error
+  inspection, or screenshots as appropriate. Do not force browser automation for
+  pure state logic, data mapping, prompt text, or static contracts.
 - If a check cannot run, record the command, blocker, and residual risk.
 
 ### Replay Conditions Evidence
@@ -579,15 +587,19 @@ Before returning:
 16. Did every test-matrix row include a concrete representative example a reader can understand without opening the harness?
 17. For accepted evaluations, did I add at least two independent evaluator check categories plus a negative control, mutation probe, static contract probe, or equivalent adversarial check?
 18. For workflow, skill, router, plugin, or prompt-routing changes, did I replay a realistic workflow/user scenario or record the live replay gap?
-19. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
-20. Did `user_response` make clear that convergence remains pending instead of implying final completion?
-21. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
-22. Did I run final response preflight on the exact final message so it includes all evaluation headings and required tables instead of a prose-only summary?
+19. When the verification method was not obvious, did I use the scenario
+    examples to choose artifact-appropriate checks without forcing one universal
+    test type?
+20. Did `planned_scope_coverage` and evaluator evidence name concrete planned scope and replayable checks instead of generic phrases?
+21. Did `user_response` make clear that convergence remains pending instead of implying final completion?
+22. Did `user_response` start with the evaluation result and findings, then explain checks, adversarial coverage, evaluator judgments, risks, and next step without leaking internal field names or codes?
+23. Did I run final response preflight on the exact final message so it includes all evaluation headings and required tables instead of a prose-only summary?
 
 If any check fails, revise the output or return the appropriate blocked/needs state.
 
 ## Reference Material
 
 - `references/evaluate-boundary.md`: full boundary, handoff requirements, adversarial testing contract, review append, and terminal-state matrix.
+- `references/verification-method-examples.md`: progressive reference for choosing artifact-appropriate evaluator checks, including frontend/browser automation scenarios.
 - `references/evaluate-simulation-cases.md`: regression cases for evaluate routing and evidence.
 - `scripts/check_evaluate_baselines.py`: deterministic replay/schema checks for evaluate simulation baselines.
