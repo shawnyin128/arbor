@@ -731,6 +731,51 @@ def validate_brainstorm_feature_queue_contract(plugin_root: Path, errors: list[s
         check(errors, contains_term(process_state, term), f"process-state checker missing feature-queue term `{term}`")
 
 
+def validate_release_active_selection_contract(plugin_root: Path, errors: list[str]) -> None:
+    skills_root = plugin_root / "skills"
+    release = (skills_root / "release" / "SKILL.md").read_text(encoding="utf-8")
+    release_boundary = (skills_root / "release" / "references" / "release-boundary.md").read_text(encoding="utf-8")
+    converge = (skills_root / "converge" / "SKILL.md").read_text(encoding="utf-8")
+    converge_boundary = (skills_root / "converge" / "references" / "converge-boundary.md").read_text(
+        encoding="utf-8"
+    )
+
+    for term in (
+        "selects the next unfinished feature through registry-backed `workflow_continuation`",
+        "update `active_feature_id` to that row",
+        "`active_feature_id` when finalization successfully selects a next unfinished feature",
+        "active_feature_id_after",
+        "next feature is ready to start",
+        "through `converge`",
+        "`workflow_continuation.next_skill`: `brainstorm`, `converge`, or `none`",
+    ):
+        check(errors, contains_term(release, term), f"release skill missing active-selection term `{term}`")
+
+    for term in (
+        "skip the just-finalized feature",
+        "choose the next unfinished actionable feature",
+        "feature_registry_update.active_feature_id_after",
+        "public `converge` entrypoint",
+        "row status and review-context availability",
+        "next feature is ready to start through `converge`",
+    ):
+        check(errors, contains_term(release_boundary, term), f"release boundary missing active-selection term `{term}`")
+
+    for term in (
+        "Confirm selected feature",
+        "active row is terminal while unfinished rows remain",
+        "release selects and activates the next unfinished feature",
+    ):
+        check(errors, contains_term(converge, term), f"converge skill missing active-selection term `{term}`")
+
+    for term in (
+        "release selects and activates the next unfinished feature",
+        "selected feature must be unambiguous",
+        "silently picking another feature from the queue",
+    ):
+        check(errors, contains_term(converge_boundary, term), f"converge boundary missing active-selection term `{term}`")
+
+
 def run_session_start(plugin_root: Path, project_root: Path, source: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
@@ -2032,6 +2077,7 @@ def main() -> int:
     validate_claude_hook_structure(plugin_root, errors)
     validate_public_entrypoint_contract(plugin_root, errors)
     validate_brainstorm_feature_queue_contract(plugin_root, errors)
+    validate_release_active_selection_contract(plugin_root, errors)
     validate_session_start_smoke(plugin_root, errors)
     validate_stop_memory_hygiene_smoke(plugin_root, errors)
     validate_in_flight_memory_contract(plugin_root, errors)

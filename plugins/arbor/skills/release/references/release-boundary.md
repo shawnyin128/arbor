@@ -345,11 +345,13 @@ After `checkpointed`, `release` routes the same feature to the next stage:
 After `ready`, `committed`, or `pushed`, `release` is responsible for returning the next feature to process:
 
 1. scan `.arbor/workflow/features.json` in registry order;
-2. skip the just-finalized feature and any feature already `done`;
-3. choose the next unfinished feature when one exists;
+2. skip the just-finalized feature and any feature already `done` or `blocked`;
+3. choose the next unfinished actionable feature when one exists;
 4. include registry evidence by setting `workflow_continuation.registry_path` to the source registry path and `workflow_continuation.registry_index` to the selected row index;
 5. derive `workflow_continuation.next_feature_status` from the selected registry row rather than trusting prose or a copied field;
-6. route `changes_requested` or `in_develop` to `develop`, `in_evaluate` to `evaluate`, `planned` with brainstorm context to `develop`, and `planned` without brainstorm context to `brainstorm`;
-7. if no unfinished feature remains, set `workflow_continuation.status=none`.
+6. update `active_feature_id` to the selected row after successful finalization, and record that value in `feature_registry_update.active_feature_id_after`;
+7. route `changes_requested`, `in_develop`, `in_evaluate`, or `planned` with review context to the public `converge` entrypoint because `develop` and `evaluate` are internal stages owned by `converge`;
+8. route `planned` without usable review context to `brainstorm`;
+9. if no unfinished feature remains, set `workflow_continuation.status=none`.
 
-When `workflow_continuation.status=available`, `next_feature_id` must be different from the selected `source.feature_id` and must exist in the registry row identified by `registry_path` and `registry_index`. The continuation status must match that selected registry row status; route selection must be derived from the row status. Non-final release states such as `needs_confirmation`, `needs_converge`, `blocked`, and `route_correction` must not advertise next-feature continuation.
+When `workflow_continuation.status=available`, `next_feature_id` must be different from the selected `source.feature_id` and must exist in the registry row identified by `registry_path` and `registry_index`. The continuation status must match that selected registry row status; route selection must be derived from the row status and review-context availability, not prose. The visible release status must tell the user that the next feature is ready to start through `converge`. Non-final release states such as `needs_confirmation`, `needs_converge`, `blocked`, and `route_correction` must not advertise next-feature continuation.

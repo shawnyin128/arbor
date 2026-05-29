@@ -191,7 +191,7 @@ Action:
 - update selected feature to `done`;
 - append a Convergence Round;
 - route to `release` for internal finalization.
-- set `workflow_continuation.status=none`; release selects the next unfinished feature after finalization.
+- set `workflow_continuation.status=none`; release selects and activates the next unfinished feature after finalization.
 
 ### Needs Develop
 
@@ -275,6 +275,12 @@ After `converged`, `converge` must not choose the next feature directly. It must
 4. leave `workflow_continuation.status=none`, `next_feature_id=null`, `next_feature_status=null`, and `next_skill=none`.
 
 Release owns next-feature continuation because it is the final current-feature step. This prevents the pipeline from starting the next feature before release evidence, commit convention planning, and any confirmation-gated delivery actions are handled.
+
+Before any loop decision, the selected feature must be unambiguous. Use the
+explicit selected feature when one exists; otherwise use `active_feature_id`.
+If the registry has multiple open rows and no selected row is clear, or if the
+active row is terminal while unfinished rows remain, return an evidence or
+selection blocker instead of silently picking another feature from the queue.
 
 ## Feature Registry Contract
 

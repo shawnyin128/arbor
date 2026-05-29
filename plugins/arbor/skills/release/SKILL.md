@@ -15,7 +15,7 @@ to continue, finish, publish, push, or sync managed work should enter through
 scope or identity still needs routing. `release` may run only from an internal
 handoff packet or equivalent Arbor workflow state after convergence.
 
-`release` is a workflow gate for state tracking and current-feature finalization. In checkpoint mode, it records the latest developer or evaluator state before the next skill runs. For `checkpoint_develop`, that means creating a local checkpoint commit after a successful developer handoff before `evaluate` runs. In finalization mode, it verifies that the selected feature is converged, prepares safe local release evidence, enforces the commit convention, checks the project's actual version management method when one exists, blocks push, PR, tag, or publish actions unless the user explicitly authorized that action, then reports the next unfinished feature through `workflow_continuation`.
+`release` is a workflow gate for state tracking and current-feature finalization. In checkpoint mode, it records the latest developer or evaluator state before the next skill runs. For `checkpoint_develop`, that means creating a local checkpoint commit after a successful developer handoff before `evaluate` runs. In finalization mode, it verifies that the selected feature is converged, prepares safe local release evidence, enforces the commit convention, checks the project's actual version management method when one exists, blocks push, PR, tag, or publish actions unless the user explicitly authorized that action, then selects the next unfinished feature through registry-backed `workflow_continuation`.
 
 It does not plan, implement, evaluate, or decide convergence.
 
@@ -38,8 +38,8 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 7. **Check version management**: if the current project has a version-managed release artifact, identify the actual version management method before finalization or publish, such as plugin manifests, `package.json`, `pyproject.toml`, git tags, or a documented custom policy. Choose the target version from that method and the release scope. If a required bump is missing or the method is unclear, block release instead of publishing under the old version.
 8. **Gate external actions**: for `checkpoint_develop` and `checkpoint_evaluate`, create the local checkpoint commit when Arbor workflow checkpoint policy authorizes it and readiness checks pass. Treat checkpoint commits as internal workflow actions; push, PR, tag, publish, cache sync, finalization commits, or other public/external actions always require explicit user authorization and must occur only after convergence/finalization. Do not append a successful checkpoint Release Round or route onward unless the commit was created and recorded.
 9. **Append release evidence**: append a Release Round to the same review document when release reaches a meaningful terminal state.
-10. **Select continuation**: after a checkpoint state, route to the next stage for the same feature; after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json` or report that none remains.
-11. **Update registry when justified**: update release metadata/status only for the selected feature.
+10. **Select continuation**: after a checkpoint state, route to the next stage for the same feature; after a release-final state, choose the next unfinished feature from `.arbor/workflow/features.json`, update `active_feature_id` to that row when one exists, or report that none remains.
+11. **Update registry when justified**: update release metadata/status only for the selected feature, plus `active_feature_id` when finalization successfully selects a next unfinished feature.
 12. **Update session memory**: before stopping with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records unresolved in-flight state. After a successful commit/push/publish that resolves the current Arbor work, remove or shrink resolved entries so committed history becomes the source of truth.
 13. **Return rendered checkpoint and runtime packet**: produce `release.v1` for runtime handoff, and make the normal user-visible response the rendered `user_response` status checkpoint, not raw JSON.
 
@@ -74,12 +74,13 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 15. When continuation is available, `workflow_continuation.next_feature_id` must not equal `source.feature_id`.
 16. For finalize-feature release-ready states, the selected source feature must exist in `source.feature_registry_path`; the source feature status must match `release_context.feature_status` and must be `done`. Checkpoint states must prove the selected source feature exists when a registry is available, but they do not require status `done`.
 17. When continuation is available, include registry evidence: `registry_path` must match `source.feature_registry_path`, `registry_index` must identify the selected row, the row id must match `next_feature_id`, and the row status must match `next_feature_status`.
-18. Keep user-facing release output status-only; detailed handoff, authorization, and evidence fields are for structured state, review documents, or debug views.
-19. Emit a checkpoint policy that distinguishes safe internal continuation from user-stopping external actions.
-20. Do not leave unresolved uncommitted Arbor workflow state without an up-to-date `.arbor/memory.md`; do not leave resolved memory entries after a successful commit or publish makes git history authoritative.
-21. For workflow-facing finalization or publish, check that outcome and observability evidence exists: rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof. Preserve replay conditions when runtime target, source path or published cache, command, environment blocker, infrastructure failure, or weak-pass gap affects release confidence. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
-22. If the current project has version management, release must reason from the actual version management method before finalization or publish. A plugin should follow its plugin manifests, a JavaScript package should follow `package.json`, a Python package should follow `pyproject.toml` or the documented package metadata, and a tag-driven project should follow its tag convention. Do not reuse a stale version or invent a bump without citing the method and selected target version.
-23. Do not advertise or accept `release` as a public workflow entrypoint. If a user prompt directly asks for release behavior, preserve the intent and route through the public owner, normally `converge` for an existing managed feature, instead of asking the user to call `$release`.
+18. When continuation is available after finalization, update or report `active_feature_id` as the selected next feature and make the status output say that the next feature is ready to start through `converge`.
+19. Keep user-facing release output status-only; detailed handoff, authorization, and evidence fields are for structured state, review documents, or debug views.
+20. Emit a checkpoint policy that distinguishes safe internal continuation from user-stopping external actions.
+21. Do not leave unresolved uncommitted Arbor workflow state without an up-to-date `.arbor/memory.md`; do not leave resolved memory entries after a successful commit or publish makes git history authoritative.
+22. For workflow-facing finalization or publish, check that outcome and observability evidence exists: rendered output, review evidence, process state, git/file side effects, realistic replay or an explicit weak-pass gap, and trace evidence when the feature required trace proof. Preserve replay conditions when runtime target, source path or published cache, command, environment blocker, infrastructure failure, or weak-pass gap affects release confidence. Do not require LLM judges, fixed path matching, exact turn-by-turn replay, or one universal test type by default.
+23. If the current project has version management, release must reason from the actual version management method before finalization or publish. A plugin should follow its plugin manifests, a JavaScript package should follow `package.json`, a Python package should follow `pyproject.toml` or the documented package metadata, and a tag-driven project should follow its tag convention. Do not reuse a stale version or invent a bump without citing the method and selected target version.
+24. Do not advertise or accept `release` as a public workflow entrypoint. If a user prompt directly asks for release behavior, preserve the intent and route through the public owner, normally `converge` for an existing managed feature, instead of asking the user to call `$release`.
 
 ## Authorization Scope
 
@@ -199,6 +200,7 @@ The structured `release.v1` object is an internal workflow/runtime packet. Produ
     "status": "not_required",
     "path": ".arbor/workflow/features.json",
     "feature_id": "",
+    "active_feature_id_after": null,
     "reason": ""
   },
   "review_append": {
@@ -257,7 +259,7 @@ Use these enums:
 - `feature_registry_update.status`: `updated`, `not_required`, or `blocked`
 - `review_append.status`: `appended`, `blocker_packet`, or `not_required`
 - `workflow_continuation.status`: `available`, `none`, or `blocked`
-- `workflow_continuation.next_skill`: `brainstorm`, `develop`, `evaluate`, or `none`
+- `workflow_continuation.next_skill`: `brainstorm`, `converge`, or `none`
 - `route.terminal_state`: `ready`, `checkpointed`, `prepared`, `committed`, `pushed`, `needs_confirmation`, `needs_converge`, `blocked`, or `route_correction`
 - `route.next_skill`: `evaluate`, `converge`, or `none`
 - `ui.visibility`: `status` or `debug`
@@ -266,14 +268,14 @@ Use these enums:
 - `ui.checkpoint.continue_policy`: `auto_continue_allowed`, `stop_for_user`, or `must_stop`
 - `ui.checkpoint.resume_after`: `auto_policy`, `user_acknowledgement`, `user_confirmation`, `blocker_resolved`, or `none`
 
-Use `auto_continue_allowed` only for internal checkpoint states whose local checkpoint commit completed and whose Release Round records the commit hash, with no blocker, dirty-scope conflict, or confirmation need, including internal checkpoint handoffs under an explicit `develop_evaluate_converge` automation policy. Use `stop_for_user` for release-ready finalization summaries and next-feature reports. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing checkpoint commit evidence, missing convergence evidence, or any required confirmation. Use `must_stop` for commit, push, PR, tag, publish.
+Use `auto_continue_allowed` only for internal checkpoint states whose local checkpoint commit completed and whose Release Round records the commit hash, with no blocker, dirty-scope conflict, or confirmation need, including internal checkpoint handoffs under an explicit `develop_evaluate_converge` automation policy. Use `stop_for_user` for release-ready finalization summaries and next-feature reports, including the visible "next feature is ready to start" notice. Use `must_stop` for finalization commit, push, PR, tag, publish, dirty-scope conflicts, missing checkpoint commit evidence, missing convergence evidence, or any required confirmation. Use `must_stop` for commit, push, PR, tag, publish.
 
 ## User-Visible Status
 
 Use `ui.summary`, `ui.status_items`, `ui.warnings`, and `ui.next_actions` for concise status output only:
 
 - checkpoint mode: checkpoint status, local checkpoint commit hash when created, and next skill;
-- finalization mode: commit message, commit hash, push/PR/tag/publish status when performed, and next feature;
+- finalization mode: commit message, commit hash, push/PR/tag/publish status when performed, active feature update when a next feature exists, and a plain-language notice that the next feature is ready to start through `converge`;
 - blocked or confirmation mode: blocker or exact confirmation needed.
 
 Render this compact status in the user's active chat language unless the user
