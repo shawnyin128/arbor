@@ -147,6 +147,11 @@ The review document is not a design doc and not the feature queue. It is the sha
 
 `features.json` should live at `.arbor/workflow/features.json`.
 
+The registry is a queue, not a summary paragraph. A broad request must create
+multiple rows when it names separable outcomes that can be delivered, tested,
+reverted, or reviewed independently. Use one row only when the work is atomic
+or when splitting would make validation incoherent.
+
 It should use `schema_version: features.v1` and include:
 
 - source brainstorm id or raw request pointer;
@@ -161,6 +166,23 @@ It should use `schema_version: features.v1` and include:
 - acceptance criteria summary or pointers;
 - test scope summary;
 - timestamps or source refs when available.
+
+Each row should describe one independently testable implementation or review
+unit. Do not create a single umbrella row for the whole backlog when the plan
+already names separate implementation outcomes. Shared infrastructure can be
+its own row only when it directly unlocks later rows and has a concrete
+verification target.
+
+`active_feature_id` identifies exactly one selected first work unit. It does
+not mean "everything in this brainstorm." The active row's `review_doc_path`
+should match the review Context/Test Plan that the next quality loop will use;
+future rows remain queued until the user approves them or release selects the
+next unfinished feature after the current row is finalized.
+
+Queue metadata should be readable without scanning review documents. Every
+ready row should include stable id, title, status, priority or order,
+dependency list, `review_doc_path`, summary, acceptance summary, and test scope
+summary.
 
 Allowed feature statuses:
 
@@ -177,7 +199,9 @@ Status integrity rules:
 
 - `feature_registry.status_summary` must be recomputable from the emitted feature rows;
 - `ready_for_user_review` should create newly split features as `planned`;
-- `ready_for_converge` should mark the active selected feature as `approved`;
+- `ready_for_converge` should mark the active selected feature as `approved`
+  while leaving future queue rows as `planned` unless they were separately
+  approved;
 - `brainstorm` should not mark newly planned work as `done`, `in_evaluate`, or `changes_requested`.
 
 `features.json` and review docs are one-to-one at the feature level: every registry feature should have a `review_doc_path`, and each ready feature review doc should correspond to exactly one registry feature.
@@ -319,8 +343,12 @@ Feature split rules:
 
 - each feature should have one clear user-visible or workflow-visible outcome;
 - each feature should be implementable and testable independently;
+- split when outcomes can be delivered, tested, reverted, or reviewed independently;
+- do not collapse a broad plan into one umbrella feature row when the plan names separable outcomes;
 - each feature should have a status in `features.json`;
 - each feature should point to one review document;
+- the active feature should be the first selected work unit, not the entire backlog;
+- future queue rows should remain planned until approved or selected by release after the current feature is finalized;
 - shared infrastructure can be a feature only if it directly unlocks later features;
 - avoid bundling unrelated refactors;
 - prefer incremental delivery over one large redesign;

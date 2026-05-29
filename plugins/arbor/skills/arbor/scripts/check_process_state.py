@@ -76,6 +76,7 @@ class FeatureRow:
     status: str
     review_doc_path: Path | None
     index: int
+    raw: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -281,13 +282,72 @@ def validate_registry_rows(root: Path, registry: dict[str, Any] | None, findings
             else:
                 review_doc_path = Path(review_doc_raw)
 
-        rows.append(FeatureRow(feature_id=feature_id, title=title, status=status, review_doc_path=review_doc_path, index=index))
+        rows.append(
+            FeatureRow(
+                feature_id=feature_id,
+                title=title,
+                status=status,
+                review_doc_path=review_doc_path,
+                index=index,
+                raw=raw_feature,
+            )
+        )
 
     active = registry.get("active_feature_id")
     if active is not None:
         if not isinstance(active, str) or active not in seen_ids:
             add_finding(findings, "error", "invalid_active_feature", FEATURE_REGISTRY_PATH, "active_feature_id must reference an existing feature id.")
     return rows
+
+
+def has_text_or_items(raw_feature: dict[str, Any], *keys: str) -> bool:
+    for key in keys:
+        value = raw_feature.get(key)
+        if isinstance(value, str) and value.strip():
+            return True
+        if isinstance(value, list) and any(str(item).strip() for item in value):
+            return True
+    return False
+
+
+def validate_feature_queue_state(registry: dict[str, Any] | None, features: list[FeatureRow], findings: list[Finding]) -> None:
+    if registry is None or not features:
+        return
+
+    active = registry.get("active_feature_id")
+    by_id = {feature.feature_id: feature for feature in features}
+    active_feature = by_id.get(active) if isinstance(active, str) else None
+    open_features = [feature for feature in features if feature.status in OPEN_FEATURE_STATUSES]
+    if active_feature is not None and active_feature.status in TERMINAL_FEATURE_STATUSES and open_features:
+        open_ids = ", ".join(feature.feature_id for feature in open_features[:5])
+        add_finding(
+            findings,
+            "warning",
+            "active_feature_terminal_with_open_queue",
+            FEATURE_REGISTRY_PATH,
+            f"active_feature_id points to terminal feature {active_feature.feature_id!r} while open queued feature(s) remain: {open_ids}.",
+        )
+
+    for feature in open_features:
+        raw = feature.raw
+        missing: list[str] = []
+        if "priority" not in raw and "order" not in raw:
+            missing.append("priority or order")
+        dependencies = raw.get("depends_on", raw.get("dependencies"))
+        if not isinstance(dependencies, list):
+            missing.append("dependency list")
+        if not has_text_or_items(raw, "acceptance_summary", "acceptance_criteria", "acceptance_refs"):
+            missing.append("acceptance summary")
+        if not has_text_or_items(raw, "test_scope_summary", "verification_scope", "test_plan_summary"):
+            missing.append("test scope summary")
+        if missing:
+            add_finding(
+                findings,
+                "warning",
+                "missing_queue_metadata",
+                f"{FEATURE_REGISTRY_PATH}:features[{feature.index}]",
+                f"Open feature {feature.feature_id} is missing queue metadata: {', '.join(missing)}.",
+            )
 
 
 def required_rounds_for_status(status: str) -> tuple[str, ...]:
@@ -458,6 +518,7 @@ def validate_process_state(
     validate_project_guide(resolved, managed, findings)
     registry = load_registry(resolved, findings)
     features = validate_registry_rows(resolved, registry, findings)
+    validate_feature_queue_state(registry, features, findings)
     validate_review_docs(
         resolved,
         features,
@@ -555,6 +616,10 @@ def seed_registry(root: Path, status: str, review_doc_path: str = "docs/review/f
                         "title": "Fixture feature",
                         "status": status,
                         "review_doc_path": review_doc_path,
+                        "priority": 1,
+                        "depends_on": [],
+                        "acceptance_summary": "Fixture acceptance.",
+                        "test_scope_summary": "Fixture test scope.",
                     }
                 ],
             },
@@ -734,6 +799,72 @@ def run_self_tests() -> None:
             code="stale_memory_after_resolved_work",
         )
 
+        active_done_with_queue = base / "active-done-with-queue"
+        active_done_with_queue.mkdir()
+        seed_project(active_done_with_queue)
+        write(
+            active_done_with_queue / ".arbor/workflow/features.json",
+            json.dumps(
+                {
+                    "active_feature_id": "first",
+                    "features": [
+                        {
+                            "id": "first",
+                            "title": "First feature",
+                            "status": "done",
+                            "review_doc_path": "docs/review/first.md",
+                            "priority": 1,
+                            "depends_on": [],
+                            "acceptance_summary": "First acceptance.",
+                            "test_scope_summary": "First test scope.",
+                        },
+                        {
+                            "id": "second",
+                            "title": "Second feature",
+                            "status": "planned",
+                            "review_doc_path": "docs/review/second.md",
+                            "priority": 2,
+                            "depends_on": ["first"],
+                            "acceptance_summary": "Second acceptance.",
+                            "test_scope_summary": "Second test scope.",
+                        },
+                    ],
+                },
+                indent=2,
+            ),
+        )
+        write(
+            active_done_with_queue / "docs/review/first.md",
+            """
+            ## Context/Test Plan
+
+            Acceptance criteria.
+
+            ## Developer Round 1
+
+            Developer evidence.
+
+            ## Evaluator Round 1
+
+            Evaluator evidence.
+
+            ## Convergence Round 1
+
+            Converged.
+
+            ## Release Round 1
+
+            Finalized.
+            """,
+        )
+        write(active_done_with_queue / "docs/review/second.md", "## Context/Test Plan\n\nAcceptance criteria.\n")
+        expect_report(
+            "active terminal feature with open queue",
+            validate_process_state(active_done_with_queue),
+            status="warn",
+            code="active_feature_terminal_with_open_queue",
+        )
+
         unsafe_path = base / "unsafe-path"
         unsafe_path.mkdir()
         seed_project(unsafe_path)
@@ -752,7 +883,7 @@ def run_self_tests() -> None:
             code="review_doc_path_outside_review_dir",
         )
 
-    print("process state self-tests passed count=14")
+    print("process state self-tests passed count=15")
 
 
 def build_parser() -> argparse.ArgumentParser:

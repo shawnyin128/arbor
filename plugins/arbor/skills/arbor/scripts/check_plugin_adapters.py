@@ -686,6 +686,51 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
         check(errors, forbidden not in real_runner, f"real workflow chain runner must not use public {forbidden}")
 
 
+def validate_brainstorm_feature_queue_contract(plugin_root: Path, errors: list[str]) -> None:
+    skill = (plugin_root / "skills" / "brainstorm" / "SKILL.md").read_text(encoding="utf-8")
+    boundary = (plugin_root / "skills" / "brainstorm" / "references" / "brainstorm-boundary.md").read_text(
+        encoding="utf-8"
+    )
+    process_state = (plugin_root / "skills" / "arbor" / "scripts" / "check_process_state.py").read_text(
+        encoding="utf-8"
+    )
+
+    for term in (
+        "Feature Queue And Split Semantics",
+        "delivered, tested, reverted, or reviewed independently",
+        "not one umbrella row for the whole backlog",
+        "active_feature_id` point to exactly one selected first work unit",
+        "priority or order",
+        "dependency list",
+        "acceptance summary",
+        "test scope summary",
+        "remaining queue in user-level language",
+    ):
+        check(errors, contains_term(skill, term), f"brainstorm skill missing feature-queue term `{term}`")
+
+    for term in (
+        "The registry is a queue, not a summary paragraph",
+        "separable outcomes",
+        "delivered, tested, reverted, or reviewed independently",
+        "single umbrella row for the whole backlog",
+        "exactly one selected first work unit",
+        "future rows remain queued",
+        "Queue metadata should be readable without scanning review documents",
+        "acceptance summary",
+        "test scope summary",
+    ):
+        check(errors, contains_term(boundary, term), f"brainstorm boundary missing feature-queue term `{term}`")
+
+    for term in (
+        "missing_queue_metadata",
+        "active_feature_terminal_with_open_queue",
+        "priority or order",
+        "acceptance summary",
+        "test scope summary",
+    ):
+        check(errors, contains_term(process_state, term), f"process-state checker missing feature-queue term `{term}`")
+
+
 def run_session_start(plugin_root: Path, project_root: Path, source: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
@@ -1986,6 +2031,7 @@ def main() -> int:
     validate_agents_guide_drift_smoke(plugin_root, errors)
     validate_claude_hook_structure(plugin_root, errors)
     validate_public_entrypoint_contract(plugin_root, errors)
+    validate_brainstorm_feature_queue_contract(plugin_root, errors)
     validate_session_start_smoke(plugin_root, errors)
     validate_stop_memory_hygiene_smoke(plugin_root, errors)
     validate_in_flight_memory_contract(plugin_root, errors)

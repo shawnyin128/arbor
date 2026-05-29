@@ -68,6 +68,32 @@ Match canonical example
 -> Structured output
 ```
 
+## Feature Queue And Split Semantics
+
+Broad managed work must become a feature queue before implementation when the
+request names multiple outcomes that can be delivered, tested, reverted, or
+reviewed independently. Use one feature only when the work is genuinely atomic
+or when splitting would make validation incoherent.
+
+When splitting broad work:
+
+- create one registry row per independently testable implementation or review
+  unit, not one umbrella row for the whole backlog;
+- make `active_feature_id` point to exactly one selected first work unit, not
+  the entire plan;
+- give every row enough queue metadata for downstream selection: stable id,
+  title, status, priority or order, dependency list, `review_doc_path`,
+  acceptance summary, and test scope summary;
+- keep future rows in `planned` until the user approves them or release selects
+  the next unfinished feature after finalizing the current one;
+- create the review Context/Test Plan for the active row and, when the split is
+  ready, enough context for each future row that another agent can review the
+  queue without inferring progress from review-document scans.
+
+The visible brainstorm checkpoint should explain the first work unit and the
+remaining queue in user-level language. Do not make internal feature ids,
+status codes, or registry field names the primary explanation.
+
 ## Core Rules
 
 1. Do not recreate a hidden router. Classify only enough boundary context to confirm this belongs in `brainstorm`.
@@ -76,7 +102,7 @@ Match canonical example
 4. Ask one material clarification question when user intent, hidden defaults, or approval scope could change the plan or needs explicit confirmation.
 5. Prefer one pending blocking question at a time over a questionnaire; after each answer, continue clarifying remaining material uncertainty until the whole requirement is confirmed.
 6. Surface hidden decisions explicitly instead of silently choosing defaults.
-7. Split large requests into incremental features before implementation planning.
+7. Split large requests into incremental features before implementation planning; do not collapse separable outcomes into one umbrella feature row.
 8. Include acceptance criteria, done-when criteria, and artifact-appropriate review verification for every ready feature.
 9. Maintain `features.json` as the feature queue/status index; do not make downstream skills infer progress by scanning review files.
 10. Require user approval before the converge-owned implementation/review loop unless the user already clearly approved a narrow low-risk plan.
@@ -443,7 +469,18 @@ For `ready_for_user_review` and `ready_for_converge`, `review_doc.status` must b
 
 For `ready_for_user_review` and `ready_for_converge`, `feature_registry.status` must be `created` or `updated`, `feature_registry.path` must be `.arbor/workflow/features.json`, and every feature should have an id, title/name, status, and `review_doc_path`. `feature_registry.status_summary` must match the actual feature rows. Non-ready states should use `not_required` or `blocked`.
 
-For `ready_for_user_review`, newly planned features should start as `planned`. For `ready_for_converge`, the active feature should be `approved`; `converge` and its internal stages own `in_develop`, `in_evaluate`, `changes_requested`, `done`, and `blocked`.
+For `ready_for_user_review`, newly planned features should start as `planned`.
+For `ready_for_converge`, the active feature should be `approved`; future
+queue rows should remain `planned` unless separately approved. `converge` and
+its internal stages own `in_develop`, `in_evaluate`, `changes_requested`,
+`done`, and `blocked`.
+
+For ready output, each feature row should include enough queue metadata to
+resume without re-reading the whole plan: id, title or name, status, priority
+or order, dependency list, `review_doc_path`, summary, acceptance summary, and
+test scope summary. `active_feature_id` must identify one selected work unit
+whose review document matches `review_doc.path`; it must not stand for the
+whole backlog.
 
 ## Self-Check
 
@@ -454,7 +491,7 @@ Before returning, check:
 3. Did I ask the next material blocking question or request approval/correction instead of producing a plan-only checkpoint?
 4. Did I avoid treating "one question at a time" as "only one question total"?
 5. Did I expose hidden decisions?
-6. Did I split broad work into independently testable features?
+6. Did I split broad work into independently testable features, instead of one umbrella backlog row?
 7. Did I create/update `.arbor/workflow/features.json` with feature statuses, active feature, and review document paths for ready work?
 8. Did I include acceptance criteria and artifact-appropriate verification scope for ready features?
 9. Did I create the review Context/Test Plan artifact for the selected ready feature?
