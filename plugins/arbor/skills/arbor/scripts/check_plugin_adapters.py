@@ -2046,6 +2046,8 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "R29",
         "R30",
         "R31",
+        "R33",
+        "assert_multi_feature_queue_continuation",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
     for category in (
@@ -2057,6 +2059,7 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "project_map_drift",
         "release_publish",
         "feedback_triage",
+        "multi_feature_queue",
     ):
         check(errors, category in runner_text, f"real workflow chain runner missing routing category `{category}`")
     for case_number in range(1, 29):
@@ -2065,6 +2068,15 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         check(errors, f'"{case_id}"' in runner_text, f"real workflow chain runner missing case {case_id}")
     check(errors, "| R32 |" in text, "real workflow chain review missing feedback triage case R32")
     check(errors, '"R32"' in runner_text, "real workflow chain runner missing feedback triage case R32")
+    check(errors, "| R33 |" in text, "real workflow chain review missing multi-feature queue case R33")
+    check(errors, '"R33"' in runner_text, "real workflow chain runner missing multi-feature queue case R33")
+    for term in (
+        "active_feature_id",
+        "Q2",
+        "keeps Q2 and Q3 planned",
+        "ready through converge",
+    ):
+        check(errors, contains_term(text, term), f"real workflow chain review missing multi-feature proof term `{term}`")
 
 
 def main() -> int:

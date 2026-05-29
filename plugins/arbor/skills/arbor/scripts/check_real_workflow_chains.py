@@ -116,6 +116,11 @@ ROUTING_REPLAY_CASES = {
         "situation": "A user feedback prompt should render a feedback checkpoint and choose brainstorm, converge, or direct response without exposing internal stages.",
         "expected_chain": "feedback -> brainstorm or converge or direct response",
     },
+    "R33": {
+        "category": "multi_feature_queue",
+        "situation": "A broad brainstorm queue should finalize only the current feature and activate the next unfinished registry row without consuming or skipping later planned rows.",
+        "expected_chain": "converge -> internal release(finalize_feature) -> next feature ready through converge",
+    },
     "R27": {
         "category": "planning_continuation",
         "situation": "A split-context engineering planning continuation should still become brainstorm.",
@@ -136,6 +141,7 @@ REQUIRED_ROUTING_CATEGORIES = {
     "project_map_drift",
     "release_publish",
     "feedback_triage",
+    "multi_feature_queue",
 }
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -525,6 +531,100 @@ def setup_converged_release_context(ctx: CaseContext) -> None:
     git(ctx, "commit", "-m", "test: converge review fixture")
 
 
+def setup_multi_feature_queue_context(ctx: CaseContext) -> None:
+    common_project(ctx)
+    write(
+        ctx.workdir / ".arbor/workflow/features.json",
+        """
+        {
+          "schema_version": "features.v1",
+          "active_feature_id": "Q1",
+          "features": [
+            {
+              "id": "Q1",
+              "title": "First queue feature",
+              "status": "done",
+              "review_doc_path": "docs/review/Q1-review.md",
+              "review_refs": [
+                "docs/review/Q1-review.md#Context-Test-Plan",
+                "docs/review/Q1-review.md#Developer-Round",
+                "docs/review/Q1-review.md#Evaluator-Round",
+                "docs/review/Q1-review.md#Convergence-Round"
+              ]
+            },
+            {
+              "id": "Q2",
+              "title": "Second queue feature",
+              "status": "planned",
+              "review_doc_path": "docs/review/Q2-review.md",
+              "review_refs": [
+                "docs/review/Q2-review.md#Context-Test-Plan"
+              ]
+            },
+            {
+              "id": "Q3",
+              "title": "Third queue feature",
+              "status": "planned",
+              "review_doc_path": "docs/review/Q3-review.md",
+              "review_refs": [
+                "docs/review/Q3-review.md#Context-Test-Plan"
+              ]
+            }
+          ]
+        }
+        """,
+    )
+    write(
+        ctx.workdir / "docs/review/Q1-review.md",
+        """
+        # Q1
+
+        ## Context/Test Plan
+
+        Goal: complete the first feature from a three-feature queue without
+        starting the remaining planned features.
+
+        Acceptance criteria:
+        - Q1 is finalized;
+        - Q2 remains planned and becomes the active feature;
+        - Q3 remains planned.
+
+        ## Developer Round
+
+        Q1 implementation evidence is complete.
+
+        ## Evaluator Round
+
+        Verdict: accepted. No blocking findings.
+
+        ## Convergence Round
+
+        Decision: converged. Q1 is ready for release finalization.
+        """,
+    )
+    write(
+        ctx.workdir / "docs/review/Q2-review.md",
+        """
+        # Q2
+
+        ## Context/Test Plan
+
+        Planned second feature. Do not implement during Q1 finalization.
+        """,
+    )
+    write(
+        ctx.workdir / "docs/review/Q3-review.md",
+        """
+        # Q3
+
+        ## Context/Test Plan
+
+        Planned third feature. Do not implement during Q1 finalization.
+        """,
+    )
+    commit_all(ctx, "test: seed multi-feature queue fixture")
+
+
 def setup_dirty_memory_context(ctx: CaseContext) -> None:
     common_project(ctx)
     write(ctx.workdir / "src/example.py", "def answer() -> int:\n    return 42\n")
@@ -885,6 +985,22 @@ def assert_no_public_release(ctx: CaseContext, _: RuntimeResult | None) -> None:
     log = command_output(ctx, "assert-no-public-release-log", ["git", "log", "--oneline", "-5"])
     require("push" not in log.lower(), "unexpected push marker in local commit log")
     require("publish" not in log.lower(), "unexpected publish marker in local commit log")
+
+
+def assert_multi_feature_queue_continuation(ctx: CaseContext, result: RuntimeResult | None) -> None:
+    path = ctx.workdir / ".arbor/workflow/features.json"
+    require(path.exists(), "feature registry missing")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    features = data.get("features")
+    require(isinstance(features, list), "feature registry missing features list")
+    statuses = {feature.get("id"): feature.get("status") for feature in features if isinstance(feature, dict)}
+    require(data.get("active_feature_id") == "Q2", "release finalization should activate Q2")
+    require(statuses.get("Q1") == "done", "Q1 should remain done")
+    require(statuses.get("Q2") == "planned", "Q2 should remain planned")
+    require(statuses.get("Q3") == "planned", "Q3 should remain planned")
+    text = final_text(result).lower()
+    require("q2" in text and "converge" in text, "final response should say Q2 is ready through converge")
+    require("implement q2" not in text and "implemented q2" not in text, "Q2 should not be implemented during Q1 finalization")
 
 
 def assert_memory_has_inflight(ctx: CaseContext, _: RuntimeResult | None) -> None:
@@ -1359,6 +1475,23 @@ def make_cases() -> dict[str, CaseSpec]:
                 assert_skill_rendered_checkpoint("feedback"),
                 assert_any_contains("feedback", "converge", "bug", "next"),
             ],
+        ),
+        CaseSpec(
+            "R33",
+            "multi-feature queue selects next unfinished feature",
+            agent_prompt(
+                "R33",
+                "$converge finalize the active first queue feature Q1 through the internal release gate. "
+                "Select the next unfinished registry feature, stop after the visible release status, "
+                "and do not implement Q2 or Q3.",
+            ),
+            setup_multi_feature_queue_context,
+            [
+                *common_assertions,
+                assert_release_status_checkpoint,
+                assert_multi_feature_queue_continuation,
+            ],
+            codex_sandbox="danger-full-access",
         ),
         CaseSpec(
             "R28",

@@ -355,3 +355,8 @@ After `ready`, `committed`, or `pushed`, `release` is responsible for returning 
 9. if no unfinished feature remains, set `workflow_continuation.status=none`.
 
 When `workflow_continuation.status=available`, `next_feature_id` must be different from the selected `source.feature_id` and must exist in the registry row identified by `registry_path` and `registry_index`. The continuation status must match that selected registry row status; route selection must be derived from the row status and review-context availability, not prose. The visible release status must tell the user that the next feature is ready to start through `converge`. Non-final release states such as `needs_confirmation`, `needs_converge`, `blocked`, and `route_correction` must not advertise next-feature continuation.
+
+The final visible response must name the selected next feature id and express the
+next action as ready to start through `converge` or the same meaning in the
+user's active language. A registry-pointer sentence such as "active now points
+to the next feature" is evidence, but it is not sufficient user guidance.

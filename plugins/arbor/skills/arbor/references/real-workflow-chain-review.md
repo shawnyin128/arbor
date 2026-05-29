@@ -100,6 +100,7 @@ Arbor regressions should be added here before the fix is accepted.
 | R30 | Non-English workflow prompts could still render canonical English headings because the skill package is English-only. | Non-English prompt invoking public quality-loop validation in a repo with active Developer Round and review doc. | `converge` | Captured `final-response.md` uses the user's non-English language for visible convergence checkpoint prose and localized headings, preserves required agreement/remaining-issue Markdown tables, and does not use the canonical English headings as the final visible headings. |
 | R31 | Automatic develop/evaluate/converge runs could skip release checkpoint execution while writing hand-authored Release Round prose. | Explicit `develop_evaluate_converge` automation prompt from an approved feature. | `develop -> release(checkpoint_develop) -> evaluate -> release(checkpoint_evaluate) -> converge` | Developer, evaluator, release, and convergence evidence exist; git commit count increases by at least two local checkpoint commits after setup; finalization commit, push, tag, and publish do not happen. |
 | R32 | Feedback prompts could fall back to direct prose or expose internal stages. | Explicit `$feedback` with a bug report tied to an active Arbor feature. | `feedback -> converge` | Final response renders `Feedback Decision`, `Why This Route`, `What I Need Or Will Use`, and `Next Step`; the route chooses `converge` for the existing feature and does not expose public develop/evaluate calls. |
+| R33 | Multi-feature queues could complete or skip the wrong row after the first feature finalizes. | Explicit `$converge` finalization request in a repo whose registry contains Q1 done, Q2 planned, and Q3 planned. | `converge -> internal release(finalize_feature) -> next feature ready through converge` | Release finalization updates `active_feature_id` to Q2, keeps Q2 and Q3 planned, renders a status saying Q2 is ready through converge, and does not implement later queue rows. |
 
 ## Runtime Assertions
 
@@ -154,6 +155,7 @@ A release may say "real workflow chain review passed" only when these cases pass
 - R30 on Codex for visible language or localized checkpoint rendering changes;
 - R31 on Codex for checkpoint gate or develop/evaluate/converge automation changes;
 - R32 on Codex for feedback entrypoint or feedback-routing changes;
+- R33 on Codex for multi-feature queue continuation or next-feature selection changes;
 - R14 and R25 for shared Codex/Claude changes;
 - R20 for Claude hook changes;
 - the directly affected case for every bug fixed in the release.

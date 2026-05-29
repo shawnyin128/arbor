@@ -278,6 +278,12 @@ Use `ui.summary`, `ui.status_items`, `ui.warnings`, and `ui.next_actions` for co
 - finalization mode: commit message, commit hash, push/PR/tag/publish status when performed, active feature update when a next feature exists, and a plain-language notice that the next feature is ready to start through `converge`;
 - blocked or confirmation mode: blocker or exact confirmation needed.
 
+When `workflow_continuation.status=available`, the exact final visible response
+must name `workflow_continuation.next_feature_id` and say that this next feature
+is ready to start through `converge` or the same meaning in the user's active
+language. Saying only that the registry points to the next feature, that the
+active feature changed, or that planned work remains is not enough.
+
 Render this compact status in the user's active chat language unless the user
 explicitly requests a different output language. Keep commit hashes, commands,
 paths, branch names, tags, package names, and structured debug values literal.
@@ -292,8 +298,11 @@ final message must render the compact release status from `ui.summary`,
 `ui.status_items`, `ui.warnings`, and `ui.next_actions`; it must not collapse
 into a generic "done" sentence, imply unauthorized public actions happened, or
 expose internal status fields. It must follow the user's active chat language
-for user-facing prose or the user's explicit output language. If the final text
-fails this check, rewrite it before finishing.
+for user-facing prose or the user's explicit output language. If
+`workflow_continuation.status=available`, this preflight must reject a final
+message that omits the next feature id or the "ready to start through
+`converge`" next-action meaning. If the final text fails this check, rewrite it
+before finishing.
 
 ## Self-Check
 
