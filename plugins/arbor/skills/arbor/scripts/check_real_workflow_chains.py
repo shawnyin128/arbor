@@ -857,47 +857,49 @@ def assert_not_contains(*terms: str) -> Callable[[CaseContext, RuntimeResult | N
 def assert_framework_check_table(ctx: CaseContext, result: RuntimeResult | None) -> None:
     text = final_text(result)
     require("**Arbor Framework Check**" in text, "framework-check title missing")
+    require("Project root:" in text, "framework-check project root line missing")
     require("Mode: detect-only" in text, "detect-only mode line missing")
-    header = "| Category | Check | Status | Evidence | Fixability | Repair action |"
+    require("Runtime:" in text, "framework-check runtime line missing")
+    header = "| Surface | Required | Status | Evidence | Repair |"
     require(header in text, "framework-check table header missing")
-    allowed_status = {
-        "pass",
-        "fail",
-        "missing",
-        "drift",
-        "blocked",
-        "not_applicable",
-        "empty",
-        "placeholder",
-        "hook-managed",
-        "explicit",
-        "suspicious-cross-project",
-    }
-    allowed_fixability = {"auto", "needs_confirm", "manual", "none"}
+    result_lines = [line.strip() for line in text.splitlines() if line.strip().startswith("Result:")]
+    require(len(result_lines) == 1, f"framework-check must include exactly one Result line, got {result_lines}")
+    require(
+        result_lines[0] in {"Result: pass", "Result: needs_repair", "Result: blocked"},
+        f"framework-check result line has invalid value: {result_lines[0]!r}",
+    )
+    require(
+        "| Category | Check | Status | Evidence | Fixability | Repair action |" not in text,
+        "framework-check must not use the old six-column table",
+    )
+    allowed_status = {"pass", "fail", "missing", "drift", "blocked", "not_applicable"}
+    allowed_required = {"yes", "no"}
     rows = []
     for raw_line in text.splitlines():
         line = raw_line.strip()
-        if not line.startswith("|") or "Category" in line or set(line.replace("|", "").strip()) <= {"-", ":"}:
+        if not line.startswith("|") or "Surface" in line or TABLE_SEPARATOR_RE.match(line):
             continue
         cells = [cell.strip() for cell in line.strip("|").split("|")]
-        if len(cells) == 6:
+        if len(cells) == 5:
             rows.append(cells)
     require(rows, "framework-check table has no data rows")
-    for category, check_name, status, _evidence, fixability, _repair in rows:
-        require(category, f"framework-check row has empty category: {rows}")
-        require(check_name, f"framework-check row has empty check: {rows}")
+    for surface, required, status, _evidence, _repair in rows:
+        require(surface, f"framework-check row has empty surface: {rows}")
         require(
             status in allowed_status,
             f"framework-check row has invalid status {status!r}; allowed={sorted(allowed_status)}",
         )
         require(
-            fixability in allowed_fixability,
-            f"framework-check row has invalid fixability {fixability!r}; allowed={sorted(allowed_fixability)}",
+            required in allowed_required,
+            f"framework-check row has invalid required value {required!r}; allowed={sorted(allowed_required)}",
         )
-    runtime_rows = [row for row in rows if row[0].startswith("runtime:")]
-    require(runtime_rows, "framework-check table must include runtime-prefixed rows")
-    generic_hook_rows = [row for row in rows if row[0] == "hooks"]
-    require(not generic_hook_rows, "framework-check table must not use generic hooks category")
+    surfaces = {row[0] for row in rows}
+    for surface in ("AGENTS.md", ".arbor/memory.md", ".codex/hooks.json + .codex/hooks/"):
+        require(surface in surfaces, f"framework-check table missing required surface {surface!r}")
+    require(
+        "active feature" not in text.lower() and "memory state" not in text.lower(),
+        "framework-check must not summarize memory progress",
+    )
 
 
 def assert_file_exists(path: str) -> Callable[[CaseContext, RuntimeResult | None], None]:
@@ -1443,13 +1445,15 @@ def make_cases() -> dict[str, CaseSpec]:
             agent_prompt(
                 "R25",
                 "$arbor run a detect-only Arbor framework check for this project's context, memory, and hook surfaces. "
-                "Use the exact title `**Arbor Framework Check**`. Include the exact line `Mode: detect-only`. "
-                "Use fixed report rows with Category, Check, Status, Evidence, Fixability, and Repair action. "
-                "Use runtime-prefixed categories for hook surfaces, such as `runtime: Codex project hooks`, `runtime: Claude project hooks`, and `runtime: Claude plugin hooks`; do not use a generic `hooks` category. "
-                "Use only these lowercase Status values: pass, fail, missing, drift, blocked, not_applicable, explicit. "
-                "Use only these lowercase Fixability values: auto, needs_confirm, manual, none. "
+                "Use the exact title `**Arbor Framework Check**`. Include `Project root: ...`, the exact line `Mode: detect-only`, and `Runtime: codex|claude|both`. "
+                "Use exactly one table with Surface, Required, Status, Evidence, and Repair columns, followed by one Result line. "
+                "The Result line must be exactly one of `Result: pass`, `Result: needs_repair`, or `Result: blocked`; do not include counts or prose in that line. "
+                "Check only Arbor-created or Arbor-managed surfaces: AGENTS.md, .arbor/memory.md, CLAUDE.md, .codex/hooks.json + .codex/hooks/, .claude/settings.json + .claude/hooks/, and packaged hook definitions. "
+                "Project-level hooks are required for the selected runtime; do not say missing project-level hooks are acceptable because plugin hooks exist. "
+                "Use only these lowercase Status values: pass, fail, missing, drift, blocked, not_applicable. "
+                "Use only these lowercase Required values: yes, no. "
                 "Do not use ok, present, clean, available, repairable, optional, not configured, external verification, or title-cased variants. "
-                "Do not summarize the project as a product overview and do not use subjective health or maintenance advice.",
+                "Do not summarize memory progress, process-state, docs/review, feature registry, project guide drift, project status, migration plans, or maintenance advice.",
             ),
             setup_startup_context,
             [
@@ -1458,17 +1462,24 @@ def make_cases() -> dict[str, CaseSpec]:
                 assert_contains(
                     "Arbor Framework Check",
                     "Mode: detect-only",
-                    "Category",
-                    "Check",
+                    "Surface",
+                    "Required",
                     "Status",
                     "Evidence",
-                    "Fixability",
-                    "Repair action",
-                    "runtime",
+                    "Repair",
+                    "Result:",
                     "memory",
                 ),
                 assert_not_contains(
+                    "Framework Health",
+                    "Canonical state",
+                    "Maintenance blocker",
+                    "Suggested Arbor maintenance actions",
                     "Suggested next actions",
+                    "No action required",
+                    "process state",
+                    "docs/review",
+                    "feature registry",
                     "Project:",
                     "The one open thread",
                     "Current state",

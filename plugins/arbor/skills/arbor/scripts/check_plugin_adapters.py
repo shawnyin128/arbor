@@ -134,17 +134,20 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         "not a project-summary, project-status, resume-summary, or subjective health",
         "subjective health advice",
         "without selecting `arbor`",
-        "deterministic Arbor framework checks",
+        "minimal deterministic framework check",
         "detect-only mode",
-        "| Category | Check | Status | Evidence | Fixability | Repair action |",
-        "runtime: Codex project hooks",
-        "runtime: Claude plugin hooks",
-        "runtime: Claude project hooks",
-        "Do not use a generic `hooks` category",
+        "| Surface | Required | Status | Evidence | Repair |",
+        ".codex/hooks.json + .codex/hooks/",
+        ".claude/settings.json + .claude/hooks/",
+        "packaged Claude hook definitions",
+        "Project-level hooks are required for the selected runtime",
         "Allowed `Status` values",
-        "Allowed `Fixability` values",
+        "Allowed `Required` values",
+        "Allowed `Result` values",
         "Do not substitute softer labels",
-        "Do not use subjective report sections",
+        "Do not include normal `$arbor` rows or sections for `docs/review/`",
+        "process-state validation",
+        "Suggested Arbor maintenance actions",
         "Framework Repair Mode",
         "run_framework_check.py --mode repair",
         "safe, idempotent framework repairs",
@@ -180,9 +183,9 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
     for term in (
         "Mode: detect-only",
         "Mode: repair",
-        "| Category | Check | Status | Evidence | Fixability | Repair action |",
+        "| Surface | Required | Status | Evidence | Repair |",
         "ALLOWED_STATUS",
-        "ALLOWED_FIXABILITY",
+        "RESULT_NEEDS_REPAIR",
         "register_project_hooks",
         "init_project_memory",
         "Repairs applied:",
@@ -197,9 +200,9 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         for term in (
             "trusted interactive Codex session",
             "non-interactive `codex exec` runs are not a reliable hook runtime proof",
-            "Explicit repair requests use the same deterministic check surface in repair mode",
-            "Safe auto repairs are limited",
-            "`needs_confirm` or `manual`",
+            "minimal framework-file and project-hook checks",
+            "`Surface`, `Required`, `Status`, `Evidence`, and `Repair`",
+            "Project-level hooks are required for the selected runtime",
         ):
             check(errors, contains_term(readme, term), f"README missing Codex hook runtime proof term `{term}`")
 
@@ -224,13 +227,13 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         description = str(manifest.get("description", ""))
         check(
             errors,
-            "run deterministic framework checks for context and runtime hooks" in description,
-            f"{manifest_name} manifest description must frame Arbor as deterministic framework checks",
+            "minimal framework checks for Arbor-created files plus project-level hooks" in description,
+            f"{manifest_name} manifest description must frame Arbor as minimal framework checks",
         )
         check(
             errors,
-            "not a project-summary or health-advice command" in description,
-            f"{manifest_name} manifest description must explicitly reject summary and health-advice framing",
+            "not a project-summary, health, maintenance, migration, or process-state report" in description,
+            f"{manifest_name} manifest description must explicitly reject broad report framing",
         )
         check(
             errors,
@@ -245,8 +248,8 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         check(errors, isinstance(prompts, list) and len(prompts) <= 3, "Codex defaultPrompt must contain at most 3 prompts")
         check(
             errors,
-            "Run an Arbor framework check for context, memory, and hooks" in default_prompt,
-            "Codex defaultPrompt must include deterministic Arbor framework check example",
+            "Run a minimal Arbor framework check for managed files and project hooks" in default_prompt,
+            "Codex defaultPrompt must include minimal Arbor framework check example",
         )
         check(
             errors,
@@ -254,7 +257,7 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
             "Codex defaultPrompt must not advertise Arbor as a repo explanation command",
         )
         interface_description = str(interface.get("longDescription", ""))
-        for forbidden in ("project-status", "resume-summary", "subjective health-advice"):
+        for forbidden in ("project-status", "resume-summary", "subjective health-advice", "maintenance", "process-state"):
             check(
                 errors,
                 forbidden in interface_description,
@@ -262,8 +265,8 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
             )
         check(
             errors,
-            "fixed rows for Category, Check, Status, Evidence, Fixability, and Repair action" in interface_description,
-            "Codex longDescription must require fixed framework-check rows",
+            "one strict table with Surface, Required, Status, Evidence, and Repair plus one Result line" in interface_description,
+            "Codex longDescription must require strict framework-check rows",
         )
         check(
             errors,
@@ -272,8 +275,8 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         )
         check(
             errors,
-            "Hook surfaces are reported separately for Codex project hooks, Claude plugin hooks, optional Claude project hooks, and runtime blockers." in interface_description,
-            "Codex longDescription must require separated hook surface reporting",
+            "Project-level hooks are required for the selected runtime" in interface_description,
+            "Codex longDescription must require project-level hooks",
         )
 
 
@@ -516,12 +519,13 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
         for term in (
             "**Arbor Framework Check**",
             "Mode: detect-only",
-            "| Category | Check | Status | Evidence | Fixability | Repair action |",
-            "| startup context | AGENTS.md | missing |",
-            "| memory | .arbor/memory.md | missing |",
-            "| runtime: Codex project hooks | .codex hook config and wrappers | missing |",
-            "Summary:",
-            "Repair:",
+            "Runtime: codex",
+            "| Surface | Required | Status | Evidence | Repair |",
+            "| AGENTS.md | yes | missing |",
+            "| .arbor/memory.md | yes | missing |",
+            "| .codex/hooks.json + .codex/hooks/ | yes | missing |",
+            "| .claude/settings.json + .claude/hooks/ | no | not_applicable |",
+            "Result: needs_repair",
         ):
             check(errors, term in check_output, f"framework check detect-only output missing `{term}`")
         check(errors, not (project / "AGENTS.md").exists(), "detect-only framework check must not create AGENTS.md")
@@ -552,14 +556,16 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
         repair_output = repair_proc.stdout
         for term in (
             "Mode: repair",
+            "Runtime: both",
             "Repairs applied:",
             "Before:",
             "After:",
-            "| startup context | AGENTS.md | pass |",
-            "| memory | .arbor/memory.md | placeholder |",
-            "| runtime: Claude bridge | CLAUDE.md bridge | pass |",
-            "| runtime: Codex project hooks | .codex hook config and wrappers | blocked |",
-            "| runtime: Claude project hooks | .claude hook config and wrappers | pass |",
+            "| AGENTS.md | yes | pass |",
+            "| .arbor/memory.md | yes | pass |",
+            "| CLAUDE.md | yes | pass |",
+            "| .codex/hooks.json + .codex/hooks/ | yes | blocked |",
+            "| .claude/settings.json + .claude/hooks/ | yes | pass |",
+            "Result: blocked",
         ):
             check(errors, term in repair_output, f"framework check repair output missing `{term}`")
         for path in (

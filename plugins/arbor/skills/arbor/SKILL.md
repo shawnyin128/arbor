@@ -1,6 +1,6 @@
 ---
 name: arbor
-description: "Initialize Arbor project state and run deterministic Arbor framework checks on Codex or Claude Code: create or migrate `.arbor/memory.md`, create/update `AGENTS.md`, generate the Claude `CLAUDE.md` bridge, register or diagnose runtime hook surfaces, load ordered startup context, refresh stale pre-triage observations, detect project-guide or project-map drift, and report fixed check rows with status, evidence, fixability, and repair action; do not use for ordinary project summaries, project status, resume summaries, subjective health advice, or product progress advice."
+description: "Initialize Arbor project state and run minimal deterministic Arbor framework checks on Codex or Claude Code: create or check `AGENTS.md`, `.arbor/memory.md`, the Claude `CLAUDE.md` bridge, Codex project hooks, Claude project hooks, and packaged hook definitions; report one strict file/hook table and no project summaries, health reports, process-state reports, migration advice, or maintenance suggestions."
 ---
 
 # Arbor
@@ -8,12 +8,10 @@ description: "Initialize Arbor project state and run deterministic Arbor framewo
 ## Core Rule
 
 Fix the workflow order, not the agent's reading depth. Keep Arbor outcome-first:
-initialize and check the project's Arbor state, recover the right startup
-context, maintain short-term memory, and update the project guide or map when
-needed. `arbor` is not a generic project-summary skill and must not turn memory
-prose into product status, feature recommendations, or release advice. It is
-not a project-summary, project-status, resume-summary, or subjective health
-advice command. Ordinary
+initialize and check only Arbor-created or Arbor-managed framework files and
+hook registration surfaces. `arbor` is not a generic project-summary skill and
+must not turn memory prose into product status, feature recommendations, or
+release advice. It is not a project-summary, project-status, resume-summary, or subjective health advice command. Ordinary
 questions like "what does this repo do?", "where were we?", or "what is the
 project status?" should load startup context when required by `AGENTS.md`, then
 answer direct and source-grounded from sources without selecting `arbor`, unless
@@ -50,72 +48,70 @@ Collector sections include `Status`, `Source`, optional `Detail`, and raw body. 
 
 ## User-Facing Output Boundary
 
-Visible `arbor` output is a deterministic framework check report, not a project
-summary and not a subjective health assessment. Default `$arbor` runs in
-detect-only mode: it reports findings and does not mutate files unless the user
-explicitly asks for framework repair. Prefer
+Visible `arbor` output is a minimal deterministic framework check report, not a
+project summary, not a subjective health assessment, and not a maintenance
+report. Default `$arbor` runs in detect-only mode: it reports findings and does
+not mutate files unless the user explicitly asks for framework repair. Prefer
 `scripts/run_framework_check.py --root <project-root> --plugin-root <arbor-plugin-root>`
-for deterministic checks, because it normalizes hook diagnoses into the fixed
-status/fixability vocabulary.
+for deterministic checks, because it is the source of truth for the included
+surfaces and output layout.
 
 Use this fixed shape for normal visible output. The title must be exactly
 `**Arbor Framework Check**`, and the `Mode: detect-only` line is mandatory for
-default `$arbor` checks:
+default `$arbor` checks. No other normal sections are allowed:
 
 ```markdown
 **Arbor Framework Check**
 Project root: ...
 Mode: detect-only
-Sources checked: ...
+Runtime: codex|claude|both
 
-| Category | Check | Status | Evidence | Fixability | Repair action |
-| --- | --- | --- | --- | --- | --- |
-| project identity | ... | pass | ... | none | none |
-| runtime: Codex project hooks | ... | missing | ... | auto | register Codex project hooks |
-| runtime: Claude plugin hooks | ... | pass | ... | none | none |
-| runtime: Claude project hooks | ... | not_applicable | ... | none | none |
-| startup context | ... | pass | ... | none | none |
-| memory | ... | explicit | ... | none | none |
-| project guide/map | ... | drift | ... | auto | refresh generated map entries |
-| workflow state | ... | blocked | ... | manual | reconcile registry/review docs |
+| Surface | Required | Status | Evidence | Repair |
+| --- | --- | --- | --- | --- |
+| AGENTS.md | yes | pass | ... | none |
+| .arbor/memory.md | yes | pass | ... | none |
+| CLAUDE.md | no | not_applicable | ... | none |
+| .codex/hooks.json + .codex/hooks/ | yes | missing | ... | run register_project_hooks.py --runtime codex |
+| .claude/settings.json + .claude/hooks/ | no | not_applicable | ... | none |
+| packaged Claude hook definitions | yes | pass | ... | none |
 
-Summary: <P> pass · <M> missing · <D> drift · <B> blocked · <N> not_applicable
-Repair: <A> auto · <C> needs_confirm · <H> manual · <Z> none
+Result: pass|needs_repair|blocked
 ```
 
-Allowed `Status` values are lowercase only: `pass`, `fail`, `missing`, `drift`, `blocked`,
-`not_applicable`, plus the existing memory classifier values `empty`,
-`placeholder`, `hook-managed`, `explicit`, and `suspicious-cross-project` when
-the category is `memory`.
-
-Allowed `Fixability` values are lowercase only: `auto`, `needs_confirm`,
-`manual`, and `none`.
+Allowed `Status` values are lowercase only: `pass`, `fail`, `missing`, `drift`,
+`blocked`, and `not_applicable`.
+Allowed `Required` values are lowercase only: `yes` and `no`.
+Allowed `Result` values are lowercase only: `pass`, `needs_repair`, and
+`blocked`.
 Do not substitute softer labels such as `ok`, `healthy`, `repairable`,
 `optional`, `present`, `clean`, `available`, `not configured`, or `external
-verification`; map them to the fixed status/fixability vocabulary instead. Do
-not use title-cased variants such as `Pass`, `Fail`, `Warn`, `None`,
-`Automated`, or `Manual` in the status or fixability columns.
-Use `needs_confirm` for policy-changing or destructive changes such as
-`.gitignore` policy edits, deleting files, or rewriting durable project-guide
-content. Use `manual` for framework inconsistencies that require user judgment
-or downstream Arbor workflow evidence. Use `auto` only for safe, idempotent
-framework repairs.
+verification`; map them to the fixed vocabulary instead. Do not use title-cased
+variants such as `Pass`, `Fail`, `Warn`, `None`, `Automated`, or `Manual` in the
+table.
 
-Hook/runtime checks must be separate rows with runtime-prefixed category labels:
-`runtime: Codex project hooks`, `runtime: Claude plugin hooks`,
-`runtime: Claude project hooks`, and `runtime: Claude bridge` when the bridge is
-checked. Do not use a generic `hooks` category for these rows. Do not collapse
-Codex project hooks, Claude plugin hooks, optional Claude project hooks, and
-runtime blockers into one line. A missing project-local hook surface is
-`missing` or `not_applicable` according to an explicit rule; do not call it
-healthy or expected in prose.
+The normal `$arbor` framework check includes only these surfaces:
 
-Do not use subjective report sections or wording such as `Healthy`,
-`Maintenance blockers`, `Suggested next actions`, `highest priority`, or `worth
-fixing`. Do not recommend product features, implementation work,
-release/finalization, or next workflow actions from memory prose. Those belong
-to direct answers, `brainstorm`, `feedback`, or `converge` after their own
-evidence is loaded.
+- `AGENTS.md`
+- `.arbor/memory.md`
+- `CLAUDE.md`
+- `.codex/hooks.json + .codex/hooks/`
+- `.claude/settings.json + .claude/hooks/`
+- `packaged Claude hook definitions`
+
+Project-level hooks are required for the selected runtime. If `Runtime: codex`,
+`.codex/hooks.json + .codex/hooks/` must be `Required: yes`. If
+`Runtime: claude`, `.claude/settings.json + .claude/hooks/` must be
+`Required: yes`. If `Runtime: both`, both project-level hook surfaces must be
+required. Packaged Claude hook definitions are checked as shipped definitions,
+but they do not satisfy missing Claude project hooks.
+
+Do not include normal `$arbor` rows or sections for `docs/review/`,
+`.arbor/workflow/features.json`, process-state validation, project guide/map
+drift, git history, release/finalization, migration plans, feature registry
+reconciliation, product status, memory resume summaries, or maintenance advice.
+Do not use subjective report sections or wording such as `Framework Health`,
+`Canonical state`, `Healthy`, `Maintenance blocker`, `Suggested Arbor maintenance actions`, `Suggested next actions`, `highest priority`, `worth
+fixing`, or `No action required`.
 
 ## Framework Repair Mode
 
@@ -134,12 +130,11 @@ Repair mode may apply only safe, idempotent framework repairs:
 - register or refresh Codex `.codex/hooks.json` and `.codex/hooks/` wrappers;
 - register or refresh Claude `.claude/settings.json` and `.claude/hooks/` wrappers.
 
-Repair mode must not silently apply `needs_confirm` or `manual` findings. Use
-`needs_confirm` for policy-changing or destructive changes such as `.gitignore`
-policy edits, deleting files, or rewriting durable project-guide content. Use
-`manual` for invalid JSON, path conflicts, runtime trust, registry/review
-evidence inconsistencies, and any issue that needs user judgment or another
-Arbor workflow owner.
+Repair mode must not silently apply policy-changing or destructive changes such
+as `.gitignore` policy edits, deleting files, or rewriting durable project-guide
+content. Invalid JSON, path conflicts, runtime trust, registry/review evidence
+inconsistencies, and any issue that needs user judgment or another Arbor
+workflow owner remain outside `$arbor` repair.
 
 After any repair, rerun the framework check and report the before/after counts
 plus the same fixed row table. Do not present repair mode as project progress,

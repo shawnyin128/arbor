@@ -19,9 +19,8 @@ from arbor_project_state import (
     project_path,
     resolve_project_root,
 )
-from collect_project_context import classify_memory
 from diagnose_project_hooks import HookState, diagnose
-from init_project_memory import CLAUDE_BRIDGE_CHOICES, init_project_memory
+from init_project_memory import CLAUDE_BRIDGE_AUTO, CLAUDE_BRIDGE_CHOICES, CLAUDE_BRIDGE_ON, init_project_memory
 from register_project_hooks import RUNTIME_CHOICES, HookRegistrationError, register_project_hooks, resolve_registration_runtime
 
 
@@ -47,29 +46,25 @@ ALLOWED_STATUS = {
     "drift",
     "blocked",
     "not_applicable",
-    "empty",
-    "placeholder",
-    "hook-managed",
-    "explicit",
-    "suspicious-cross-project",
 }
-ALLOWED_FIXABILITY = {"auto", "needs_confirm", "manual", "none"}
+RESULT_PASS = "pass"
+RESULT_NEEDS_REPAIR = "needs_repair"
+RESULT_BLOCKED = "blocked"
 
 
 @dataclass(frozen=True)
 class FrameworkRow:
-    category: str
-    check: str
+    surface: str
+    required: str
     status: str
     evidence: str
-    fixability: str
-    repair_action: str
+    repair: str
 
     def __post_init__(self) -> None:
         if self.status not in ALLOWED_STATUS:
             raise ValueError(f"invalid framework status: {self.status}")
-        if self.fixability not in ALLOWED_FIXABILITY:
-            raise ValueError(f"invalid framework fixability: {self.fixability}")
+        if self.required not in {"yes", "no"}:
+            raise ValueError(f"invalid framework required value: {self.required}")
 
 
 @dataclass(frozen=True)
@@ -100,96 +95,82 @@ def runtime_applies(runtime: str, target: str) -> bool:
     return runtime in (target, "both")
 
 
-def hook_row(category: str, check: str, state: HookState) -> FrameworkRow:
+def hook_row(surface: str, state: HookState, *, required: bool) -> FrameworkRow:
     mapping = {
-        "missing": ("missing", "auto"),
-        "intent-only": ("drift", "auto"),
-        "executable-incomplete": ("drift", "auto"),
-        "executable-untrusted": ("blocked", "manual"),
-        "executable-ready": ("pass", "none"),
-        "project-Claude-missing": ("missing", "auto"),
-        "project-Claude-incomplete": ("drift", "auto"),
-        "project-Claude-ready": ("pass", "none"),
-        "Claude-plugin-ready": ("pass", "none"),
-        "Claude-plugin-unknown": ("not_applicable", "none"),
+        "missing": "missing",
+        "intent-only": "drift",
+        "executable-incomplete": "drift",
+        "executable-untrusted": "blocked",
+        "executable-ready": "pass",
+        "project-Claude-missing": "missing",
+        "project-Claude-incomplete": "drift",
+        "project-Claude-ready": "pass",
+        "Claude-plugin-ready": "pass",
+        "Claude-plugin-unknown": "not_applicable",
     }
     if state.status in mapping:
-        status, fixability = mapping[state.status]
+        status = mapping[state.status]
     elif "invalid" in state.status:
-        status, fixability = "fail", "manual"
+        status = "fail"
     elif "missing" in state.status:
-        status, fixability = "missing", "manual"
+        status = "missing"
     elif "incomplete" in state.status:
-        status, fixability = "drift", "manual"
+        status = "drift"
     else:
-        status, fixability = "fail", "manual"
-    action = "none" if fixability == "none" else state.next_action
-    return FrameworkRow(category, check, status, one_line(state.detail), fixability, one_line(action))
+        status = "fail"
+    if not required and status == "missing":
+        status = "not_applicable"
+    repair = "none" if status in {"pass", "not_applicable"} else state.next_action
+    return FrameworkRow(surface, "yes" if required else "no", status, one_line(state.detail), one_line(repair))
 
 
 def build_rows(root: Path, plugin_root: Path | None, *, runtime: str, codex_trusted: bool) -> list[FrameworkRow]:
     rows: list[FrameworkRow] = []
-    rows.append(
-        FrameworkRow(
-            "project identity",
-            "project root is a directory",
-            "pass",
-            str(root),
-            "none",
-            "none",
-        )
-    )
 
     agents = project_path(root, PROJECT_GUIDE_PATH)
     if agents.is_file():
-        rows.append(FrameworkRow("startup context", "AGENTS.md", "pass", rel(root, agents), "none", "none"))
+        rows.append(FrameworkRow("AGENTS.md", "yes", "pass", rel(root, agents), "none"))
     elif agents.exists():
         rows.append(
             FrameworkRow(
-                "startup context",
                 "AGENTS.md",
+                "yes",
                 "fail",
                 f"{rel(root, agents)} is not a file",
-                "manual",
                 "replace path conflict with a file",
             )
         )
     else:
         rows.append(
             FrameworkRow(
-                "startup context",
                 "AGENTS.md",
+                "yes",
                 "missing",
                 f"{rel(root, agents)} is absent",
-                "auto",
                 "run init_project_memory.py",
             )
         )
 
     memory = project_path(root, CANONICAL_MEMORY_PATH)
     if memory.is_file():
-        text = memory.read_text(encoding="utf-8")
-        status, reason = classify_memory(text, root)
-        rows.append(FrameworkRow("memory", ".arbor/memory.md", status, one_line(reason), "none", "none"))
+        rows.append(FrameworkRow(".arbor/memory.md", "yes", "pass", rel(root, memory), "none"))
     elif memory.exists():
         rows.append(
             FrameworkRow(
-                "memory",
                 ".arbor/memory.md",
+                "yes",
                 "fail",
                 f"{rel(root, memory)} is not a file",
-                "manual",
                 "replace path conflict with a file",
             )
         )
     else:
         rows.append(
             FrameworkRow(
-                "memory",
                 ".arbor/memory.md",
+                "yes",
                 "missing",
                 f"{rel(root, memory)} is absent",
-                "auto",
                 "run init_project_memory.py",
             )
         )
@@ -197,70 +178,54 @@ def build_rows(root: Path, plugin_root: Path | None, *, runtime: str, codex_trus
     claude_bridge = project_path(root, CLAUDE_GUIDE_PATH)
     if runtime_applies(runtime, INSTALL_RUNTIME_CLAUDE):
         if claude_bridge.is_file():
-            rows.append(FrameworkRow("runtime: Claude bridge", "CLAUDE.md bridge", "pass", rel(root, claude_bridge), "none", "none"))
+            rows.append(FrameworkRow("CLAUDE.md", "yes", "pass", rel(root, claude_bridge), "none"))
         elif claude_bridge.exists():
             rows.append(
                 FrameworkRow(
-                    "runtime: Claude bridge",
-                    "CLAUDE.md bridge",
+                    "CLAUDE.md",
+                    "yes",
                     "fail",
                     f"{rel(root, claude_bridge)} is not a file",
-                    "manual",
                     "replace path conflict with a file",
                 )
             )
         else:
             rows.append(
                 FrameworkRow(
-                    "runtime: Claude bridge",
-                    "CLAUDE.md bridge",
+                    "CLAUDE.md",
+                    "yes",
                     "missing",
                     f"{rel(root, claude_bridge)} is absent",
-                    "auto",
                     "run init_project_memory.py --claude-bridge on",
                 )
             )
     else:
         rows.append(
             FrameworkRow(
-                "runtime: Claude bridge",
-                "CLAUDE.md bridge",
+                "CLAUDE.md",
+                "no",
                 "not_applicable",
                 "runtime selection does not include Claude Code",
-                "none",
                 "none",
             )
         )
 
     hook_state = diagnose(root, plugin_root, codex_trusted=codex_trusted)
-    codex = hook_row("runtime: Codex project hooks", ".codex hook config and wrappers", hook_state.codex)
-    if not runtime_applies(runtime, INSTALL_RUNTIME_CODEX) and codex.status == "missing":
-        codex = FrameworkRow(
-            codex.category,
-            codex.check,
-            "not_applicable",
-            "runtime selection does not include Codex",
-            "none",
-            "none",
+    rows.append(
+        hook_row(
+            ".codex/hooks.json + .codex/hooks/",
+            hook_state.codex,
+            required=runtime_applies(runtime, INSTALL_RUNTIME_CODEX),
         )
-    rows.append(codex)
-
-    claude_project = hook_row(
-        "runtime: Claude project hooks",
-        ".claude hook config and wrappers",
-        hook_state.claude_project,
     )
-    if not runtime_applies(runtime, INSTALL_RUNTIME_CLAUDE) and claude_project.status == "missing":
-        claude_project = FrameworkRow(
-            claude_project.category,
-            claude_project.check,
-            "not_applicable",
-            "runtime selection does not include Claude Code",
-            "none",
-            "none",
+    rows.append(
+        hook_row(
+            ".claude/settings.json + .claude/hooks/",
+            hook_state.claude_project,
+            required=runtime_applies(runtime, INSTALL_RUNTIME_CLAUDE),
         )
-    rows.append(claude_project)
-    rows.append(hook_row("runtime: Claude plugin hooks", "packaged plugin hook manifest", hook_state.claude_plugin))
+    )
+    rows.append(hook_row("packaged Claude hook definitions", hook_state.claude_plugin, required=True))
     return rows
 
 
@@ -294,7 +259,10 @@ def run_check(
     repairs_applied = 0
     rows = before_rows
     if mode == MODE_REPAIR:
-        init_actions = init_project_memory(resolved, claude_bridge=claude_bridge)
+        effective_bridge = claude_bridge
+        if effective_bridge == CLAUDE_BRIDGE_AUTO and runtime_applies(selected_runtime, INSTALL_RUNTIME_CLAUDE):
+            effective_bridge = CLAUDE_BRIDGE_ON
+        init_actions = init_project_memory(resolved, claude_bridge=effective_bridge)
         repairs_applied += count_repairs(init_actions)
         hook_actions = register_project_hooks(resolved, runtime=selected_runtime)
         repairs_applied += count_repairs(hook_actions)
@@ -309,32 +277,22 @@ def run_check(
     )
 
 
-def summary(rows: list[FrameworkRow]) -> str:
-    ordered = ("pass", "missing", "drift", "fail", "blocked", "not_applicable")
-    counts = {status: 0 for status in ordered}
-    for row in rows:
-        if row.status in counts:
-            counts[row.status] += 1
-    return " · ".join(f"{counts[status]} {status}" for status in ordered if counts[status])
-
-
-def repair_summary(rows: list[FrameworkRow]) -> str:
-    ordered = ("auto", "needs_confirm", "manual", "none")
-    counts = {fixability: 0 for fixability in ordered}
-    for row in rows:
-        counts[row.fixability] += 1
-    return " · ".join(f"{counts[value]} {value}" for value in ordered if counts[value])
+def result_status(rows: list[FrameworkRow]) -> str:
+    required_rows = [row for row in rows if row.required == "yes"]
+    if any(row.status in {"fail", "blocked"} for row in required_rows):
+        return RESULT_BLOCKED
+    if any(row.status in {"missing", "drift"} for row in required_rows):
+        return RESULT_NEEDS_REPAIR
+    return RESULT_PASS
 
 
 def render_table(rows: list[FrameworkRow]) -> list[str]:
     lines = [
-        "| Category | Check | Status | Evidence | Fixability | Repair action |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Surface | Required | Status | Evidence | Repair |",
+        "| --- | --- | --- | --- | --- |",
     ]
     for row in rows:
-        lines.append(
-            f"| {row.category} | {row.check} | {row.status} | {row.evidence} | {row.fixability} | {row.repair_action} |"
-        )
+        lines.append(f"| {row.surface} | {row.required} | {row.status} | {row.evidence} | {row.repair} |")
     return lines
 
 
@@ -344,23 +302,32 @@ def render_report(check: FrameworkCheck) -> str:
         "**Arbor Framework Check**",
         f"Project root: {check.root}",
         f"Mode: {visible_mode}",
-        "Sources checked: " + ", ".join(check.sources_checked),
+        "Runtime: " + selected_runtime_label(check.rows),
     ]
     if check.mode == MODE_REPAIR:
         assert check.before_rows is not None
         lines.extend(
             [
                 f"Repairs applied: {check.repairs_applied}",
-                f"Before: {summary(check.before_rows)}",
-                f"After: {summary(check.rows)}",
+                f"Before: {result_status(check.before_rows)}",
+                f"After: {result_status(check.rows)}",
             ]
         )
     lines.append("")
     lines.extend(render_table(check.rows))
     lines.append("")
-    lines.append(f"Summary: {summary(check.rows)}")
-    lines.append(f"Repair: {repair_summary(check.rows)}")
+    lines.append(f"Result: {result_status(check.rows)}")
     return "\n".join(lines) + "\n"
+
+
+def selected_runtime_label(rows: list[FrameworkRow]) -> str:
+    codex_required = any(row.surface.startswith(".codex/") and row.required == "yes" for row in rows)
+    claude_required = any(row.surface.startswith(".claude/") and row.required == "yes" for row in rows)
+    if codex_required and claude_required:
+        return "both"
+    if claude_required:
+        return "claude"
+    return "codex"
 
 
 def build_parser() -> argparse.ArgumentParser:
