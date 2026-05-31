@@ -77,7 +77,7 @@ owner visible instead of hiding the route behind a new router.
 10. **Check agreement**: decide whether develop and evaluate agree, or whether evaluator findings require another round.
 11. **Check brainstorm alignment**: decide whether the accepted result still satisfies brainstorm goals, acceptance criteria, done-when criteria, decision invariants, non-goals, and test scope.
 12. **Apply loop policy**: route automatically while under the round limit; surface loop-health risk before automatic continuation when repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination make the next route unreliable; escalate when the limit is reached or a user/product decision is required.
-13. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature.
+13. **Update feature registry when justified**: mark `done`, `changes_requested`, `planned`, or `blocked` only for the selected feature. If the selected feature's completed scope absorbs, supersedes, or merges other queued rows, reconcile those rows explicitly with a status such as `absorbed`, `superseded`, or `merged` plus a structured target pointer; do not leave covered work as stale `planned` rows.
 14. **Append convergence evidence**: append a Convergence Round to the same review document without rewriting prior rounds.
 15. **Update in-flight memory**: before stopping or handing off with uncommitted Arbor workflow changes, ensure `.arbor/memory.md` exists and records the converged or looping feature, changed registry/review paths, decision, unresolved blockers, and next expected step. Remove or shrink resolved entries only after the state is committed or moved to durable docs.
 16. **Defer continuation**: after `converged`, route to internal `release`; release selects and activates the next unfinished feature after finalization.
@@ -335,7 +335,7 @@ Use these enums:
 - `source.from_skill`: `evaluate`, `manual_convergence_packet`, or `unknown`
 - `source.evaluate_terminal_state`: `accepted`, `changes_requested`, `needs_brainstorm`, `needs_develop_handoff`, `blocked`, `route_correction`, or `unknown`
 - `feature_registry_update.status`: `updated`, `not_required`, `blocked`
-- `feature_registry_update.to_status`: `done`, `changes_requested`, `in_develop`, `planned`, `blocked`, or `null`
+- `feature_registry_update.to_status`: `done`, `changes_requested`, `in_develop`, `planned`, `blocked`, `absorbed`, `superseded`, `merged`, `deferred`, or `null`
 - `review_append.status`: `appended`, `blocker_packet`, `not_required`
 - `workflow_continuation.status`: `available`, `none`, or `blocked`
 - `workflow_continuation.next_feature_status`: `changes_requested`, `in_develop`, `in_evaluate`, `planned`, or `null`

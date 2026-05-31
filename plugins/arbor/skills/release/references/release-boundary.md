@@ -356,7 +356,8 @@ After `checkpointed`, `release` routes the same feature to the next stage:
 After `ready`, `committed`, or `pushed`, `release` is responsible for returning the next feature to process:
 
 1. scan `.arbor/workflow/features.json` in registry order;
-2. skip the just-finalized feature and any feature already `done` or `blocked`;
+2. skip the just-finalized feature and any feature already `done`, `blocked`,
+   `absorbed`, `superseded`, `merged`, or `deferred`;
 3. choose the next unfinished actionable feature when one exists;
 4. include registry evidence by setting `workflow_continuation.registry_path` to the source registry path and `workflow_continuation.registry_index` to the selected row index;
 5. derive `workflow_continuation.next_feature_status` from the selected registry row rather than trusting prose or a copied field;

@@ -353,7 +353,7 @@ automatically.
 Current version:
 
 ```text
-1.0.15
+1.0.16
 ```
 
 Version files:

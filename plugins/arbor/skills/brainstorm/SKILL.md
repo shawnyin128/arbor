@@ -89,6 +89,12 @@ When splitting broad work:
 - create the review Context/Test Plan for the active row and, when the split is
   ready, enough context for each future row that another agent can review the
   queue without inferring progress from review-document scans.
+- reconcile existing future rows when a later plan or completed feature absorbs,
+  supersedes, or merges their scope. Do not leave those rows as ordinary
+  `planned` work. Mark them with an explicit reconciled status such as
+  `absorbed`, `superseded`, `merged`, or `deferred`, and include a structured
+  pointer or reason such as `reconciled_by` or `deferred_reason` so downstream
+  checks do not infer reconciliation from prose.
 
 The visible brainstorm checkpoint should explain the first work unit and the
 remaining queue in user-level language. Do not make internal feature ids,

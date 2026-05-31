@@ -173,6 +173,15 @@ already names separate implementation outcomes. Shared infrastructure can be
 its own row only when it directly unlocks later rows and has a concrete
 verification target.
 
+When later planning or implementation absorbs, supersedes, or merges a queued
+future row, update the row instead of leaving it as stale `planned` work. Use an
+explicit reconciled status such as `absorbed`, `superseded`, `merged`, or
+`deferred`. Rows with `absorbed`, `superseded`, or `merged` should identify the
+replacement feature through a structured pointer such as `reconciled_by`;
+`deferred` rows should record a clear `deferred_reason`. Queue reconciliation
+belongs in `features.json`; do not require downstream skills to infer it by
+scanning review document prose.
+
 `active_feature_id` identifies exactly one selected first work unit. It does
 not mean "everything in this brainstorm." The active row's `review_doc_path`
 should match the review Context/Test Plan that the next quality loop will use;

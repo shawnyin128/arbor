@@ -1038,6 +1038,13 @@ def validate_brainstorm_feature_queue_contract(plugin_root: Path, errors: list[s
         "acceptance summary",
         "test scope summary",
         "remaining queue in user-level language",
+        "absorbs, supersedes, or merges",
+        "absorbed",
+        "superseded",
+        "merged",
+        "deferred",
+        "reconciled_by",
+        "deferred_reason",
     ):
         check(errors, contains_term(skill, term), f"brainstorm skill missing feature-queue term `{term}`")
 
@@ -1051,15 +1058,24 @@ def validate_brainstorm_feature_queue_contract(plugin_root: Path, errors: list[s
         "Queue metadata should be readable without scanning review documents",
         "acceptance summary",
         "test scope summary",
+        "absorbs, supersedes, or merges",
+        "reconciled_by",
+        "deferred_reason",
     ):
         check(errors, contains_term(boundary, term), f"brainstorm boundary missing feature-queue term `{term}`")
 
     for term in (
         "missing_queue_metadata",
         "active_feature_terminal_with_open_queue",
+        "RECONCILED_FEATURE_STATUSES",
+        "TARGETED_RECONCILED_FEATURE_STATUSES",
+        "missing_reconciliation_target",
+        "invalid_reconciliation_target",
+        "missing_deferred_reason",
         "priority or order",
         "acceptance summary",
         "test scope summary",
+        "process state self-tests passed count=18",
     ):
         check(errors, contains_term(process_state, term), f"process-state checker missing feature-queue term `{term}`")
 

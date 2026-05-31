@@ -296,6 +296,13 @@ Registry update rules:
 
 Never update a row whose id does not match the evaluator signal.
 
+When convergence proves that the selected feature absorbed, superseded, or
+merged the scope of other queued rows, update those rows in `features.json`
+instead of leaving them as stale `planned` work. Use an explicit reconciled
+status such as `absorbed`, `superseded`, or `merged`, and include a structured
+pointer such as `reconciled_by` to the feature that replaced the queued row.
+Do not infer this relationship from review prose alone.
+
 ## Loop Policy
 
 The normal automatic loop limit is three correction rounds unless a project-specific policy says otherwise.

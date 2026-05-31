@@ -37,9 +37,15 @@ ALLOWED_FEATURE_STATUSES = {
     "changes_requested",
     "done",
     "blocked",
+    "absorbed",
+    "superseded",
+    "merged",
+    "deferred",
 }
 OPEN_FEATURE_STATUSES = {"planned", "approved", "in_develop", "in_evaluate", "changes_requested"}
-TERMINAL_FEATURE_STATUSES = {"done", "blocked"}
+RECONCILED_FEATURE_STATUSES = {"absorbed", "superseded", "merged", "deferred"}
+TARGETED_RECONCILED_FEATURE_STATUSES = {"absorbed", "superseded", "merged"}
+TERMINAL_FEATURE_STATUSES = {"done", "blocked", *RECONCILED_FEATURE_STATUSES}
 
 ROUND_PATTERNS = {
     "context": re.compile(r"^#+\s+.*Context/Test Plan\b", re.IGNORECASE | re.MULTILINE),
@@ -266,7 +272,10 @@ def validate_registry_rows(root: Path, registry: dict[str, Any] | None, findings
 
         review_doc_path: Path | None = None
         if not isinstance(review_doc_raw, str) or not review_doc_raw.strip():
-            add_finding(findings, "error", "missing_review_doc_path", path_label, f"Feature {feature_id} has no review_doc_path.")
+            if status in RECONCILED_FEATURE_STATUSES:
+                review_doc_path = None
+            else:
+                add_finding(findings, "error", "missing_review_doc_path", path_label, f"Feature {feature_id} has no review_doc_path.")
         else:
             resolved = relative_inside_root(root, review_doc_raw)
             if resolved is None:
@@ -347,6 +356,46 @@ def validate_feature_queue_state(registry: dict[str, Any] | None, features: list
                 "missing_queue_metadata",
                 f"{FEATURE_REGISTRY_PATH}:features[{feature.index}]",
                 f"Open feature {feature.feature_id} is missing queue metadata: {', '.join(missing)}.",
+            )
+
+    for feature in features:
+        if feature.status not in RECONCILED_FEATURE_STATUSES:
+            continue
+        raw = feature.raw
+        path_label = f"{FEATURE_REGISTRY_PATH}:features[{feature.index}]"
+        target = raw.get("reconciled_by") or raw.get("absorbed_by") or raw.get("superseded_by") or raw.get("merged_into")
+        if feature.status in TARGETED_RECONCILED_FEATURE_STATUSES:
+            if not isinstance(target, str) or not target.strip():
+                add_finding(
+                    findings,
+                    "error",
+                    "missing_reconciliation_target",
+                    path_label,
+                    f"Reconciled feature {feature.feature_id} with status {feature.status} must identify the feature that replaced or absorbed it.",
+                )
+            elif target == feature.feature_id:
+                add_finding(
+                    findings,
+                    "error",
+                    "self_reconciliation_target",
+                    path_label,
+                    f"Reconciled feature {feature.feature_id} cannot point to itself.",
+                )
+            elif target not in by_id:
+                add_finding(
+                    findings,
+                    "error",
+                    "invalid_reconciliation_target",
+                    path_label,
+                    f"Reconciled feature {feature.feature_id} points to unknown feature {target!r}.",
+                )
+        if feature.status == "deferred" and not has_text_or_items(raw, "deferred_reason", "reconciliation_reason", "reason"):
+            add_finding(
+                findings,
+                "error",
+                "missing_deferred_reason",
+                path_label,
+                f"Deferred feature {feature.feature_id} must record why it is not in the active queue.",
             )
 
 
@@ -678,6 +727,110 @@ def run_self_tests() -> None:
         seed_registry(missing_doc, "approved")
         expect_report("missing review doc", validate_process_state(missing_doc), status="fail", code="missing_review_doc")
 
+        absorbed_valid = base / "absorbed-valid"
+        absorbed_valid.mkdir()
+        seed_project(absorbed_valid, memory="None\n")
+        write(
+            absorbed_valid / ".arbor/workflow/features.json",
+            json.dumps(
+                {
+                    "active_feature_id": "pilot",
+                    "features": [
+                        {
+                            "id": "old-skeleton",
+                            "title": "Old skeleton",
+                            "status": "absorbed",
+                            "reconciled_by": "pilot",
+                            "reconciliation_reason": "The pilot feature covers the skeleton scope.",
+                            "priority": 1,
+                            "depends_on": [],
+                        },
+                        {
+                            "id": "pilot",
+                            "title": "Pilot feature",
+                            "status": "done",
+                            "review_doc_path": "docs/review/pilot.md",
+                            "priority": 2,
+                            "depends_on": [],
+                            "acceptance_summary": "Pilot acceptance.",
+                            "test_scope_summary": "Pilot test scope.",
+                        },
+                    ],
+                },
+                indent=2,
+            ),
+        )
+        write(
+            absorbed_valid / "docs/review/pilot.md",
+            """
+            ## Context/Test Plan
+            Acceptance criteria.
+            ## Developer Round 1
+            Developer evidence.
+            ## Evaluator Round 1
+            Evaluator evidence.
+            ## Convergence Round 1
+            Converged.
+            ## Release Round 1
+            Finalized.
+            """,
+        )
+        expect_report("absorbed feature with valid target", validate_process_state(absorbed_valid), status="pass")
+
+        absorbed_missing_target = base / "absorbed-missing-target"
+        absorbed_missing_target.mkdir()
+        seed_project(absorbed_missing_target, memory="None\n")
+        write(
+            absorbed_missing_target / ".arbor/workflow/features.json",
+            json.dumps(
+                {
+                    "active_feature_id": "old-skeleton",
+                    "features": [
+                        {
+                            "id": "old-skeleton",
+                            "title": "Old skeleton",
+                            "status": "absorbed",
+                            "reconciled_by": "missing-pilot",
+                            "reconciliation_reason": "Fixture missing target.",
+                        }
+                    ],
+                },
+                indent=2,
+            ),
+        )
+        expect_report(
+            "absorbed feature missing target",
+            validate_process_state(absorbed_missing_target),
+            status="fail",
+            code="invalid_reconciliation_target",
+        )
+
+        deferred_missing_reason = base / "deferred-missing-reason"
+        deferred_missing_reason.mkdir()
+        seed_project(deferred_missing_reason, memory="None\n")
+        write(
+            deferred_missing_reason / ".arbor/workflow/features.json",
+            json.dumps(
+                {
+                    "active_feature_id": "later",
+                    "features": [
+                        {
+                            "id": "later",
+                            "title": "Later feature",
+                            "status": "deferred",
+                        }
+                    ],
+                },
+                indent=2,
+            ),
+        )
+        expect_report(
+            "deferred feature missing reason",
+            validate_process_state(deferred_missing_reason),
+            status="fail",
+            code="missing_deferred_reason",
+        )
+
         missing_developer = base / "missing-developer"
         missing_developer.mkdir()
         seed_project(missing_developer)
@@ -883,7 +1036,7 @@ def run_self_tests() -> None:
             code="review_doc_path_outside_review_dir",
         )
 
-    print("process state self-tests passed count=15")
+    print("process state self-tests passed count=18")
 
 
 def build_parser() -> argparse.ArgumentParser:
