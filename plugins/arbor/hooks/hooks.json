@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; test -n \"$ROOT\" || exit 0; exec \"$ROOT/hooks/session-start\"'"
+            "command": "sh -c 'ROOT=\"${ARBOR_PLUGIN_ROOT:-${PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}}}\"; test -n \"$ROOT\" || exit 0; exec \"$ROOT/hooks/session-start\"'"
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'ROOT=\"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}\"; test -n \"$ROOT\" || exit 0; exec \"$ROOT/hooks/stop-memory-hygiene\"'"
+            "command": "sh -c 'ROOT=\"${ARBOR_PLUGIN_ROOT:-${PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}}}\"; test -n \"$ROOT\" || exit 0; exec \"$ROOT/hooks/stop-memory-hygiene\"'"
           }
         ]
       }

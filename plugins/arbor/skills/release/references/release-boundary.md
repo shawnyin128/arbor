@@ -209,6 +209,17 @@ When a versioned release artifact is affected, `release` records `version_manage
 
 If source changes require a version bump but the version source files do not reflect the selected `target_version`, release must return a blocked state with `version_management.status=bump_required`. It must not commit, push, tag, publish, or sync package/plugin caches under the stale version. If the method is detected but ambiguous, use `version_management.status=blocked` and ask for the exact version policy instead of inventing a bump.
 
+When syncing local versioned plugin caches, create or refresh only the target
+version directory and preserve older version directories. Running Codex or
+Claude Code clients may keep trusted hook definitions that reference the
+previous cache path until reload; pruning old cache versions during release can
+turn a previously trusted Stop hook into exit 127. After sync, verify the target
+cache against the committed plugin source, but do not treat deleting older cache
+siblings as a valid cleanup step. If a prior release shipped a broken packaged
+hook root resolver, cache sync may refresh only the shared hook adapter files in
+existing older cache directories while preserving the rest of each cached
+version.
+
 For successful publish or tag actions on versioned projects, the release action metadata must reflect the selected target version, such as `artifact_target=arbor-plugin@0.4.3` or `tag_name=v0.4.3`. Cache verification must compare the cache path derived from the manifest version, not a hard-coded old version directory.
 
 ## Route Decisions

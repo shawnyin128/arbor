@@ -254,6 +254,13 @@ determine the target version. If a versioned artifact changed and the required
 bump is missing, release blocks commit, publish, push, tag, or cache sync until
 the version source files match the target version.
 
+Local plugin cache sync is versioned and additive. A release may refresh the
+target version directory under the Codex and Claude plugin caches, but it should
+preserve older version directories because running clients can keep trusted hook
+definitions that still reference a previous cache path until reload. Sync may
+also refresh the shared hook adapter files inside older cache directories to
+repair stale packaged hook root resolvers without pruning those versions.
+
 ## Hooks
 
 Codex initialization writes executable project hooks into target-project
@@ -278,6 +285,9 @@ for:
 
 Claude Code project initialization can also write `.claude/settings.json` plus
 wrappers under `.claude/hooks/` when explicit per-project wrappers are desired.
+Packaged hooks resolve the plugin root through `ARBOR_PLUGIN_ROOT`,
+`PLUGIN_ROOT`, `CODEX_PLUGIN_ROOT`, then `CLAUDE_PLUGIN_ROOT`, and exit quietly
+when no runtime root is present.
 
 When hook state is unclear, run the diagnostic helper and inspect the status:
 
@@ -343,7 +353,7 @@ automatically.
 Current version:
 
 ```text
-1.0.14
+1.0.15
 ```
 
 Version files:

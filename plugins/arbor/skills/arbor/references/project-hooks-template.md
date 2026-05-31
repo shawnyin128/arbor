@@ -31,7 +31,7 @@ current repository.
    - Negative cases include clean git status, direct one-off explanations, read-only inspection with no unresolved Arbor state, committed-and-pruned work, AGENTS-only stable guide updates, explicit no-write turns, and unrelated dirty files outside Arbor scope.
    - The registered policy includes a machine-checkable `case_corpus`; adapter validation checks trigger/suppress counts, unique ids, required fields, and required scenario classes.
    - Codex mapping: the project hook in `.codex/hooks.json` calls the `.codex/hooks/arbor-stop-memory-hygiene` wrapper, which delegates to `hooks/stop-memory-hygiene`. Codex requires configured command hooks to be trusted through `/hooks`; an initialized file alone is not proof the hook ran.
-   - Packaged plugin mapping: the packaged `hooks/hooks.json` calls `hooks/stop-memory-hygiene` through a runtime-neutral root resolver that prefers `PLUGIN_ROOT`, falls back to `CLAUDE_PLUGIN_ROOT`, and exits silently if neither is present. Project-level `.claude/settings.json` can also call `.claude/hooks/arbor-stop-memory-hygiene` wrappers when explicit per-project control is desired. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to silent non-blocking context maintenance: it refreshes `.arbor/memory.md` recovery notes when needed and applies conservative `AGENTS.md` Project Map drift updates for durable entrypoint changes. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the memory packet as the block reason.
+   - Packaged plugin mapping: the packaged `hooks/hooks.json` calls `hooks/stop-memory-hygiene` through a runtime-neutral root resolver that prefers `ARBOR_PLUGIN_ROOT`, then `PLUGIN_ROOT`, then `CODEX_PLUGIN_ROOT`, then `CLAUDE_PLUGIN_ROOT`, and exits silently if none is present. Project-level `.claude/settings.json` can also call `.claude/hooks/arbor-stop-memory-hygiene` wrappers when explicit per-project control is desired. `Stop` output can re-enter the agent loop as a visible continuation, so the adapter defaults to silent non-blocking context maintenance: it refreshes `.arbor/memory.md` recovery notes when needed and applies conservative `AGENTS.md` Project Map drift updates for durable entrypoint changes. It honors `stop_hook_active` first so it can never loop. Set `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the memory packet as the block reason.
 
 3. `arbor.goal_constraint_drift`
    - Event: `project.guide_drift`
@@ -59,5 +59,5 @@ current repository.
   desktop session; non-interactive `codex exec` is useful for ordinary workflow
   replay but is not a reliable project-hook firing oracle.
 - Use `scripts/diagnose_project_hooks.py` to distinguish hook intent files,
-  executable wrappers, Claude plugin manifest state, project-level Claude hook
+  executable wrappers, packaged plugin manifest state, project-level Claude hook
   state, and Codex trust gaps before claiming a runtime hook is configured.

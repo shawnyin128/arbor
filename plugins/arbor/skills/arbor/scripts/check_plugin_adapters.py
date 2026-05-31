@@ -855,7 +855,9 @@ def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None
     for term in (
         "SessionStart",
         "Stop",
+        "ARBOR_PLUGIN_ROOT",
         "PLUGIN_ROOT",
+        "CODEX_PLUGIN_ROOT",
         "CLAUDE_PLUGIN_ROOT",
         "/hooks/session-start",
         "/hooks/stop-memory-hygiene",
@@ -885,9 +887,11 @@ def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None
             if not isinstance(command, str):
                 check(errors, False, f"{event} packaged hook command must be a string")
                 continue
-            for env_name in ("PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
+            for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CODEX_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
                 env = os.environ.copy()
+                env.pop("ARBOR_PLUGIN_ROOT", None)
                 env.pop("PLUGIN_ROOT", None)
+                env.pop("CODEX_PLUGIN_ROOT", None)
                 env.pop("CLAUDE_PLUGIN_ROOT", None)
                 env[env_name] = str(plugin_root)
                 payload = {
@@ -911,7 +915,9 @@ def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None
                 )
                 check(errors, proc.returncode == 0, f"{event} packaged hook command failed with {env_name}: {proc.stderr.strip()}")
             env = os.environ.copy()
+            env.pop("ARBOR_PLUGIN_ROOT", None)
             env.pop("PLUGIN_ROOT", None)
+            env.pop("CODEX_PLUGIN_ROOT", None)
             env.pop("CLAUDE_PLUGIN_ROOT", None)
             proc = subprocess.run(
                 command,
@@ -1107,6 +1113,7 @@ def run_session_start(plugin_root: Path, project_root: Path, source: str) -> sub
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
     env["PLUGIN_ROOT"] = str(plugin_root)
+    env["CODEX_PLUGIN_ROOT"] = str(plugin_root)
     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
     payload = {
         "session_id": "adapter-smoke",
@@ -1192,6 +1199,7 @@ def run_stop_hook(
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
     env["PLUGIN_ROOT"] = str(plugin_root)
+    env["CODEX_PLUGIN_ROOT"] = str(plugin_root)
     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
     if memory_hygiene_mode is not None:
         env["ARBOR_STOP_MEMORY_HYGIENE_MODE"] = memory_hygiene_mode
@@ -2353,11 +2361,25 @@ def validate_release_version_management_contract(plugin_root: Path, errors: list
             "CODEX_MARKETPLACE_PLUGIN",
             "CLAUDE_INSTALLED_PLUGINS",
             "assert_runtime_installation_metadata_current",
+            "assert_version_cache_retention_policy",
+        ],
+        "skills/arbor/scripts/sync_local_plugin_cache.py": [
+            "without deleting older versions",
+            "must not prune prior versions",
+            "CODEX_CACHE_BASE / version",
+            "CODEX_MARKETPLACE_PLUGIN",
+            "CLAUDE_CACHE_BASE / version",
+            "refresh_cached_hook_adapters",
+            "HOOK_ADAPTER_RELS",
+            "shutil.rmtree(target)",
+            "older cache versions preserved",
+            "cached hook adapters refreshed",
         ],
         "skills/arbor/references/real-workflow-chain-review.md": [
             "marketplace snapshots",
             "installed records",
             "installed_plugins.json",
+            "preserves older version cache directories",
         ],
     }
     if repo_root is not None:

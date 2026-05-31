@@ -755,7 +755,7 @@ def version_key(path: Path) -> tuple[int, ...]:
 
 def candidate_roots() -> list[Path]:
     roots: list[Path] = []
-    for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
+    for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CODEX_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
         env_root = os.environ.get(env_name)
         if env_root:
             root = Path(env_root).expanduser().resolve()
@@ -784,6 +784,7 @@ def main() -> int:
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(root)
     env["PLUGIN_ROOT"] = str(root)
+    env["CODEX_PLUGIN_ROOT"] = str(root)
     env["CLAUDE_PLUGIN_ROOT"] = str(root)
     proc = subprocess.run([sys.executable, str(adapter)], input=sys.stdin.read(), text=True, env=env, check=False)
     return proc.returncode

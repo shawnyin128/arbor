@@ -22,8 +22,20 @@ from arbor_project_state import (
 
 CODEX_REQUIRED_EVENTS = ("SessionStart", "Stop")
 CLAUDE_REQUIRED_EVENTS = ("SessionStart", "Stop")
-PACKAGED_SESSION_MARKERS = ("PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "/hooks/session-start")
-PACKAGED_STOP_MARKERS = ("PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "/hooks/stop-memory-hygiene")
+PACKAGED_SESSION_MARKERS = (
+    "ARBOR_PLUGIN_ROOT",
+    "PLUGIN_ROOT",
+    "CODEX_PLUGIN_ROOT",
+    "CLAUDE_PLUGIN_ROOT",
+    "/hooks/session-start",
+)
+PACKAGED_STOP_MARKERS = (
+    "ARBOR_PLUGIN_ROOT",
+    "PLUGIN_ROOT",
+    "CODEX_PLUGIN_ROOT",
+    "CLAUDE_PLUGIN_ROOT",
+    "/hooks/stop-memory-hygiene",
+)
 
 
 @dataclass(frozen=True)
@@ -199,7 +211,7 @@ def diagnose_claude_plugin(plugin_root: Path | None) -> HookState:
             files,
             "repair plugin hooks/hooks.json or adapter executability",
         )
-    return HookState("Claude-plugin-ready", "plugin-level Claude manifest and adapters exist", files, "install plugin and verify in Claude Code")
+    return HookState("Claude-plugin-ready", "packaged plugin manifest and adapters exist", files, "install plugin and verify in the target runtime")
 
 
 def diagnose(root: Path, plugin_root: Path | None = None, *, codex_trusted: bool = False) -> HookDiagnosis:
@@ -218,9 +230,9 @@ def render_text(diagnosis: HookDiagnosis) -> str:
     lines.extend(
         [
             "## Interpretation",
-            "- Codex, Claude project hooks, and Claude plugin hooks are separate runtime surfaces.",
-            "- A ready Claude plugin hook does not register Codex `.codex/` project hooks.",
-            "- Missing Claude project hooks are acceptable when the installed Claude plugin hook surface is the intended path.",
+            "- Codex project hooks, Claude project hooks, and packaged plugin hooks are separate runtime surfaces.",
+            "- A ready packaged plugin hook does not register Codex `.codex/` project hooks.",
+            "- Missing Claude project hooks are acceptable when the installed packaged plugin hook surface is the intended path.",
             "- `executable-untrusted` means files exist but the runtime trust/approval step still needs an interactive smoke.",
             "- Silent Stop can still be registered correctly while memory content behavior must be verified by replay.",
             "",
@@ -229,7 +241,7 @@ def render_text(diagnosis: HookDiagnosis) -> str:
     for label, state in (
         ("Codex project hooks", diagnosis.codex),
         ("Claude project hooks", diagnosis.claude_project),
-        ("Claude plugin hooks", diagnosis.claude_plugin),
+        ("Packaged plugin hooks", diagnosis.claude_plugin),
     ):
         lines.extend(
             [

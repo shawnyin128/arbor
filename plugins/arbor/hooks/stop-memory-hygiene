@@ -138,7 +138,7 @@ def allow_stop() -> int:
 
 
 def resolve_plugin_root() -> Path:
-    for env_name in ("ARBOR_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "PLUGIN_ROOT"):
+    for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CODEX_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
         env = os.environ.get(env_name)
         if env:
             return Path(env).resolve()

@@ -1090,10 +1090,13 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
         for rel in (
             ".codex-plugin/plugin.json",
             ".claude-plugin/plugin.json",
+            "hooks/hooks.json",
             "hooks/session-start",
             "hooks/stop-memory-hygiene",
+            "skills/arbor/scripts/diagnose_project_hooks.py",
             "skills/arbor/SKILL.md",
             "skills/arbor/scripts/register_project_hooks.py",
+            "skills/arbor/scripts/sync_local_plugin_cache.py",
             "skills/arbor/scripts/run_session_startup_hook.py",
             "skills/arbor/scripts/run_memory_hygiene_hook.py",
             "skills/brainstorm/SKILL.md",
@@ -1112,6 +1115,28 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
             require(cached.exists(), f"cache file missing: {cached}")
             require(source.read_text(encoding="utf-8") == cached.read_text(encoding="utf-8"), f"cache differs from source: {rel}")
     assert_runtime_installation_metadata_current()
+
+
+def assert_version_cache_retention_policy(_: CaseContext, __: RuntimeResult | None) -> None:
+    sync_script = PLUGIN_ROOT / "skills/arbor/scripts/sync_local_plugin_cache.py"
+    require(sync_script.exists(), f"cache sync script missing: {sync_script}")
+    text = sync_script.read_text(encoding="utf-8")
+    for term in (
+        "without deleting older versions",
+        "must not prune prior versions",
+        "CODEX_CACHE_BASE / version",
+        "CODEX_MARKETPLACE_PLUGIN",
+        "CLAUDE_CACHE_BASE / version",
+        "refresh_cached_hook_adapters",
+        "HOOK_ADAPTER_RELS",
+    ):
+        require(term in text, f"cache sync script missing retention term {term!r}")
+    require(".codex/plugins/cache/arbor/arbor" in text, "cache sync script missing Codex cache base")
+    require(".claude/plugins/cache/arbor/arbor" in text, "cache sync script missing Claude cache base")
+    require("shutil.rmtree(target)" in text, "cache sync script should replace only target version directory")
+    require("shutil.rmtree(target.parent)" not in text, "cache sync script must not delete all versioned cache siblings")
+    require("older cache versions preserved" in text, "cache sync script should report retained older caches")
+    require("cached hook adapters refreshed" in text, "cache sync script should report older hook adapter refreshes")
 
 
 def assert_runtime_installation_metadata_current() -> None:
@@ -1361,7 +1386,7 @@ def make_cases() -> dict[str, CaseSpec]:
             "cache sync matches source",
             "",
             setup_local_only,
-            [assert_cache_matches_source],
+            [assert_cache_matches_source, assert_version_cache_retention_policy],
             runtimes=(RUNTIME_LOCAL,),
             requires_agent=False,
         ),
