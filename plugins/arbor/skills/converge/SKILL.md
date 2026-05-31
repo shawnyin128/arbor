@@ -1,6 +1,6 @@
 ---
 name: converge
-description: Public quality-loop orchestrator for Arbor-managed features; accept bug, defect, evaluator-finding, and continuation requests after planning exists, drive the internal develop/evaluate cycle, update feature status only after justified agreement, and escalate when planning changes, round limits, or product decisions block automatic progress.
+description: "Use when an existing Arbor-managed feature already has planning or review context and needs continuation, repair after evaluator findings, failed-check handling, a convergence decision, or closure; not for new feature planning, direct one-off fixes, or public develop/evaluate/release requests."
 ---
 
 # Converge
@@ -44,6 +44,21 @@ missing planning evidence, or external release action required. Convergence must
 consume evaluator evidence that has passed through `release(checkpoint_evaluate)`
 when the same automatic flow produced the evaluator round; a handwritten Release
 Round without a checkpoint commit hash is not release-gate evidence.
+
+## Red Flags
+
+| Red Flag | Required Correction |
+| --- | --- |
+| Evaluator accepted, so the feature is done. | Check feature identity, brainstorm goals, acceptance criteria, done-when criteria, and release checkpoint evidence before marking the feature done. |
+| Developer self-test is enough. | Use developer evidence only as one side of the agreement check; convergence requires evaluator evidence or a documented missing-evidence route. |
+| Release can select the next feature from converge. | Stop at convergence and route to internal `release`; release owns finalization and next-feature selection after current-feature finalization. |
+
+## Trigger Contract
+
+| Contract | Prompt Shape | Replay Coverage |
+| --- | --- | --- |
+| Positive Trigger | Existing Arbor-managed feature has review context and needs continuation, repair, failed-check handling, convergence decision, or closure. | R04/R07/R21/R29/R30 |
+| Negative Trigger | New planning, direct one-off fixes, project status, public develop/evaluate/release requests without existing review context, or unrelated explanation. | direct status control |
 
 ## Canonical Examples
 

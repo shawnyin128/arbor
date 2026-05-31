@@ -1,6 +1,6 @@
 ---
 name: feedback
-description: Use when the user explicitly invokes feedback or gives Arbor feedback such as bug reports, regressions, failed checks, reviewer comments, corrections to prior output, or defects in a current managed feature and the next public owner is unclear; do not use for new feature planning, project status, release/finalization requests, or ordinary explanations; route only to brainstorm, converge, needs-evidence, or a direct response, never public develop/evaluate/release.
+description: "Use when the user reacts to prior Arbor work with a bug, regression, failed check, reviewer comment, correction, or defect and the next public owner is unclear; not for new feature planning, project status, release/finalization, ordinary explanations, or requests already clearly belonging to brainstorm or converge."
 ---
 
 # Feedback
@@ -22,6 +22,13 @@ The normal terminal output is a structured `feedback.v1` decision plus a
 rendered user-facing feedback checkpoint. The rendered response must explain the
 target of the feedback, why the selected owner is appropriate, what evidence is
 needed or already available, and the next step in readable language.
+
+## Trigger Contract
+
+| Contract | Prompt Shape | Replay Coverage |
+| --- | --- | --- |
+| Positive Trigger | User correction, reviewer comment, bug report, regression, failed check, or missing behavior where the next public owner is unclear. | R32 |
+| Negative Trigger | New feature planning, known quality-loop continuation, project status, release/finalization, ordinary explanation, or a correction that should be answered directly. | direct-answer control |
 
 `feedback` is a user-visible routing checkpoint. Do not silently continue into
 `brainstorm` or `converge` in the same final response. Use
@@ -53,10 +60,42 @@ acceptance criteria, test plans, or multi-step repair instructions in the
 visible feedback checkpoint. Those belong to `brainstorm` or `converge` after
 the user confirms the route.
 
+## Feedback Verification
+
+Before accepting feedback as current-loop work, read the feedback and identify
+target artifact or feature. Verify against repo or review evidence when the
+target is discoverable locally; do not blindly trust labels such as "bug",
+"reviewer comment", or "failed check" without checking whether they map to the
+active Arbor work.
+
+In short: identify target artifact or feature, then verify against repo or
+review evidence before selecting the owner.
+
+Classify the verified feedback as one of:
+
+| Classification | Meaning | Normal Owner |
+| --- | --- | --- |
+| valid current-loop issue | The feedback maps to the active or reopenable review context and does not change accepted scope. | `converge` |
+| planning issue | The feedback changes requirements, acceptance criteria, proof strength, or repair target. | `brainstorm` |
+| direct answer | The user correction concerns the current response and does not affect workflow state or future development. | direct response |
+| invalid or out-of-scope suggestion | The feedback is unsupported by evidence, conflicts with accepted boundaries, or belongs outside the current feature. | explain and stop or recommend planning |
+
+## When To Push Back
+
+Push back instead of automatically routing to `converge` when the suggestion:
+
+| Pushback Case | Required Handling |
+| --- | --- |
+| would add heavy workflow | Explain the Arbor lightweight boundary and route to `brainstorm` only if the user wants to reconsider scope. |
+| conflicts with accepted plan | Name the conflicting accepted decision and ask whether to reopen planning. |
+| not supported by evidence | State the missing evidence and ask for the artifact, log, review text, or reproduction target. |
+| belongs to a future feature | Keep the current loop focused and recommend a separate brainstormed feature if useful. |
+
 ## Invocation And Acceptance Contract
 
 Load `feedback` when any of these are true:
 
+- Use when the user explicitly invokes feedback.
 - the user explicitly invokes `$feedback` or `/arbor:feedback`;
 - the user gives feedback about a prior Arbor result, current assistant answer,
   bug, regression, failed check, reviewer comment, missing behavior, or

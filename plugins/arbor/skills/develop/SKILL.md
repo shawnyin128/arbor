@@ -1,6 +1,6 @@
 ---
 name: develop
-description: Internal Arbor implementation stage invoked by converge or an equivalent workflow handoff; execute authorized feature/correction work, self-test against the review plan, append developer handoff evidence, and emit structured output for release checkpointing before internal evaluate.
+description: "Use only from an internal Arbor converge-owned handoff when an approved feature or correction has selected scope and review context ready for implementation; not for ordinary user prompts, new planning, independent evaluation, release, push, or publish requests."
 ---
 
 # Develop

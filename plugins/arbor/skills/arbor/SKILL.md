@@ -1,6 +1,6 @@
 ---
 name: arbor
-description: "Initialize Arbor project state and run minimal deterministic Arbor framework checks on Codex or Claude Code: create or check `AGENTS.md`, `.arbor/memory.md`, the Claude `CLAUDE.md` bridge, Codex project hooks, Claude project hooks, and packaged hook definitions; report one strict file/hook table and no project summaries, health reports, process-state reports, migration advice, or maintenance suggestions."
+description: "Use when initializing or checking Arbor-created project framework files and runtime hook surfaces: AGENTS.md, .arbor/memory.md, CLAUDE.md, Codex project hooks, Claude project hooks, or packaged hook definitions; not for project summaries, resume status, process-state reports, migration advice, or general maintenance."
 ---
 
 # Arbor
@@ -21,6 +21,14 @@ distributed across `AGENTS.md`, git history, and project docs;
 impose commit counts, byte limits, file limits, documentation depth, or
 summary-size limits as part of this skill. Use scripts as helpers; continue
 reading whatever files, diffs, logs, or docs the task requires.
+
+## Red Flags
+
+| Red Flag | Required Correction |
+| --- | --- |
+| Project-summary shortcut: the user asks what the repo does, where work stands, or what to do next, and the response starts rendering `$arbor` status. | Load startup context when required, then answer directly from project sources unless the user explicitly asked for Arbor initialization or framework check. |
+| Broad health report shortcut: `$arbor` output adds health, maintenance, migration, process-state, feature-registry, release, or product-status sections. | Replace it with the fixed framework-check report from `run_framework_check.py`; normal `$arbor` checks only Arbor-created framework files and hook surfaces. |
+| Process-state report shortcut: process-state warnings, review docs, or feature queue rows are treated as part of the `$arbor` framework report. | Keep process-state validation in the workflow/release path; `$arbor` may report only framework surfaces and deterministic repair instructions. |
 
 ## Startup Workflow
 
@@ -205,6 +213,10 @@ Default placement:
 - Fetch or link volatile external context through tools, MCP servers, URLs, or task-specific docs instead of copying it into startup guidance.
 
 Only add guidance to startup files when removing it would likely cause repeated mistakes across sessions. If guidance grows into examples, tutorials, file-by-file descriptions, or task-specific procedures, move those details to a referenced doc or skill. Do not impose fixed reading limits, mandatory plan-first behavior, mandatory subagents, fixed implementation strategies, or fixed test suites as part of placement guidance.
+
+### Skill Authoring Quality Guard
+
+Use `references/skill-authoring-quality-guard.md` when creating or editing Arbor skills. Skill descriptions are discovery triggers, not workflow summaries: they should say when to load the skill, include key non-triggers when misrouting is common, and leave checklist, routing, and output details in the skill body.
 
 ### Project Map Drift Guard
 

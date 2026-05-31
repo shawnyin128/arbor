@@ -219,6 +219,12 @@ referenced docs, and fetch frequently changing external context through tools or
 links instead of copying it into startup guidance. See
 `plugins/arbor/skills/arbor/references/guidance-placement-guard.md`.
 
+Skill descriptions are trigger surfaces, not process summaries. Arbor skill
+frontmatter should say when to load the skill, include important non-triggers
+when misrouting is likely, and leave checklists, route sequences, and output
+packet details in the skill body. See
+`plugins/arbor/skills/arbor/references/skill-authoring-quality-guard.md`.
+
 Managed features carry a done-when verification thread: `brainstorm` records
 done-when criteria, `develop` maps evidence to them, `evaluate` labels weak pass
 substitutes, `converge` checks agreement, and `release` checks that evidence is
@@ -353,7 +359,7 @@ automatically.
 Current version:
 
 ```text
-1.0.16
+1.0.17
 ```
 
 Version files:

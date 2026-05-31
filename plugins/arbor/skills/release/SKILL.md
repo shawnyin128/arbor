@@ -1,6 +1,6 @@
 ---
 name: release
-description: Internal-only Arbor checkpoint/finalization gate invoked from develop, evaluate, and converge handoffs; verify review evidence, git readiness, versioning, checkpoint commits, and explicit authorization before any finalization commit, push, PR, tag, or publish; do not select for ordinary user prompts or expose as a public workflow entrypoint.
+description: "Use only from an internal Arbor handoff when a managed feature needs checkpointing or finalization after develop, evaluate, or converge evidence; not for ordinary user prompts, direct fixes, new planning, public release requests without convergence evidence, or unapproved push/PR/tag/publish actions."
 ---
 
 # Release
@@ -26,6 +26,14 @@ It does not plan, implement, evaluate, or decide convergence.
 Checkpointed release output is not final delivery. In checkpoint mode, `release` preserves the current handoff and routes the same feature onward; it must not imply that evaluation, convergence, or final release has already happened.
 
 When the user explicitly enables `develop_evaluate_converge` automation, `release` may carry internal checkpoint handoffs between `develop`, `evaluate`, and `converge`. Checkpoint policy authorizes the local checkpoint commit for those handoffs. It does not authorize finalization commit, push, PR, tag, publish, next-feature release, or any public action.
+
+## Red Flags
+
+| Red Flag | Required Correction |
+| --- | --- |
+| Checkpoint commit means final release. | Treat checkpoint commits as internal handoff preservation only; finalization requires converged feature evidence and the finalization gate. |
+| Push, PR, tag, publish, or cache sync is implied. | Stop with confirmation needed unless the user explicitly authorized that exact external action after convergence/finalization. |
+| Dirty source equals installed runtime. | Verify source tree, installed cache, and runtime evidence separately; do not claim cache/runtime state from source-only checks. |
 
 ## Checklist
 
@@ -303,6 +311,12 @@ for user-facing prose or the user's explicit output language. If
 message that omits the next feature id or the "ready to start through
 `converge`" next-action meaning. If the final text fails this check, rewrite it
 before finishing.
+
+## Reference Material
+
+- `references/claim-proof-matrix.md`: shared Arbor Claim Proof Matrix for
+  separating source tree, installed cache, runtime evidence, visible output, and
+  weak-pass proof before release or public-action claims.
 
 ## Self-Check
 

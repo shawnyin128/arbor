@@ -13,6 +13,21 @@ from typing import Any
 import yaml
 
 
+DESCRIPTION_PREFIXES = ("Use when", "Use only")
+DESCRIPTION_MAX_CHARS = 500
+DESCRIPTION_WORKFLOW_SHORTCUTS = (
+    "produce a natural-language",
+    "emit structured output",
+    "append developer",
+    "append evaluator",
+    "drive the internal",
+    "report one strict",
+    "execute authorized",
+    "replay developer evidence",
+    "update feature status",
+)
+
+
 def add_error(errors: list[str], message: str) -> None:
     errors.append(message)
 
@@ -24,6 +39,13 @@ def check(errors: list[str], condition: bool, message: str) -> None:
 
 def contains_term(text: str, term: str) -> bool:
     return term in text or " ".join(term.split()) in " ".join(text.split())
+
+
+def first_line_number(text: str, term: str) -> int | None:
+    for index, line in enumerate(text.splitlines(), start=1):
+        if term in line:
+            return index
+    return None
 
 
 def load_json(path: Path, errors: list[str]) -> dict[str, Any]:
@@ -75,6 +97,25 @@ def validate_skill_frontmatter_yaml(plugin_root: Path, errors: list[str]) -> Non
                     isinstance(data.get(field), str) and bool(data.get(field, "").strip()),
                     f"skill frontmatter missing string {field!r}: {skill_path.relative_to(plugin_root)}",
                 )
+            description = data.get("description")
+            if isinstance(description, str):
+                relative = skill_path.relative_to(plugin_root)
+                check(
+                    errors,
+                    description.startswith(DESCRIPTION_PREFIXES),
+                    f"skill description must start with a trigger-only prefix {DESCRIPTION_PREFIXES}: {relative}",
+                )
+                check(
+                    errors,
+                    len(description) <= DESCRIPTION_MAX_CHARS,
+                    f"skill description exceeds {DESCRIPTION_MAX_CHARS} characters: {relative}",
+                )
+                for term in DESCRIPTION_WORKFLOW_SHORTCUTS:
+                    check(
+                        errors,
+                        term not in description,
+                        f"skill description must not summarize workflow shortcut `{term}`: {relative}",
+                    )
 
 
 def validate_manifests(plugin_root: Path, errors: list[str]) -> None:
@@ -220,6 +261,9 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
     real_review = (plugin_root / "skills" / "arbor" / "references" / "real-workflow-chain-review.md").read_text(
         encoding="utf-8"
     )
+    skill_quality = (
+        plugin_root / "skills" / "arbor" / "references" / "skill-authoring-quality-guard.md"
+    ).read_text(encoding="utf-8")
     for label, text in (
         ("project hook contract", project_hooks),
         ("real workflow chain review", real_review),
@@ -230,6 +274,32 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
             "not a reliable",
         ):
             check(errors, term in text, f"{label} missing Codex hook runtime proof term `{term}`")
+
+    for term in (
+        "Skill descriptions are discovery triggers, not workflow summaries",
+        "Start descriptions with `Use when`",
+        "or `Use only`",
+        "Do not summarize the skill checklist",
+        "Keep descriptions under 500 characters",
+        "Baseline Failure",
+        "static-only exception",
+        "RED",
+        "GREEN",
+        "REFACTOR",
+        "Changed Skill Replay Map",
+        "`brainstorm` -> R01/R02/R27 plus direct-answer control R03",
+        "`feedback` -> R32 plus direct-answer control",
+        "`converge` -> R04/R07/R21/R29/R30 plus a direct status control",
+        "Internal Stage Pressure Fixtures",
+        "check_plugin_adapters.py",
+    ):
+        check(errors, contains_term(skill_quality, term), f"skill authoring quality guard missing term `{term}`")
+
+    for term in (
+        "Skill Authoring Quality Guard",
+        "Skill descriptions are discovery triggers, not workflow summaries",
+    ):
+        check(errors, contains_term(arbor_skill, term), f"arbor skill missing skill-quality guard term `{term}`")
 
     for manifest_name, manifest in (("Codex", codex), ("Claude", claude)):
         description = str(manifest.get("description", ""))
@@ -606,6 +676,169 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
             check(errors, path.is_file(), f"framework repair should create {path}")
 
 
+def validate_skill_testing_red_green_review_contract(plugin_root: Path, errors: list[str]) -> None:
+    repo_root = repo_root_from_plugin(plugin_root)
+    if repo_root is None:
+        return
+
+    review = repo_root / "docs" / "review" / "skill-testing-red-green.md"
+    check(errors, review.is_file(), "skill testing red-green review evidence is missing")
+    if not review.is_file():
+        return
+
+    text = review.read_text(encoding="utf-8")
+    for term in (
+        "# Skill Testing Red Green",
+        "Context/Test Plan",
+        "Baseline Failure",
+        "static-only exception",
+        "RED",
+        "GREEN",
+        "REFACTOR",
+        "python3 plugins/arbor/skills/arbor/scripts/check_plugin_adapters.py",
+        "plugin adapter checks failed",
+        "plugin adapter checks passed",
+    ):
+        check(errors, contains_term(text, term), f"skill testing red-green review missing term `{term}`")
+
+
+def validate_anti_shortcut_red_flags_contract(plugin_root: Path, errors: list[str]) -> None:
+    skill_terms = {
+        "skills/arbor/SKILL.md": [
+            "## Red Flags",
+            "Project-summary shortcut",
+            "Broad health report shortcut",
+            "Process-state report shortcut",
+        ],
+        "skills/converge/SKILL.md": [
+            "## Red Flags",
+            "Evaluator accepted, so the feature is done",
+            "Developer self-test is enough",
+            "Release can select the next feature from converge",
+        ],
+        "skills/release/SKILL.md": [
+            "## Red Flags",
+            "Checkpoint commit means final release",
+            "Push, PR, tag, publish, or cache sync is implied",
+            "Dirty source equals installed runtime",
+        ],
+    }
+    for rel_path, terms in skill_terms.items():
+        text = (plugin_root / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, contains_term(text, term), f"{rel_path} missing anti-shortcut red flag term `{term}`")
+
+
+def validate_claim_proof_matrix_contract(plugin_root: Path, errors: list[str]) -> None:
+    matrix = plugin_root / "skills" / "arbor" / "references" / "claim-proof-matrix.md"
+    check(errors, matrix.is_file(), "claim proof matrix reference is missing")
+    matrix_text = matrix.read_text(encoding="utf-8") if matrix.is_file() else ""
+    for term in (
+        "# Claim Proof Matrix",
+        "visible output",
+        "`final-response.md`",
+        "source tree",
+        "installed cache",
+        "runtime evidence",
+        "weak-pass label",
+        "Do not claim cache or runtime behavior from source-only checks",
+    ):
+        check(errors, contains_term(matrix_text, term), f"claim proof matrix missing term `{term}`")
+
+    for rel_path in ("skills/evaluate/SKILL.md", "skills/release/SKILL.md"):
+        text = (plugin_root / rel_path).read_text(encoding="utf-8")
+        for term in (
+            "Claim Proof Matrix",
+            "references/claim-proof-matrix.md",
+        ):
+            check(errors, contains_term(text, term), f"{rel_path} missing claim proof matrix term `{term}`")
+
+
+def validate_skill_structure_placement_contract(plugin_root: Path, errors: list[str]) -> None:
+    reference = plugin_root / "skills" / "arbor" / "references" / "skill-structure-placement.md"
+    check(errors, reference.is_file(), "skill structure placement reference is missing")
+    reference_text = reference.read_text(encoding="utf-8") if reference.is_file() else ""
+    for term in (
+        "# Skill Structure Placement",
+        "Purpose",
+        "Critical Gates",
+        "Trigger/Non-trigger examples",
+        "Checklist",
+        "Red Flags",
+        "Output Contract",
+        "References",
+        "front 100 lines",
+        "word-count trend",
+        "not a hard product limit",
+    ):
+        check(errors, contains_term(reference_text, term), f"skill structure placement reference missing term `{term}`")
+
+    critical_sections = {
+        "skills/arbor/SKILL.md": ("## Red Flags", 60),
+        "skills/brainstorm/SKILL.md": ("## Critical Output Contract", 80),
+        "skills/converge/SKILL.md": ("## Red Flags", 80),
+        "skills/release/SKILL.md": ("## Red Flags", 60),
+    }
+    for rel_path, (heading, max_line) in critical_sections.items():
+        text = (plugin_root / rel_path).read_text(encoding="utf-8")
+        line = first_line_number(text, heading)
+        check(errors, line is not None, f"{rel_path} missing critical placement heading `{heading}`")
+        if line is not None:
+            check(errors, line <= max_line, f"{rel_path} critical heading `{heading}` appears on line {line}, after line {max_line}")
+
+
+def validate_feedback_review_rigor_contract(plugin_root: Path, errors: list[str]) -> None:
+    feedback = (plugin_root / "skills" / "feedback" / "SKILL.md").read_text(encoding="utf-8")
+    for term in (
+        "## Feedback Verification",
+        "identify target artifact or feature",
+        "verify against repo or review evidence",
+        "valid current-loop issue",
+        "planning issue",
+        "direct answer",
+        "invalid or out-of-scope suggestion",
+        "## When To Push Back",
+        "would add heavy workflow",
+        "conflicts with accepted plan",
+        "not supported by evidence",
+        "belongs to a future feature",
+    ):
+        check(errors, contains_term(feedback, term), f"feedback skill missing review-rigor term `{term}`")
+
+
+def validate_public_trigger_contract_matrix(plugin_root: Path, errors: list[str]) -> None:
+    skill_terms = {
+        "skills/brainstorm/SKILL.md": [
+            "## Trigger Contract",
+            "Positive Trigger",
+            "Negative Trigger",
+            "Replay Coverage",
+            "R01/R02/R27",
+            "R03",
+        ],
+        "skills/feedback/SKILL.md": [
+            "## Trigger Contract",
+            "Positive Trigger",
+            "Negative Trigger",
+            "Replay Coverage",
+            "R32",
+            "direct-answer control",
+        ],
+        "skills/converge/SKILL.md": [
+            "## Trigger Contract",
+            "Positive Trigger",
+            "Negative Trigger",
+            "Replay Coverage",
+            "R04/R07/R21/R29/R30",
+            "direct status control",
+        ],
+    }
+    for rel_path, terms in skill_terms.items():
+        text = (plugin_root / rel_path).read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, contains_term(text, term), f"{rel_path} missing trigger contract term `{term}`")
+
+
 def validate_project_hook_contract(plugin_root: Path, errors: list[str]) -> None:
     import sys
 
@@ -978,8 +1211,8 @@ def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) ->
         check(errors, contains_term(converge, term), f"converge public-entrypoint contract missing `{term}`")
 
     for term in (
-        "Internal-only Arbor checkpoint/finalization gate",
-        "do not select for ordinary user prompts",
+        "internal checkpoint/finalization skill",
+        "Do not select `release` directly for ordinary user prompts",
         "Do not advertise or accept `release` as a public workflow entrypoint",
     ):
         check(errors, contains_term(release, term), f"release internal-entrypoint contract missing `{term}`")
@@ -2496,6 +2729,12 @@ def main() -> int:
     validate_skill_frontmatter_yaml(plugin_root, errors)
     validate_manifests(plugin_root, errors)
     validate_startup_bootstrap_contract(plugin_root, errors)
+    validate_skill_testing_red_green_review_contract(plugin_root, errors)
+    validate_anti_shortcut_red_flags_contract(plugin_root, errors)
+    validate_claim_proof_matrix_contract(plugin_root, errors)
+    validate_skill_structure_placement_contract(plugin_root, errors)
+    validate_feedback_review_rigor_contract(plugin_root, errors)
+    validate_public_trigger_contract_matrix(plugin_root, errors)
     validate_project_hook_contract(plugin_root, errors)
     validate_agents_guide_drift_smoke(plugin_root, errors)
     validate_claude_hook_structure(plugin_root, errors)

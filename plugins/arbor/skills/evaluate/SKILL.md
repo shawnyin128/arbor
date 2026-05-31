@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: Internal Arbor validation stage invoked by converge after a developer handoff; replay developer evidence, add adversarial checks, append evaluator evidence, and emit structured output for release checkpointing before the convergence decision.
+description: "Use only from an internal Arbor converge-owned handoff after developer implementation evidence exists and the work needs independent validation against the review plan; not for ordinary user prompts, direct fixes, convergence decisions, release, push, or publish requests."
 ---
 
 # Evaluate
@@ -599,6 +599,9 @@ If any check fails, revise the output or return the appropriate blocked/needs st
 
 ## Reference Material
 
+- `references/claim-proof-matrix.md`: shared Arbor Claim Proof Matrix for
+  mapping claims to proof strength, including visible output, source tree,
+  installed cache, and runtime evidence.
 - `references/evaluate-boundary.md`: full boundary, handoff requirements, adversarial testing contract, review append, and terminal-state matrix.
 - `references/verification-method-examples.md`: progressive reference for choosing artifact-appropriate evaluator checks, including frontend/browser automation scenarios.
 - `references/evaluate-simulation-cases.md`: regression cases for evaluate routing and evidence.

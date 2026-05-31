@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Clarify Arbor-managed requirements, load required evidence, expose hidden decisions, compare approaches, split broad work into independently testable features, and produce a natural-language review packet with the standard brainstorm headings plus structured plan before the converge-owned quality loop begins.
+description: "Use when Arbor-managed work needs scope clarification, evidence-backed planning, hidden decision discovery, feature splitting, acceptance criteria, or test planning before implementation; not for direct typo fixes, already-planned convergence, ordinary explanations, or release/finalization requests."
 ---
 
 # Brainstorm
@@ -14,6 +14,38 @@ Use `brainstorm` as the public entrypoint when an Arbor-managed request needs pl
 The terminal state is one of: `needs_clarification`, `needs_evidence`, `ready_for_user_review`, `ready_for_converge`, `route_correction`, or `blocked`.
 
 `brainstorm` is a mandatory user-visible checkpoint. Do not silently continue into `converge`, `develop`, or `evaluate` in the same final response. The user must be able to inspect the plan, feature split, hidden decisions, test goals, and expected delivery before the implementation/review loop starts, unless a future runtime provides an explicit reviewed checkpoint policy.
+
+## Critical Output Contract
+
+For every normal English brainstorm response, the final visible message must use
+these exact headings in this exact order:
+
+1. `**Understanding And Recommendation**`
+2. `**How I Would Handle This**`
+3. `**Suggested Small Steps**`
+4. `**How I Would Validate Each Step**`
+5. `**Default Decisions I Made**`
+6. `**Expected Delivery**`
+7. `**Next**`
+
+`Suggested Small Steps`, `How I Would Validate Each Step`, and
+`Default Decisions I Made` must be Markdown tables. If the plan is blocked,
+missing evidence, or needs clarification, keep the headings and put the blocked
+or not-applicable state inside the relevant table rows. Do not write
+`Terminal state:` in the visible response.
+
+**Visible checkpoint hard gate:** every successful `brainstorm` turn must end
+with the fixed user-facing brainstorm packet, even when artifacts were created,
+evidence is missing, or a single clarification question blocks the plan. An
+artifact list, status paragraph, terminal-state note, or "checkpoint created"
+summary is not a brainstorm checkpoint.
+
+## Trigger Contract
+
+| Contract | Prompt Shape | Replay Coverage |
+| --- | --- | --- |
+| Positive Trigger | Scope, acceptance criteria, hidden decisions, feature splitting, or test planning must be settled before implementation. | R01/R02/R27 |
+| Negative Trigger | Simple direct answer, typo fix, already-planned quality-loop continuation, or release/finalization request. | R03 |
 
 ## Canonical Examples
 
@@ -390,6 +422,16 @@ list, or "created checkpoint" summary. Even when the terminal state is blocked,
 needs evidence, or needs clarification, render the full brainstorm checkpoint
 with the fixed headings below. Use not-applicable or blocked rows in the table
 sections when planning cannot proceed yet.
+
+These red flags mean the final response is wrong and must be rewritten before
+sending:
+
+| Red Flag | Required Correction |
+| --- | --- |
+| The response starts with "Created", "Updated", or an artifact list. | Rewrite it as the full brainstorm packet, then mention artifacts only inside the relevant section. |
+| The response says the terminal state or pending question but omits fixed headings. | Keep the terminal meaning internal and ask the question under `**Next**`. |
+| The response lists feature split bullets but has no validation/default-decision tables. | Add the required tables, using blocked or not-applicable rows if evidence is missing. |
+| The response says "No implementation code changed" as the main result. | Put that in delivery/risk context, not as the checkpoint itself. |
 
 The structured `brainstorm.v1` object is an internal workflow/runtime packet. In a normal user-facing final response, render the checkpoint from `user_response` and `ui`; do not print the raw `brainstorm.v1` JSON unless the user explicitly asks for debug or machine output.
 
