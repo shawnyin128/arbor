@@ -845,6 +845,15 @@ def assert_any_contains(*terms: str) -> Callable[[CaseContext, RuntimeResult | N
     return _assert
 
 
+def assert_not_contains(*terms: str) -> Callable[[CaseContext, RuntimeResult | None], None]:
+    def _assert(_: CaseContext, result: RuntimeResult | None) -> None:
+        text = final_text(result)
+        present = [term for term in terms if term in text]
+        require(not present, f"final response contains forbidden terms: {present}")
+
+    return _assert
+
+
 def assert_file_exists(path: str) -> Callable[[CaseContext, RuntimeResult | None], None]:
     def _assert(ctx: CaseContext, _: RuntimeResult | None) -> None:
         require((ctx.workdir / path).exists(), f"expected file missing: {path}")
@@ -1301,8 +1310,8 @@ def make_cases() -> dict[str, CaseSpec]:
         ),
         CaseSpec(
             "R15",
-            "startup context fresh overview",
-            agent_prompt("R15", "What is this project doing? Use Arbor startup context before answering."),
+            "startup context fresh direct overview",
+            agent_prompt("R15", "What is this project doing? Load Arbor startup context before answering, but answer directly from the sources."),
             setup_startup_context,
             [*common_assertions, assert_any_contains("Project", "Arbor", "git", "memory")],
         ),
@@ -1384,10 +1393,14 @@ def make_cases() -> dict[str, CaseSpec]:
         ),
         CaseSpec(
             "R25",
-            "Codex Claude semantic parity",
-            agent_prompt("R25", "$arbor explain this project from startup context and keep the output concise."),
+            "Codex Claude Arbor health parity",
+            agent_prompt("R25", "$arbor check this project's Arbor context, memory, and hook health. Do not summarize the project as a product overview."),
             setup_startup_context,
-            [*common_assertions, assert_any_contains("Arbor", "project", "memory")],
+            [
+                *common_assertions,
+                assert_contains("Arbor", "context", "memory", "hook"),
+                assert_not_contains("Suggested next actions", "Project:", "The one open thread", "Current state", "Next planned feature"),
+            ],
         ),
         CaseSpec(
             "R26",

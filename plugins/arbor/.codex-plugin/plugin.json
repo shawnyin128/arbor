@@ -1,7 +1,7 @@
 {
   "name": "arbor",
-  "version": "1.0.8",
-  "description": "Maintain project-local Arbor memory, load startup context for project overview/resume requests, and guide explicit Arbor workflow entrypoints from brainstorm, feedback, and converge through internal release finalization; normal checkpoints render user_response/ui while raw workflow JSON and route labels stay hidden unless debug output is requested.",
+  "version": "1.0.9",
+  "description": "Maintain project-local Arbor memory, initialize and diagnose framework context plus runtime hooks, and guide explicit Arbor workflow entrypoints from brainstorm, feedback, and converge through internal release finalization; not a project-summary command.",
   "author": {
     "name": "Shawn",
     "url": "https://github.com/shawnyin128"
@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Arbor",
     "shortDescription": "Project memory plus explicit workflow skills",
-    "longDescription": "Arbor initializes project-local memory, registers executable project-level Codex hooks and runtime-specific hook wrappers, loads startup context in a stable order for fresh-session, resumed-session, and project-overview requests, emits memory hygiene packets, emits AGENTS drift packets, and guides managed development through explicit workflow entrypoints. Brainstorm turns scoped requests, bug reports without review context, planning continuations, and broad workflow changes into reviewable plans with acceptance criteria and test scope before routing approved work to converge. Feedback accepts feedback-shaped bug reports, regressions, failed checks, reviewer comments, and corrections to prior Arbor work when the next public owner is unclear, then routes only to brainstorm, converge, needs-evidence, or a direct response; it does not trigger from keywords alone or intercept another named public entrypoint that already fits. Converge is the public quality-loop orchestrator for existing managed features: it handles bugs, defects, review findings, verification requests, finish/publish intent, and continuation requests, then drives the internal develop/evaluate cycle with release checkpoints before deciding whether the feature satisfies the plan. Develop, evaluate, and release are internal stages for implementation, independent validation, checkpoint commits, and post-convergence finalization evidence; they are not normal public user entrypoints, and users should not be asked to invoke release directly. Normal user-visible checkpoints render user_response and ui fields; raw workflow JSON, route labels, and terminal-state labels stay hidden unless the user explicitly asks for debug or machine output. Brainstorm and feedback checkpoints use their standard rendered headings, not ad hoc planning or routing prose.",
+    "longDescription": "Arbor initializes project-local memory, registers executable project-level Codex hooks and runtime-specific hook wrappers, loads startup context in a stable order for fresh and resumed sessions, diagnoses hook/runtime surfaces, reports Arbor memory, framework readiness, and project-guide health, emits memory hygiene packets, emits AGENTS drift packets, and guides managed development through explicit workflow entrypoints. The arbor skill is a framework/context state check entrypoint, not a project-summary, project-status, or resume-summary skill; ordinary project overview answers should be direct and source-grounded after startup context is loaded, without selecting arbor unless initialization or Arbor health is requested. Brainstorm turns scoped requests, bug reports without review context, planning continuations, and broad workflow changes into reviewable plans with acceptance criteria and test scope before routing approved work to converge. Feedback accepts feedback-shaped bug reports, regressions, failed checks, reviewer comments, and corrections to prior Arbor work when the next public owner is unclear, then routes only to brainstorm, converge, needs-evidence, or a direct response; it does not trigger from keywords alone or intercept another named public entrypoint that already fits. Converge is the public quality-loop orchestrator for existing managed features: it handles bugs, defects, review findings, verification requests, finish/publish intent, and continuation requests, then drives the internal develop/evaluate cycle with release checkpoints before deciding whether the feature satisfies the plan. Develop, evaluate, and release are internal stages for implementation, independent validation, checkpoint commits, and post-convergence finalization evidence; they are not normal public user entrypoints, and users should not be asked to invoke release directly. Normal user-visible checkpoints render user_response and ui fields; raw workflow JSON, route labels, and terminal-state labels stay hidden unless the user explicitly asks for debug or machine output. Brainstorm and feedback checkpoints use their standard rendered headings, not ad hoc planning or routing prose.",
     "developerName": "Shawn",
     "category": "Coding",
     "capabilities": [
@@ -30,7 +30,7 @@
     ],
     "defaultPrompt": [
       "Initialize Arbor in this project",
-      "Resume or explain this repo with Arbor context",
+      "Check Arbor context and hook health in this project",
       "Use brainstorm for planning, feedback for unclear feedback, or converge for current-loop repair"
     ],
     "brandColor": "#2F6F4E",

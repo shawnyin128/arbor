@@ -66,7 +66,7 @@ entrypoints are:
 
 ```text
 Codex        Claude Code          Purpose
-$arbor       /arbor:arbor         initialize, resume, project context
+$arbor       /arbor:arbor         initialize, context and hook health check
 $brainstorm  /arbor:brainstorm    plan scope, acceptance criteria, test plan
 $feedback    /arbor:feedback      triage bug reports, failed checks, corrections
 $converge    /arbor:converge      run/continue the managed quality loop
@@ -103,7 +103,7 @@ Managed workflow state lives in:
 
 ### `arbor`
 
-Use `arbor` for startup and project context:
+Use `arbor` for startup, framework, context, and hook health checks:
 
 - initialize `AGENTS.md`, `.arbor/memory.md`, and runtime-specific adapters;
 - register Codex project hooks in `.codex/hooks.json` with wrappers under
@@ -115,6 +115,12 @@ Use `arbor` for startup and project context:
   `.arbor/memory.md`, and `git status --short`;
 - refresh short-term memory before handoff or commit;
 - update the project map when durable project structure changes.
+
+`arbor` is not a project-summary, project-status, or resume-summary command.
+For ordinary "what does this project do?" or "where were we?" questions, load
+startup context first when required and answer directly from the sources; use
+`$arbor` only when the user wants initialization, runtime hook state, memory
+health, project-guide drift, framework readiness, or context readiness checked.
 
 ### `brainstorm`
 
@@ -316,7 +322,7 @@ automatically.
 Current version:
 
 ```text
-1.0.8
+1.0.9
 ```
 
 Version files:

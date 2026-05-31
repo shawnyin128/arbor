@@ -99,8 +99,13 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         check(errors, term in agents_template, f"agents template missing startup bootstrap term `{term}`")
 
     for term in (
-        "answering what a project does",
-        "project-overview prompts",
+        "not a generic project-summary skill",
+        "not a project-summary, project-status, or resume-summary command",
+        "without selecting `arbor`",
+        "framework readiness",
+        "direct and source-grounded",
+        "hook/context diagnosis",
+        "memory health",
         "Do not assume `.codex/hooks.json` has already injected",
         "`AGENTS.md` Startup Protocol",
         "Runtime-specific adapter initialization is separate from canonical project state",
@@ -156,8 +161,18 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         description = str(manifest.get("description", ""))
         check(
             errors,
-            "project overview/resume requests" in description,
-            f"{manifest_name} manifest description must mention project overview/resume startup context",
+            "initialize and diagnose framework context plus runtime hooks" in description,
+            f"{manifest_name} manifest description must frame Arbor as framework context and hook diagnosis",
+        )
+        check(
+            errors,
+            "project-summary command" in description and "not a project-summary command" in description,
+            f"{manifest_name} manifest description must explicitly reject project-summary command framing",
+        )
+        check(
+            errors,
+            "project overview/resume requests" not in description,
+            f"{manifest_name} manifest description must not frame Arbor as project overview/resume summary",
         )
 
     interface = codex.get("interface")
@@ -167,8 +182,25 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         check(errors, isinstance(prompts, list) and len(prompts) <= 3, "Codex defaultPrompt must contain at most 3 prompts")
         check(
             errors,
-            "Resume or explain this repo with Arbor context" in default_prompt,
-            "Codex defaultPrompt must include project overview startup-context example",
+            "Check Arbor context and hook health in this project" in default_prompt,
+            "Codex defaultPrompt must include Arbor context and hook health example",
+        )
+        check(
+            errors,
+            "explain this repo" not in default_prompt.lower(),
+            "Codex defaultPrompt must not advertise Arbor as a repo explanation command",
+        )
+        interface_description = str(interface.get("longDescription", ""))
+        for forbidden in ("project-status", "resume-summary"):
+            check(
+                errors,
+                forbidden in interface_description,
+                f"Codex longDescription must explicitly reject {forbidden} Arbor framing",
+            )
+        check(
+            errors,
+            "without selecting arbor unless initialization or Arbor health is requested" in interface_description,
+            "Codex longDescription must keep ordinary overviews out of arbor skill selection",
         )
 
 
@@ -865,9 +897,44 @@ def validate_session_start_smoke(plugin_root: Path, errors: list[str]) -> None:
         check(errors, proc.returncode == 0, f"SessionStart startup smoke failed: {proc.stderr.strip()}")
         output = proc.stdout
         check(errors, len(output) <= 9500, "SessionStart startup output must stay within adapter budget")
-        for expected in ("# Project Startup Context", "## 1. AGENTS.md", "## 2. formatted git log", "## 3. .arbor/memory.md", "## 4. git status"):
+        for expected in (
+            "# Project Startup Context",
+            "## 0. project identity",
+            "Project root:",
+            "Git root:",
+            "## 1. AGENTS.md",
+            "## 2. formatted git log",
+            "## 3. .arbor/memory.md",
+            "Arbor Memory Inspection:",
+            "classification:",
+            "## 4. git status",
+        ):
             check(errors, expected in output, f"SessionStart startup output missing {expected!r}")
         check(errors, "truncated - Arbor SessionStart context exceeded" in output, "large startup packet should include truncation notice")
+
+        mismatch_project = Path(tmp) / "arbor"
+        mismatch_project.mkdir()
+        (mismatch_project / ".arbor").mkdir()
+        (mismatch_project / "AGENTS.md").write_text(
+            "# Agent Guide\n\n## Project Goal\n\nArbor is a project-context and workflow plugin.\n",
+            encoding="utf-8",
+        )
+        (mismatch_project / ".arbor" / "memory.md").write_text(
+            "# Session Memory\n\n## In-flight\n\n- Project: speculative compaction research\n"
+            "  Stage 0/1 code is converged and release remains pending.\n",
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "init"], cwd=mismatch_project, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, text=True)
+        mismatch_proc = run_session_start(plugin_root, mismatch_project, "startup")
+        check(errors, mismatch_proc.returncode == 0, f"SessionStart mismatch smoke failed: {mismatch_proc.stderr.strip()}")
+        mismatch_output = mismatch_proc.stdout
+        for expected in (
+            "Project root:",
+            "classification: suspicious-cross-project",
+            "memory declares project `speculative compaction research`",
+            "Do not summarize it as current project state",
+        ):
+            check(errors, expected in mismatch_output, f"SessionStart mismatch output missing {expected!r}")
 
         clear_proc = run_session_start(plugin_root, project, "clear")
         check(errors, clear_proc.returncode == 0, f"SessionStart clear smoke failed: {clear_proc.stderr.strip()}")

@@ -1,17 +1,31 @@
 ---
 name: arbor
-description: Initialize, resume, and answer project-orientation questions with project-local Arbor memory under the Arbor workflow on Codex or Claude Code. Use when starting or resuming work in a repo, answering what a project does, summarizing repo purpose before work, creating `.arbor/memory.md`, migrating legacy `.codex/memory.md`, creating or updating `AGENTS.md`, generating a `CLAUDE.md` bridge on Claude Code installs, loading startup context from project docs, formatted git log, session memory, and git status, refreshing stale pre-triage observations, or detecting stable project guide, constraint, or project-map changes.
+description: Initialize Arbor project state and report Arbor framework health on Codex or Claude Code: create or migrate `.arbor/memory.md`, create/update `AGENTS.md`, generate the Claude `CLAUDE.md` bridge, register or diagnose runtime hook surfaces, load ordered startup context, refresh stale pre-triage observations, detect project-guide or project-map drift, and report source paths, blockers, and next Arbor maintenance actions; do not use for ordinary project summaries, project status, resume summaries, or product progress advice.
 ---
 
 # Arbor
 
 ## Core Rule
 
-Fix the workflow order, not the agent's reading depth. Keep Arbor outcome-first: recover the right project context, maintain short-term memory, and update the project guide or map when needed. Long-term context is distributed across `AGENTS.md`, git history, and project docs; `AGENTS.md` is the project guide and map, not the whole memory store. Do not impose commit counts, byte limits, file limits, documentation depth, or summary-size limits as part of this skill. Use scripts as helpers; continue reading whatever files, diffs, logs, or docs the task requires.
+Fix the workflow order, not the agent's reading depth. Keep Arbor outcome-first:
+initialize and check the project's Arbor state, recover the right startup
+context, maintain short-term memory, and update the project guide or map when
+needed. `arbor` is not a generic project-summary skill and must not turn memory
+prose into product status, feature recommendations, or release advice. It is
+not a project-summary, project-status, or resume-summary command. Ordinary
+questions like "what does this repo do?", "where were we?", or "what is the
+project status?" should load startup context when required by `AGENTS.md`, then
+answer direct and source-grounded from sources without selecting `arbor`, unless
+the user also asks to initialize Arbor or check Arbor framework health. Long-term context is
+distributed across `AGENTS.md`, git history, and project docs;
+`AGENTS.md` is the project guide and map, not the whole memory store. Do not
+impose commit counts, byte limits, file limits, documentation depth, or
+summary-size limits as part of this skill. Use scripts as helpers; continue
+reading whatever files, diffs, logs, or docs the task requires.
 
 ## Startup Workflow
 
-When initializing, resuming, or orienting in a project:
+When initializing, resuming, or checking Arbor state in a project:
 
 1. Ensure `AGENTS.md`, `.arbor/memory.md`, and the current runtime's bootstrap files exist. Use `scripts/init_project_memory.py --root <project-root>` when useful, even when `AGENTS.md` and `.arbor/memory.md` already exist. This explicit initialization flow migrates legacy `.codex/memory.md` by copying it to `.arbor/memory.md` when the canonical file is missing. Runtime-specific adapter initialization is separate from canonical project state: a project first initialized from Codex still needs a later Claude Code initialization to create the short `CLAUDE.md` bridge pointing at `AGENTS.md` and `.arbor/memory.md`. When the script lives inside a Claude Code plugin cache, it creates that bridge automatically; the `--claude-bridge on|off` flag overrides this default.
 2. Initialize hooks through the current runtime's own project surface. Use `scripts/diagnose_project_hooks.py --root <project-root> --plugin-root <arbor-plugin-root>` when the hook state is unclear; it separates intent-only files, executable wrappers, Claude plugin manifests, and runtime trust gaps. On Codex, register project-local Arbor hooks with `scripts/register_project_hooks.py --root <project-root>` when useful; this writes executable `.codex/hooks.json` entries plus project-local wrappers under `.codex/hooks/` and preserves unrelated hook entries. Codex may still require the user to trust those hooks through `/hooks`, so file presence is not proof that a hook fired. On Claude Code, the installed plugin ships `hooks/hooks.json` for plugin-level `SessionStart` and `Stop`; project-local `.claude/settings.json` plus `.claude/hooks/` wrappers remain an explicit per-project initialization path.
@@ -23,9 +37,29 @@ When initializing, resuming, or orienting in a project:
 4. Use `scripts/collect_project_context.py --root <project-root>` when a deterministic ordered context packet is useful. The script does not decide how much context is enough.
 5. Read additional docs, diffs, source files, or logs when the project map, task risk, or user request calls for them.
 
-On Codex, `AGENTS.md` is the reliable native startup bootstrap. Do not assume `.codex/hooks.json` has already injected `arbor.session_startup_context`. For fresh sessions, resumed sessions, and project-overview prompts such as "what does this project do?", actively run or manually reproduce the startup context load before answering.
+On Codex, `AGENTS.md` is the reliable native startup bootstrap. Do not assume `.codex/hooks.json` has already injected `arbor.session_startup_context`. For
+fresh sessions, resumed sessions, and project-overview prompts, actively run or
+manually reproduce the startup context load before answering. That bootstrap
+requirement is not a skill-selection rule: if the user asked for a normal
+project overview, answer directly from loaded sources in a direct and source-grounded response rather than rendering an `arbor` status checkpoint. Use
+`arbor` itself only for initialization, hook/context diagnosis, memory health,
+project-guide state, and Arbor framework readiness.
 
 Collector sections include `Status`, `Source`, optional `Detail`, and raw body. Treat `missing`, `path-conflict`, `read-error`, `git-error`, and `empty` as fallback diagnostics, not blockers for reading later sections.
+
+## User-Facing Output Boundary
+
+Visible `arbor` output is a status report for Arbor framework state, not a
+project summary. It should name the project root, source files checked,
+hook/runtime surface state, memory state, project-guide/map state, and any Arbor
+maintenance blockers. It may suggest maintenance actions such as initializing
+files, trusting hooks, registering runtime wrappers, repairing stale memory, or
+updating the project map.
+
+Do not use `arbor` output to recommend product features, implementation work,
+release/finalization, or next workflow actions from memory prose. Those belong
+to direct answers, `brainstorm`, `feedback`, or `converge` after their own
+evidence is loaded.
 
 ## Session Memory
 
