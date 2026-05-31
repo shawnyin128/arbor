@@ -22,6 +22,8 @@ from arbor_project_state import (
 
 CODEX_REQUIRED_EVENTS = ("SessionStart", "Stop")
 CLAUDE_REQUIRED_EVENTS = ("SessionStart", "Stop")
+PACKAGED_SESSION_MARKERS = ("PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "/hooks/session-start")
+PACKAGED_STOP_MARKERS = ("PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT", "/hooks/stop-memory-hygiene")
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,10 @@ def load_json_object(path: Path) -> tuple[dict[str, Any] | None, str | None]:
 
 
 def has_event_handler(config: dict[str, Any], event: str, marker: str) -> bool:
+    return has_event_handler_with_markers(config, event, (marker,))
+
+
+def has_event_handler_with_markers(config: dict[str, Any], event: str, markers: tuple[str, ...]) -> bool:
     hooks = config.get("hooks")
     if not isinstance(hooks, dict):
         return False
@@ -68,8 +74,10 @@ def has_event_handler(config: dict[str, Any], event: str, marker: str) -> bool:
         if not isinstance(handlers, list):
             continue
         for handler in handlers:
-            if isinstance(handler, dict) and marker in str(handler.get("command", "")):
-                return True
+            if isinstance(handler, dict):
+                command = str(handler.get("command", ""))
+                if all(marker in command for marker in markers):
+                    return True
     return False
 
 
@@ -179,8 +187,8 @@ def diagnose_claude_plugin(plugin_root: Path | None) -> HookState:
 
     session_state = executable_file_state(session_path)
     stop_state = executable_file_state(stop_path)
-    session_ok = has_event_handler(manifest, "SessionStart", "${CLAUDE_PLUGIN_ROOT}/hooks/session-start")
-    stop_ok = has_event_handler(manifest, "Stop", "${CLAUDE_PLUGIN_ROOT}/hooks/stop-memory-hygiene")
+    session_ok = has_event_handler_with_markers(manifest, "SessionStart", PACKAGED_SESSION_MARKERS)
+    stop_ok = has_event_handler_with_markers(manifest, "Stop", PACKAGED_STOP_MARKERS)
     if not session_ok or not stop_ok or session_state != "ok" or stop_state != "ok":
         return HookState(
             "Claude-plugin-incomplete",

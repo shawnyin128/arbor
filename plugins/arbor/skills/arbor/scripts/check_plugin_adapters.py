@@ -851,12 +851,16 @@ def validate_agents_guide_drift_smoke(plugin_root: Path, errors: list[str]) -> N
 def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None:
     hooks_manifest = plugin_root / "hooks" / "hooks.json"
     manifest = load_json(hooks_manifest, errors)
-    manifest_text = json.dumps(manifest)
+    manifest_text = hooks_manifest.read_text(encoding="utf-8")
     for term in (
         "SessionStart",
         "Stop",
-        "${CLAUDE_PLUGIN_ROOT}/hooks/session-start",
-        "${CLAUDE_PLUGIN_ROOT}/hooks/stop-memory-hygiene",
+        "PLUGIN_ROOT",
+        "CLAUDE_PLUGIN_ROOT",
+        "/hooks/session-start",
+        "/hooks/stop-memory-hygiene",
+        "test -n",
+        "|| exit 0",
     ):
         check(errors, term in manifest_text, f"Claude plugin hook manifest missing `{term}`")
 
@@ -868,6 +872,60 @@ def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None
     check(errors, os.access(stop_adapter, os.X_OK), "hooks/stop-memory-hygiene must be executable")
     check(errors, not (plugin_root / "hooks" / "pre-compact").exists(), "PreCompact adapter must not ship in this release")
     check(errors, not (plugin_root / "agents").exists(), "plugin-level agents directory is out of scope for this release")
+
+    hooks = manifest.get("hooks")
+    if isinstance(hooks, dict):
+        for event, adapter_name in (("SessionStart", "session-start"), ("Stop", "stop-memory-hygiene")):
+            groups = hooks.get(event)
+            command = None
+            if isinstance(groups, list) and groups:
+                handlers = groups[0].get("hooks") if isinstance(groups[0], dict) else None
+                if isinstance(handlers, list) and handlers and isinstance(handlers[0], dict):
+                    command = handlers[0].get("command")
+            if not isinstance(command, str):
+                check(errors, False, f"{event} packaged hook command must be a string")
+                continue
+            for env_name in ("PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
+                env = os.environ.copy()
+                env.pop("PLUGIN_ROOT", None)
+                env.pop("CLAUDE_PLUGIN_ROOT", None)
+                env[env_name] = str(plugin_root)
+                payload = {
+                    "session_id": "packaged-hook-smoke",
+                    "transcript_path": str(plugin_root / "transcript.jsonl"),
+                    "cwd": str(plugin_root),
+                    "hook_event_name": event,
+                    "source": "clear",
+                    "stop_hook_active": True,
+                }
+                proc = subprocess.run(
+                    command,
+                    input=json.dumps(payload),
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True,
+                    env=env,
+                    cwd=plugin_root,
+                    check=False,
+                )
+                check(errors, proc.returncode == 0, f"{event} packaged hook command failed with {env_name}: {proc.stderr.strip()}")
+            env = os.environ.copy()
+            env.pop("PLUGIN_ROOT", None)
+            env.pop("CLAUDE_PLUGIN_ROOT", None)
+            proc = subprocess.run(
+                command,
+                input=json.dumps({"hook_event_name": event}),
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=True,
+                env=env,
+                cwd=plugin_root,
+                check=False,
+            )
+            check(errors, proc.returncode == 0, f"{event} packaged hook command must silently allow missing plugin roots")
+            check(errors, proc.stdout == "", f"{event} packaged hook command should stay quiet when plugin roots are missing")
 
 
 def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -1048,6 +1106,7 @@ def validate_release_active_selection_contract(plugin_root: Path, errors: list[s
 def run_session_start(plugin_root: Path, project_root: Path, source: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
+    env["PLUGIN_ROOT"] = str(plugin_root)
     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
     payload = {
         "session_id": "adapter-smoke",
@@ -1132,6 +1191,7 @@ def run_stop_hook(
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
+    env["PLUGIN_ROOT"] = str(plugin_root)
     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
     if memory_hygiene_mode is not None:
         env["ARBOR_STOP_MEMORY_HYGIENE_MODE"] = memory_hygiene_mode

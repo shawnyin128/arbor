@@ -286,7 +286,15 @@ explicit no-write turns, and unrelated dirty files outside Arbor scope.
 
 Do not store Arbor hook state in user-global memory. Re-register hooks when needed; registration is idempotent and should preserve unrelated project hooks.
 
-Claude Code also has a packaged plugin hook manifest at `hooks/hooks.json` that calls the same shared adapters through `CLAUDE_PLUGIN_ROOT`. Codex project hooks are registered in `.codex/hooks.json` and call wrappers under `.codex/hooks/`. Claude Code project hooks are optionally registered in `.claude/settings.json` and call wrappers under `.claude/hooks/`. Those wrappers locate the installed Arbor plugin cache and delegate to the shared adapter scripts:
+Codex and Claude Code can both see the packaged plugin hook manifest at
+`hooks/hooks.json`. That manifest must call the same shared adapters through a
+runtime-neutral root resolver: prefer `PLUGIN_ROOT`, fall back to
+`CLAUDE_PLUGIN_ROOT`, and exit silently if neither is present. Codex project
+hooks are registered in `.codex/hooks.json` and call wrappers under
+`.codex/hooks/`. Claude Code project hooks are optionally registered in
+`.claude/settings.json` and call wrappers under `.claude/hooks/`. Those
+wrappers locate the installed Arbor plugin cache and delegate to the shared
+adapter scripts:
 
 - `hooks/session-start` (`SessionStart`) calls `run_session_startup_hook.py` and applies a conservative runtime injection budget.
 - `hooks/stop-memory-hygiene` (`Stop`) is the compatibility-named Stop
