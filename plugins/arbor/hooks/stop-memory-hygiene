@@ -68,6 +68,8 @@ PLACEHOLDER_LINES = {
 }
 OLD_FALLBACK_PREFIX = "stop hook fallback: dirty Arbor worktree detected before stop"
 HOOK_FALLBACK_MARKER = "[hook:fallback]"
+HOOK_RESUME_MARKER = "[hook:resume]"
+HOOK_MANAGED_MARKERS = (HOOK_FALLBACK_MARKER, HOOK_RESUME_MARKER)
 FALLBACK_TEMPLATE = """# Session Memory
 
 <!--
@@ -226,7 +228,7 @@ def memory_entry_state(text: str) -> str:
 
     if not non_placeholder:
         return "placeholder"
-    if all(HOOK_FALLBACK_MARKER in line for line in non_placeholder):
+    if all(any(marker in line for marker in HOOK_MANAGED_MARKERS) for line in non_placeholder):
         return "hook_fallback"
     return "explicit"
 
@@ -264,9 +266,58 @@ def likely_area(paths: list[str], transcript_context: bool) -> str:
     return "dirty Arbor worktree"
 
 
-def build_fallback_entry(status_lines: list[str], transcript_context: bool, transcript_path: Path | None) -> str:
+def load_active_workflow_feature(project_root: Path) -> dict:
+    registry = project_root / ".arbor" / "workflow" / "features.json"
+    if not registry.is_file():
+        return {}
+    try:
+        data = json.loads(registry.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    active_id = data.get("active_feature_id")
+    features = data.get("features")
+    if not isinstance(active_id, str) or not isinstance(features, list):
+        return {}
+    for feature in features:
+        if isinstance(feature, dict) and feature.get("id") == active_id:
+            return feature
+    return {}
+
+
+def infer_checkpoint(paths: list[str], feature: dict, transcript_context: bool) -> str:
+    joined = "\n".join(paths)
+    status = str(feature.get("status", "")).strip()
+    review_doc = str(feature.get("review_doc_path", "")).strip()
+    if ".arbor/workflow/features.json" in paths or ".arbor/workflow/features.json" in joined:
+        return "workflow registry update"
+    if review_doc and review_doc in joined:
+        return "review checkpoint update"
+    if "plugins/arbor/hooks/" in joined or ".codex/hooks" in joined or ".claude/hooks" in joined:
+        return "hook implementation or registration repair"
+    if "AGENTS.md" in paths or "AGENTS.md" in joined:
+        return "project guide drift update"
+    if status:
+        return f"active feature status `{status}`"
+    if transcript_context:
+        return "conversation-only Arbor continuation"
+    return "dirty Arbor worktree"
+
+
+def build_resume_entry(
+    project_root: Path,
+    status_lines: list[str],
+    transcript_context: bool,
+    transcript_path: Path | None,
+) -> str:
     paths = compact_paths(status_lines)
     area = likely_area(paths, transcript_context)
+    feature = load_active_workflow_feature(project_root)
+    feature_id = str(feature.get("id", "")).strip()
+    title = str(feature.get("title", "")).strip()
+    review_doc = str(feature.get("review_doc_path", "")).strip()
+    checkpoint = infer_checkpoint(paths, feature, transcript_context)
     if paths:
         files = ", ".join(f"`{path}`" for path in paths)
         if len(status_lines) > len(paths):
@@ -275,21 +326,48 @@ def build_fallback_entry(status_lines: list[str], transcript_context: bool, tran
         files = f"recent Stop transcript `{transcript_path}`"
     else:
         files = "no specific dirty path was available"
+    if feature_id:
+        feature_label = f"`{feature_id}`"
+        if title:
+            feature_label = f"{feature_label} ({title})"
+    else:
+        feature_label = "no active feature could be read"
+    review_label = f"`{review_doc}`" if review_doc else "no review document could be read"
     return (
-        f"- {HOOK_FALLBACK_MARKER} Discussion: {area}. Files: {files}. "
-        "Unresolved: Stop detected Arbor resume context but memory was missing, "
-        "placeholder-only, or stale. Next: inspect the named context and continue "
-        "the active Arbor workflow before making release or handoff claims."
+        f"- {HOOK_RESUME_MARKER} Discussion: {area}. Files: {files}. "
+        f"Active feature: {feature_label}. Review: {review_label}. "
+        f"Checkpoint: {checkpoint}. Unresolved: Stop detected Arbor work that is "
+        "not yet recoverable from committed history alone. Next: resume from the "
+        "active feature and review document, inspect the listed paths, and run the "
+        "next Arbor workflow step before making release or handoff claims."
     )
 
 
 def upsert_in_flight_fallback(text: str, entry: str) -> str:
     normalized = text.rstrip()
     replacement = f"## In-flight\n\n{entry}\n"
-    match = re.search(r"(?ms)^## In-flight\s*\n.*?(?=^## |\Z)", normalized)
-    if match:
-        return f"{normalized[: match.start()]}{replacement}{normalized[match.end():].lstrip()}"
-    return f"{normalized}\n\n{replacement}" if normalized else FALLBACK_TEMPLATE
+    if not normalized:
+        return FALLBACK_TEMPLATE
+
+    headings = list(re.finditer(r"(?m)^## [^\n]*\n?", normalized))
+    if not headings:
+        return f"{normalized}\n\n{replacement}"
+
+    output = [normalized[: headings[0].start()].rstrip()]
+    inserted = False
+    for index, heading in enumerate(headings):
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(normalized)
+        section = normalized[heading.start():end].strip()
+        heading_text = heading.group(0).strip()
+        if heading_text == "## In-flight":
+            if not inserted:
+                output.append(replacement.rstrip())
+                inserted = True
+            continue
+        output.append(section)
+    if not inserted:
+        output.append(replacement.rstrip())
+    return "\n\n".join(part for part in output if part).rstrip() + "\n"
 
 
 def read_memory_template(plugin_root: Path) -> str:
@@ -334,7 +412,7 @@ def refresh_quiet_memory_fallback(
 
     if not text.strip():
         text = read_memory_template(plugin_root)
-    updated = upsert_in_flight_fallback(text, build_fallback_entry(status_lines, transcript_context, transcript_path))
+    updated = upsert_in_flight_fallback(text, build_resume_entry(project_root, status_lines, transcript_context, transcript_path))
     memory_path.parent.mkdir(parents=True, exist_ok=True)
     if not memory_path.exists() or memory_path.read_text(encoding="utf-8") != updated:
         memory_path.write_text(updated, encoding="utf-8")

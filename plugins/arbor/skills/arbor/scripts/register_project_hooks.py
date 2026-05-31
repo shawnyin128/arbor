@@ -802,6 +802,10 @@ def ensure_executable_file(path: Path, content: str, dry_run: bool) -> HookRegis
         raise HookRegistrationError(f"cannot initialize {path}: parent path is not a directory")
     current = path.read_text(encoding="utf-8") if existed else None
     if current == content:
+        if not path.stat().st_mode & 0o111:
+            if not dry_run:
+                path.chmod(0o755)
+            return HookRegistrationAction(path=path, status="would_chmod" if dry_run else "chmod")
         return HookRegistrationAction(path=path, status="exists")
     if not dry_run:
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -207,6 +207,17 @@ def diagnose(root: Path, plugin_root: Path | None = None, *, codex_trusted: bool
 
 def render_text(diagnosis: HookDiagnosis) -> str:
     lines = [f"# Arbor Hook Diagnosis", "", f"Project: {diagnosis.root}", ""]
+    lines.extend(
+        [
+            "## Interpretation",
+            "- Codex, Claude project hooks, and Claude plugin hooks are separate runtime surfaces.",
+            "- A ready Claude plugin hook does not register Codex `.codex/` project hooks.",
+            "- Missing Claude project hooks are acceptable when the installed Claude plugin hook surface is the intended path.",
+            "- `executable-untrusted` means files exist but the runtime trust/approval step still needs an interactive smoke.",
+            "- Silent Stop can still be registered correctly while memory content behavior must be verified by replay.",
+            "",
+        ]
+    )
     for label, state in (
         ("Codex project hooks", diagnosis.codex),
         ("Claude project hooks", diagnosis.claude_project),

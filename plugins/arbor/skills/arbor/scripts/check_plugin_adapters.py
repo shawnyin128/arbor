@@ -179,7 +179,7 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
     sys.path.insert(0, str(scripts_dir))
     try:
         from init_project_memory import CLAUDE_BRIDGE_OFF, CLAUDE_BRIDGE_ON, init_project_memory
-        from diagnose_project_hooks import diagnose
+        from diagnose_project_hooks import diagnose, render_text as render_hook_diagnosis
         from register_project_hooks import ARBOR_HOOKS, INSTALL_RUNTIME_CLAUDE, INSTALL_RUNTIME_CODEX, register_project_hooks
     finally:
         sys.path.pop(0)
@@ -241,6 +241,26 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         _git(["init"], project)
         _git(["add", "-A"], project)
         _git(["commit", "-m", "init"], project)
+        workflow_dir = project / ".arbor" / "workflow"
+        workflow_dir.mkdir(parents=True, exist_ok=True)
+        (workflow_dir / "features.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "features.v1",
+                    "active_feature_id": "hook-smoke-feature",
+                    "features": [
+                        {
+                            "id": "hook-smoke-feature",
+                            "title": "Hook smoke feature",
+                            "status": "planned",
+                            "review_doc_path": "docs/review/hook-smoke.md",
+                        }
+                    ],
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
         (project / "dirty.txt").write_text("dirty codex hook smoke\n", encoding="utf-8")
         stop_payload = {
             "session_id": "codex-project-wrapper-smoke",
@@ -262,8 +282,36 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         assert_stop_allows(errors, stop_proc, "Codex Stop wrapper smoke")
         check(
             errors,
-            "[hook:fallback]" in memory.read_text(encoding="utf-8"),
-            "Codex Stop wrapper should quietly add a fallback In-flight memory entry when one is missing",
+            "[hook:resume]" in memory.read_text(encoding="utf-8"),
+            "Codex Stop wrapper should quietly add a deterministic In-flight memory entry when one is missing",
+        )
+        memory_text = memory.read_text(encoding="utf-8")
+        for term in ("Active feature:", "`hook-smoke-feature`", "Review:", "`docs/review/hook-smoke.md`", "Checkpoint:", "Next:"):
+            check(errors, term in memory_text, f"Codex Stop wrapper memory entry missing `{term}`")
+
+        codex_session.chmod(0o644)
+        codex_stop.chmod(0o644)
+        register_project_hooks(project, runtime=INSTALL_RUNTIME_CODEX)
+        check(errors, os.access(codex_session, os.X_OK), "Codex registration should repair SessionStart wrapper executability")
+        check(errors, os.access(codex_stop, os.X_OK), "Codex registration should repair Stop wrapper executability")
+
+        duplicated_memory = memory.read_text(encoding="utf-8") + "\n## In-flight\n\n- [hook:fallback] stale duplicate\n"
+        memory.write_text(duplicated_memory, encoding="utf-8")
+        stop_proc = subprocess.run(
+            [str(codex_stop)],
+            input=json.dumps(stop_payload),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            env=codex_env,
+        )
+        check(errors, stop_proc.returncode == 0, f"Codex Stop duplicate cleanup smoke failed: {stop_proc.stderr.strip()}")
+        memory_text = memory.read_text(encoding="utf-8")
+        check(
+            errors,
+            memory_text.count("## In-flight") == 1,
+            "Codex Stop wrapper should normalize duplicate In-flight memory sections",
         )
 
         custom_agents = "# Custom Guide\n\nKeep me.\n"
@@ -311,6 +359,13 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             diagnosed.codex.status == "executable-untrusted",
             f"diagnosed migrated Codex hook state should be executable-untrusted, got {diagnosed.codex.status}",
         )
+        rendered = render_hook_diagnosis(diagnosed)
+        for term in (
+            "separate runtime surfaces",
+            "does not register Codex",
+            "memory content behavior must be verified by replay",
+        ):
+            check(errors, term in rendered, f"hook diagnosis rendering missing `{term}`")
 
     with tempfile.TemporaryDirectory(prefix="arbor-codex-intent-diagnosis-") as tmp:
         project = Path(tmp) / "project"
@@ -910,7 +965,7 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         transcript_memory = (project / ".arbor" / "memory.md").read_text(encoding="utf-8")
         check(
             errors,
-            "[hook:fallback]" in transcript_memory and "recent Arbor conversation" in transcript_memory,
+            "[hook:resume]" in transcript_memory and "recent Arbor conversation" in transcript_memory,
             "Stop adapter must use bounded transcript context for clean-worktree Arbor resume notes",
         )
 
@@ -924,20 +979,29 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         memory_after_dirty = (project / ".arbor" / "memory.md").read_text(encoding="utf-8")
         check(
             errors,
-            "[hook:fallback]" in memory_after_dirty
+            "[hook:resume]" in memory_after_dirty
             and "Discussion:" in memory_after_dirty
             and "Files:" in memory_after_dirty
+            and "Active feature:" in memory_after_dirty
+            and "Review:" in memory_after_dirty
+            and "Checkpoint:" in memory_after_dirty
             and "Next:" in memory_after_dirty,
-            "Stop adapter must quietly add a readable fallback In-flight memory entry when one is missing",
+            "Stop adapter must quietly add a readable deterministic In-flight memory entry when one is missing",
         )
 
-        (project / ".arbor" / "memory.md").write_text("# Session Memory\n\n## In-flight\n\n- None.\n", encoding="utf-8")
+        (project / ".arbor" / "memory.md").write_text(
+            "# Session Memory\n\n## In-flight\n\n- None.\n\n## In-flight\n\n- [hook:fallback] stale duplicate\n",
+            encoding="utf-8",
+        )
         placeholder_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
         check(errors, placeholder_proc.returncode == 0, f"Stop placeholder-memory smoke failed: {placeholder_proc.stderr.strip()}")
         placeholder_memory = (project / ".arbor" / "memory.md").read_text(encoding="utf-8")
         check(
             errors,
-            "[hook:fallback]" in placeholder_memory and "- None." not in placeholder_memory,
+            "[hook:resume]" in placeholder_memory
+            and "- None." not in placeholder_memory
+            and "[hook:fallback]" not in placeholder_memory
+            and placeholder_memory.count("## In-flight") == 1,
             "Stop adapter must refresh placeholder-only In-flight memory",
         )
 
