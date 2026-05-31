@@ -51,10 +51,13 @@ Collector sections include `Status`, `Source`, optional `Detail`, and raw body. 
 Visible `arbor` output is a minimal deterministic framework check report, not a
 project summary, not a subjective health assessment, and not a maintenance
 report. Default `$arbor` runs in detect-only mode: it reports findings and does
-not mutate files unless the user explicitly asks for framework repair. Prefer
-`scripts/run_framework_check.py --root <project-root> --plugin-root <arbor-plugin-root>`
-for deterministic checks, because it is the source of truth for the included
-surfaces and output layout.
+not mutate files unless the user explicitly asks for framework repair. Normal
+`$arbor` output must come from
+`scripts/run_framework_check.py --root <project-root> --plugin-root <arbor-plugin-root>`.
+That script is the source of truth for included surfaces, status vocabulary,
+runtime requirements, and output layout. Do not hand-write or reinterpret a
+framework report when the script can run. If the script is unavailable, the
+fallback report must use the exact same shape and vocabulary below.
 
 Use this fixed shape for normal visible output. The title must be exactly
 `**Arbor Framework Check**`, and the `Mode: detect-only` line is mandatory for
@@ -112,6 +115,12 @@ reconciliation, product status, memory resume summaries, or maintenance advice.
 Do not use subjective report sections or wording such as `Framework Health`,
 `Canonical state`, `Healthy`, `Maintenance blocker`, `Suggested Arbor maintenance actions`, `Suggested next actions`, `highest priority`, `worth
 fixing`, or `No action required`.
+
+Do not use the old framework-report vocabulary: `Category`, `Check`,
+`Fixability`, `Repair action`, `Summary:`, or `Repair:`. The `Repair` column is
+an instruction column only; it must not imply that repair has already happened
+in detect-only mode. Do not write `auto`, `automated`, or similar fixability
+labels in normal visible output.
 
 ## Framework Repair Mode
 

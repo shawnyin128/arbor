@@ -119,13 +119,17 @@ we?" questions, load startup context first when required and answer directly
 from the sources; use `$arbor` only when the user wants initialization or a
 deterministic Arbor framework check.
 
-The normal `$arbor` output is detect-only and uses one strict table with
-`Surface`, `Required`, `Status`, `Evidence`, and `Repair`, followed by one
-`Result:` line. It checks only Arbor-created or Arbor-managed surfaces:
+The normal `$arbor` output is detect-only and must be generated from
+`skills/arbor/scripts/run_framework_check.py` when the script is available. It
+uses one strict table with `Surface`, `Required`, `Status`, `Evidence`, and
+`Repair`, followed by one `Result:` line. It checks only Arbor-created or
+Arbor-managed surfaces:
 `AGENTS.md`, `.arbor/memory.md`, `CLAUDE.md`, Codex project hooks, Claude
 project hooks, and packaged hook definitions. It must not use subjective
 sections such as `Framework Health`, `Healthy`, `Maintenance blockers`,
-`Suggested Arbor maintenance actions`, or `No action required`.
+`Suggested Arbor maintenance actions`, or `No action required`, and it must not
+use the old `Fixability`, `Repair action`, `Summary:`, or `Repair: ... auto`
+report vocabulary.
 
 Project-level hooks are required for the selected runtime. Claude plugin hooks
 do not make missing `.claude/settings.json` project hooks acceptable when the
@@ -339,7 +343,7 @@ automatically.
 Current version:
 
 ```text
-1.0.12
+1.0.13
 ```
 
 Version files:

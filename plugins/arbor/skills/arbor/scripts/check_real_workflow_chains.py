@@ -872,6 +872,15 @@ def assert_framework_check_table(ctx: CaseContext, result: RuntimeResult | None)
         "| Category | Check | Status | Evidence | Fixability | Repair action |" not in text,
         "framework-check must not use the old six-column table",
     )
+    forbidden_old_terms = [
+        "Fixability",
+        "Repair action",
+        "Summary:",
+        "Repair: 1 auto",
+        "Repair: 1 automated",
+    ]
+    present_old_terms = [term for term in forbidden_old_terms if term in text]
+    require(not present_old_terms, f"framework-check contains old report vocabulary: {present_old_terms}")
     allowed_status = {"pass", "fail", "missing", "drift", "blocked", "not_applicable"}
     allowed_required = {"yes", "no"}
     rows = []
@@ -1447,12 +1456,14 @@ def make_cases() -> dict[str, CaseSpec]:
                 "$arbor run a detect-only Arbor framework check for this project's context, memory, and hook surfaces. "
                 "Use the exact title `**Arbor Framework Check**`. Include `Project root: ...`, the exact line `Mode: detect-only`, and `Runtime: codex|claude|both`. "
                 "Use exactly one table with Surface, Required, Status, Evidence, and Repair columns, followed by one Result line. "
+                "Generate the report from scripts/run_framework_check.py when the script is available; do not hand-write or reinterpret the framework table. "
                 "The Result line must be exactly one of `Result: pass`, `Result: needs_repair`, or `Result: blocked`; do not include counts or prose in that line. "
                 "Check only Arbor-created or Arbor-managed surfaces: AGENTS.md, .arbor/memory.md, CLAUDE.md, .codex/hooks.json + .codex/hooks/, .claude/settings.json + .claude/hooks/, and packaged hook definitions. "
                 "Project-level hooks are required for the selected runtime; do not say missing project-level hooks are acceptable because plugin hooks exist. "
                 "Use only these lowercase Status values: pass, fail, missing, drift, blocked, not_applicable. "
                 "Use only these lowercase Required values: yes, no. "
                 "Do not use ok, present, clean, available, repairable, optional, not configured, external verification, or title-cased variants. "
+                "Do not use old report vocabulary such as Category, Check, Fixability, Repair action, Summary:, Repair: 1 auto, or auto fixability labels. "
                 "Do not summarize memory progress, process-state, docs/review, feature registry, project guide drift, project status, migration plans, or maintenance advice.",
             ),
             setup_startup_context,
@@ -1502,6 +1513,11 @@ def make_cases() -> dict[str, CaseSpec]:
                     "Warn",
                     "Automated",
                     "Manual",
+                    "Fixability",
+                    "Repair action",
+                    "Summary:",
+                    "Repair: 1 auto",
+                    "auto |",
                 ),
             ],
         ),

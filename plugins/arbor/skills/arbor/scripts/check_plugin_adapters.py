@@ -136,6 +136,8 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         "without selecting `arbor`",
         "minimal deterministic framework check",
         "detect-only mode",
+        "Normal `$arbor` output must come from",
+        "Do not hand-write or reinterpret a framework report when the script can run",
         "| Surface | Required | Status | Evidence | Repair |",
         ".codex/hooks.json + .codex/hooks/",
         ".claude/settings.json + .claude/hooks/",
@@ -148,6 +150,12 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         "Do not include normal `$arbor` rows or sections for `docs/review/`",
         "process-state validation",
         "Suggested Arbor maintenance actions",
+        "Do not use the old framework-report vocabulary",
+        "`Fixability`",
+        "`Repair action`",
+        "`Summary:`",
+        "`Repair:`",
+        "Do not write `auto`, `automated`, or similar fixability labels",
         "Framework Repair Mode",
         "run_framework_check.py --mode repair",
         "safe, idempotent framework repairs",
@@ -168,7 +176,7 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         ".claude/hooks/",
         "`.codex/hooks.json` is not a Claude hook registration",
     ):
-        check(errors, term in arbor_skill, f"arbor skill missing startup bootstrap term `{term}`")
+        check(errors, contains_term(arbor_skill, term), f"arbor skill missing startup bootstrap term `{term}`")
 
     for term in (
         "runtime-specific bridge files",
@@ -528,6 +536,14 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
             "Result: needs_repair",
         ):
             check(errors, term in check_output, f"framework check detect-only output missing `{term}`")
+        for forbidden in (
+            "Fixability",
+            "Repair action",
+            "Summary:",
+            "Repair: 1 auto",
+            "| Category | Check | Status | Evidence | Fixability | Repair action |",
+        ):
+            check(errors, forbidden not in check_output, f"framework check detect-only output contains old vocabulary `{forbidden}`")
         check(errors, not (project / "AGENTS.md").exists(), "detect-only framework check must not create AGENTS.md")
         check(errors, not (project / ".arbor" / "memory.md").exists(), "detect-only framework check must not create memory")
         check(errors, not (project / ".codex" / "hooks.json").exists(), "detect-only framework check must not create hooks")
@@ -568,6 +584,14 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
             "Result: blocked",
         ):
             check(errors, term in repair_output, f"framework check repair output missing `{term}`")
+        for forbidden in (
+            "Fixability",
+            "Repair action",
+            "Summary:",
+            "Repair: 1 auto",
+            "| Category | Check | Status | Evidence | Fixability | Repair action |",
+        ):
+            check(errors, forbidden not in repair_output, f"framework check repair output contains old vocabulary `{forbidden}`")
         for path in (
             project / "AGENTS.md",
             project / ".arbor" / "memory.md",
