@@ -1,7 +1,7 @@
 {
   "name": "arbor",
-  "version": "1.0.10",
-  "description": "Maintain project-local Arbor memory, initialize and diagnose framework context plus runtime hooks, and guide explicit Arbor workflow entrypoints from brainstorm, feedback, and converge through internal release finalization; not a project-summary command.",
+  "version": "1.0.11",
+  "description": "Maintain project-local Arbor memory, run deterministic framework checks for context and runtime hooks, and guide explicit Arbor workflow entrypoints from brainstorm, feedback, and converge; not a project-summary or health-advice command.",
   "author": {
     "name": "Shawn",
     "url": "https://github.com/shawnyin128"

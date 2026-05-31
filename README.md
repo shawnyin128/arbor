@@ -66,7 +66,7 @@ entrypoints are:
 
 ```text
 Codex        Claude Code          Purpose
-$arbor       /arbor:arbor         initialize, context and hook health check
+$arbor       /arbor:arbor         initialize, framework and hook checks
 $brainstorm  /arbor:brainstorm    plan scope, acceptance criteria, test plan
 $feedback    /arbor:feedback      triage bug reports, failed checks, corrections
 $converge    /arbor:converge      run/continue the managed quality loop
@@ -103,7 +103,7 @@ Managed workflow state lives in:
 
 ### `arbor`
 
-Use `arbor` for startup, framework, context, and hook health checks:
+Use `arbor` for startup, framework checks, context readiness, and hook detection:
 
 - initialize `AGENTS.md`, `.arbor/memory.md`, and runtime-specific adapters;
 - register Codex project hooks in `.codex/hooks.json` with wrappers under
@@ -116,11 +116,25 @@ Use `arbor` for startup, framework, context, and hook health checks:
 - refresh short-term memory before handoff or commit;
 - update the project map when durable project structure changes.
 
-`arbor` is not a project-summary, project-status, or resume-summary command.
-For ordinary "what does this project do?" or "where were we?" questions, load
-startup context first when required and answer directly from the sources; use
-`$arbor` only when the user wants initialization, runtime hook state, memory
-health, project-guide drift, framework readiness, or context readiness checked.
+`arbor` is not a project-summary, project-status, resume-summary, or subjective
+health-advice command. For ordinary "what does this project do?" or "where were
+we?" questions, load startup context first when required and answer directly
+from the sources; use `$arbor` only when the user wants initialization or a
+deterministic Arbor framework check.
+
+The normal `$arbor` output is detect-only and uses fixed rows with `Category`,
+`Check`, `Status`, `Evidence`, `Fixability`, and `Repair action`. Hook surfaces
+are reported separately for Codex project hooks, Claude plugin hooks, optional
+Claude project hooks, and runtime blockers. It must not use subjective sections
+such as `Healthy`, `Maintenance blockers`, or `Suggested next actions`.
+
+Explicit repair requests use the same deterministic check surface in repair
+mode. Safe auto repairs are limited to creating missing Arbor state files,
+creating the Claude bridge when requested, and registering or refreshing Codex
+or Claude project hook wrappers. Policy-changing edits such as `.gitignore`
+changes, file deletion, invalid JSON recovery, runtime trust, and workflow
+registry repairs stay `needs_confirm` or `manual`; `$arbor` reports them but does
+not silently apply them.
 
 ### `brainstorm`
 
@@ -322,7 +336,7 @@ automatically.
 Current version:
 
 ```text
-1.0.10
+1.0.11
 ```
 
 Version files:

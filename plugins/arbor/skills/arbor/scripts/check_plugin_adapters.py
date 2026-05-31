@@ -114,6 +114,9 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
     agents_template = (plugin_root / "skills" / "arbor" / "references" / "agents-template.md").read_text(encoding="utf-8")
     arbor_skill = (plugin_root / "skills" / "arbor" / "SKILL.md").read_text(encoding="utf-8")
     init_script = (plugin_root / "skills" / "arbor" / "scripts" / "init_project_memory.py").read_text(encoding="utf-8")
+    framework_check = (plugin_root / "skills" / "arbor" / "scripts" / "run_framework_check.py").read_text(
+        encoding="utf-8"
+    )
 
     for term in (
         "## Startup Protocol",
@@ -128,12 +131,27 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
 
     for term in (
         "not a generic project-summary skill",
-        "not a project-summary, project-status, or resume-summary command",
+        "not a project-summary, project-status, resume-summary, or subjective health",
+        "subjective health advice",
         "without selecting `arbor`",
-        "framework readiness",
+        "deterministic Arbor framework checks",
+        "detect-only mode",
+        "| Category | Check | Status | Evidence | Fixability | Repair action |",
+        "runtime: Codex project hooks",
+        "runtime: Claude plugin hooks",
+        "runtime: Claude project hooks",
+        "Do not use a generic `hooks` category",
+        "Allowed `Status` values",
+        "Allowed `Fixability` values",
+        "Do not substitute softer labels",
+        "Do not use subjective report sections",
+        "Framework Repair Mode",
+        "run_framework_check.py --mode repair",
+        "safe, idempotent framework repairs",
+        "rerun the framework check",
         "direct and source-grounded",
         "hook/context diagnosis",
-        "memory health",
+        "memory state",
         "Do not assume `.codex/hooks.json` has already injected",
         "`AGENTS.md` Startup Protocol",
         "Runtime-specific adapter initialization is separate from canonical project state",
@@ -159,12 +177,29 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
     ):
         check(errors, term in init_script, f"init_project_memory missing cross-runtime initialization term `{term}`")
 
+    for term in (
+        "Mode: detect-only",
+        "Mode: repair",
+        "| Category | Check | Status | Evidence | Fixability | Repair action |",
+        "ALLOWED_STATUS",
+        "ALLOWED_FIXABILITY",
+        "register_project_hooks",
+        "init_project_memory",
+        "Repairs applied:",
+        "Before:",
+        "After:",
+    ):
+        check(errors, term in framework_check, f"framework check script missing term `{term}`")
+
     repo_root = repo_root_from_plugin(plugin_root)
     if repo_root is not None:
         readme = (repo_root / "README.md").read_text(encoding="utf-8")
         for term in (
             "trusted interactive Codex session",
             "non-interactive `codex exec` runs are not a reliable hook runtime proof",
+            "Explicit repair requests use the same deterministic check surface in repair mode",
+            "Safe auto repairs are limited",
+            "`needs_confirm` or `manual`",
         ):
             check(errors, contains_term(readme, term), f"README missing Codex hook runtime proof term `{term}`")
 
@@ -189,13 +224,13 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         description = str(manifest.get("description", ""))
         check(
             errors,
-            "initialize and diagnose framework context plus runtime hooks" in description,
-            f"{manifest_name} manifest description must frame Arbor as framework context and hook diagnosis",
+            "run deterministic framework checks for context and runtime hooks" in description,
+            f"{manifest_name} manifest description must frame Arbor as deterministic framework checks",
         )
         check(
             errors,
-            "project-summary command" in description and "not a project-summary command" in description,
-            f"{manifest_name} manifest description must explicitly reject project-summary command framing",
+            "not a project-summary or health-advice command" in description,
+            f"{manifest_name} manifest description must explicitly reject summary and health-advice framing",
         )
         check(
             errors,
@@ -210,8 +245,8 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         check(errors, isinstance(prompts, list) and len(prompts) <= 3, "Codex defaultPrompt must contain at most 3 prompts")
         check(
             errors,
-            "Check Arbor context and hook health in this project" in default_prompt,
-            "Codex defaultPrompt must include Arbor context and hook health example",
+            "Run an Arbor framework check for context, memory, and hooks" in default_prompt,
+            "Codex defaultPrompt must include deterministic Arbor framework check example",
         )
         check(
             errors,
@@ -219,7 +254,7 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
             "Codex defaultPrompt must not advertise Arbor as a repo explanation command",
         )
         interface_description = str(interface.get("longDescription", ""))
-        for forbidden in ("project-status", "resume-summary"):
+        for forbidden in ("project-status", "resume-summary", "subjective health-advice"):
             check(
                 errors,
                 forbidden in interface_description,
@@ -227,8 +262,18 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
             )
         check(
             errors,
-            "without selecting arbor unless initialization or Arbor health is requested" in interface_description,
+            "fixed rows for Category, Check, Status, Evidence, Fixability, and Repair action" in interface_description,
+            "Codex longDescription must require fixed framework-check rows",
+        )
+        check(
+            errors,
+            "without selecting arbor unless initialization or an Arbor framework check is requested" in interface_description,
             "Codex longDescription must keep ordinary overviews out of arbor skill selection",
+        )
+        check(
+            errors,
+            "Hook surfaces are reported separately for Codex project hooks, Claude plugin hooks, optional Claude project hooks, and runtime blockers." in interface_description,
+            "Codex longDescription must require separated hook surface reporting",
         )
 
 
@@ -450,6 +495,85 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             diagnosed.claude_plugin.status == "Claude-plugin-ready",
             "diagnostic should classify packaged Claude plugin hooks as ready",
         )
+
+
+def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) -> None:
+    import sys
+
+    script = plugin_root / "skills" / "arbor" / "scripts" / "run_framework_check.py"
+    with tempfile.TemporaryDirectory(prefix="arbor-framework-check-") as tmp:
+        project = Path(tmp) / "project"
+        project.mkdir()
+        check_proc = subprocess.run(
+            [sys.executable, str(script), "--root", str(project), "--plugin-root", str(plugin_root), "--mode", "check"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        check(errors, check_proc.returncode == 0, f"framework check detect-only smoke failed: {check_proc.stderr}")
+        check_output = check_proc.stdout
+        for term in (
+            "**Arbor Framework Check**",
+            "Mode: detect-only",
+            "| Category | Check | Status | Evidence | Fixability | Repair action |",
+            "| startup context | AGENTS.md | missing |",
+            "| memory | .arbor/memory.md | missing |",
+            "| runtime: Codex project hooks | .codex hook config and wrappers | missing |",
+            "Summary:",
+            "Repair:",
+        ):
+            check(errors, term in check_output, f"framework check detect-only output missing `{term}`")
+        check(errors, not (project / "AGENTS.md").exists(), "detect-only framework check must not create AGENTS.md")
+        check(errors, not (project / ".arbor" / "memory.md").exists(), "detect-only framework check must not create memory")
+        check(errors, not (project / ".codex" / "hooks.json").exists(), "detect-only framework check must not create hooks")
+
+        repair_proc = subprocess.run(
+            [
+                sys.executable,
+                str(script),
+                "--root",
+                str(project),
+                "--plugin-root",
+                str(plugin_root),
+                "--mode",
+                "repair",
+                "--runtime",
+                "both",
+                "--claude-bridge",
+                "on",
+            ],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        check(errors, repair_proc.returncode == 0, f"framework check repair smoke failed: {repair_proc.stderr}")
+        repair_output = repair_proc.stdout
+        for term in (
+            "Mode: repair",
+            "Repairs applied:",
+            "Before:",
+            "After:",
+            "| startup context | AGENTS.md | pass |",
+            "| memory | .arbor/memory.md | placeholder |",
+            "| runtime: Claude bridge | CLAUDE.md bridge | pass |",
+            "| runtime: Codex project hooks | .codex hook config and wrappers | blocked |",
+            "| runtime: Claude project hooks | .claude hook config and wrappers | pass |",
+        ):
+            check(errors, term in repair_output, f"framework check repair output missing `{term}`")
+        for path in (
+            project / "AGENTS.md",
+            project / ".arbor" / "memory.md",
+            project / "CLAUDE.md",
+            project / ".codex" / "hooks.json",
+            project / ".codex" / "hooks" / "arbor-session-start",
+            project / ".codex" / "hooks" / "arbor-stop-memory-hygiene",
+            project / ".claude" / "settings.json",
+            project / ".claude" / "hooks" / "arbor-session-start",
+            project / ".claude" / "hooks" / "arbor-stop-memory-hygiene",
+        ):
+            check(errors, path.is_file(), f"framework repair should create {path}")
 
 
 def validate_project_hook_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -2264,6 +2388,7 @@ def main() -> int:
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_release_version_management_contract(plugin_root, errors)
     validate_cross_runtime_initialization_contract(plugin_root, errors)
+    validate_framework_check_repair_smoke(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)
 
     if errors:
