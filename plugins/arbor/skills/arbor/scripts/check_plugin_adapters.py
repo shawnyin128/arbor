@@ -10,6 +10,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 
 def add_error(errors: list[str], message: str) -> None:
     errors.append(message)
@@ -47,6 +49,32 @@ def repo_root_from_plugin(plugin_root: Path) -> Path | None:
     if plugin_root.parent.name == "plugins":
         return plugin_root.parent.parent
     return None
+
+
+def validate_skill_frontmatter_yaml(plugin_root: Path, errors: list[str]) -> None:
+    for skill_path in sorted((plugin_root / "skills").glob("*/SKILL.md")):
+        text = skill_path.read_text(encoding="utf-8")
+        if not text.startswith("---\n"):
+            add_error(errors, f"skill missing YAML frontmatter: {skill_path.relative_to(plugin_root)}")
+            continue
+        end = text.find("\n---", 4)
+        if end == -1:
+            add_error(errors, f"skill missing closing YAML frontmatter fence: {skill_path.relative_to(plugin_root)}")
+            continue
+        raw_frontmatter = text[4:end]
+        try:
+            data = yaml.safe_load(raw_frontmatter)
+        except yaml.YAMLError as exc:
+            add_error(errors, f"invalid YAML frontmatter in {skill_path.relative_to(plugin_root)}: {exc}")
+            continue
+        check(errors, isinstance(data, dict), f"skill frontmatter must be a mapping: {skill_path.relative_to(plugin_root)}")
+        if isinstance(data, dict):
+            for field in ("name", "description"):
+                check(
+                    errors,
+                    isinstance(data.get(field), str) and bool(data.get(field, "").strip()),
+                    f"skill frontmatter missing string {field!r}: {skill_path.relative_to(plugin_root)}",
+                )
 
 
 def validate_manifests(plugin_root: Path, errors: list[str]) -> None:
@@ -2213,6 +2241,7 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
 def main() -> int:
     errors: list[str] = []
     plugin_root = plugin_root_from_script()
+    validate_skill_frontmatter_yaml(plugin_root, errors)
     validate_manifests(plugin_root, errors)
     validate_startup_bootstrap_contract(plugin_root, errors)
     validate_project_hook_contract(plugin_root, errors)

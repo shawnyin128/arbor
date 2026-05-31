@@ -1,6 +1,6 @@
 {
   "name": "arbor",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Maintain project-local Arbor memory, initialize and diagnose framework context plus runtime hooks, and guide explicit Arbor workflow entrypoints from brainstorm, feedback, and converge through internal release finalization; not a project-summary command.",
   "author": {
     "name": "Shawn",

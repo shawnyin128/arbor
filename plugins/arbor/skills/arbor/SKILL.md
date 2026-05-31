@@ -1,6 +1,6 @@
 ---
 name: arbor
-description: Initialize Arbor project state and report Arbor framework health on Codex or Claude Code: create or migrate `.arbor/memory.md`, create/update `AGENTS.md`, generate the Claude `CLAUDE.md` bridge, register or diagnose runtime hook surfaces, load ordered startup context, refresh stale pre-triage observations, detect project-guide or project-map drift, and report source paths, blockers, and next Arbor maintenance actions; do not use for ordinary project summaries, project status, resume summaries, or product progress advice.
+description: "Initialize Arbor project state and report Arbor framework health on Codex or Claude Code: create or migrate `.arbor/memory.md`, create/update `AGENTS.md`, generate the Claude `CLAUDE.md` bridge, register or diagnose runtime hook surfaces, load ordered startup context, refresh stale pre-triage observations, detect project-guide or project-map drift, and report source paths, blockers, and next Arbor maintenance actions; do not use for ordinary project summaries, project status, resume summaries, or product progress advice."
 ---
 
 # Arbor

@@ -322,7 +322,7 @@ automatically.
 Current version:
 
 ```text
-1.0.9
+1.0.10
 ```
 
 Version files:
