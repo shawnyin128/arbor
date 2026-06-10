@@ -388,6 +388,7 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             ARBOR_HOOKS,
             INSTALL_RUNTIME_CLAUDE,
             INSTALL_RUNTIME_CODEX,
+            claude_project_hook_command,
             codex_project_hook_command,
             register_project_hooks,
         )
@@ -424,12 +425,41 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             check(errors, term in codex_text, f"Codex project hook settings missing `{term}`")
         for forbidden in ('"owner": "arbor"', '"entrypoint":'):
             check(errors, forbidden not in codex_text, f"Codex project hook config must not contain legacy intent field `{forbidden}`")
-        windows_command = codex_project_hook_command("arbor-session-start", platform="windows")
-        posix_command = codex_project_hook_command("arbor-session-start", platform="posix")
-        check(errors, "python " in windows_command, "Windows Codex hook command should use python")
+        check(
+            errors,
+            codex_settings["hooks"]["SessionStart"][0]["hooks"][0]["command"] == codex_project_hook_command("arbor-session-start"),
+            "Codex project hook command should pin the registering Python executable",
+        )
+        windows_python = r"C:\Program Files\Python311\python.exe"
+        posix_python = "/opt/Python 3/bin/python3"
+        windows_command = codex_project_hook_command(
+            "arbor-session-start",
+            platform="windows",
+            python_executable=windows_python,
+        )
+        posix_command = codex_project_hook_command(
+            "arbor-session-start",
+            platform="posix",
+            python_executable=posix_python,
+        )
+        claude_windows_command = claude_project_hook_command(
+            "arbor-session-start",
+            platform="windows",
+            python_executable=windows_python,
+        )
+        claude_posix_command = claude_project_hook_command(
+            "arbor-session-start",
+            platform="posix",
+            python_executable=posix_python,
+        )
+        check(errors, windows_command.startswith('"C:\\Program Files\\Python311\\python.exe" '), "Windows Codex hook command should quote an absolute Python executable")
+        check(errors, not windows_command.startswith("python "), "Windows Codex hook command must not rely on bare python")
         check(errors, "$(" not in windows_command and "||" not in windows_command and "python3" not in windows_command, "Windows Codex hook command must not use POSIX shell syntax")
         check(errors, "$(git rev-parse --show-toplevel" in posix_command, "POSIX Codex hook command should keep git root fallback")
-        check(errors, "python3 " in posix_command, "POSIX Codex hook command should use python3")
+        check(errors, posix_command.startswith("'/opt/Python 3/bin/python3' "), "POSIX Codex hook command should quote an absolute Python executable")
+        check(errors, "python3 " not in posix_command, "POSIX Codex hook command must not rely on bare python3")
+        check(errors, claude_windows_command.startswith('"C:\\Program Files\\Python311\\python.exe" '), "Windows Claude hook command should quote an absolute Python executable")
+        check(errors, "${CLAUDE_PROJECT_DIR}/.claude/hooks/arbor-session-start" in claude_posix_command, "POSIX Claude hook command should keep CLAUDE_PROJECT_DIR wrapper resolution")
 
         codex_env = os.environ.copy()
         codex_env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
@@ -747,9 +777,11 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
             check(errors, path.is_file(), f"framework repair should create {path}")
 
         codex_hooks = json.loads((project / ".codex" / "hooks.json").read_text(encoding="utf-8"))
-        codex_hooks["hooks"]["Stop"][0]["hooks"][0]["command"] = "python missing-stop-wrapper.py"
+        codex_hooks["hooks"]["Stop"][0]["hooks"][0]["command"] = 'python ".codex/hooks/arbor-stop-memory-hygiene"'
         (project / ".codex" / "hooks.json").write_text(json.dumps(codex_hooks, indent=2) + "\n", encoding="utf-8")
-        (project / ".claude" / "hooks" / "arbor-stop-memory-hygiene").unlink()
+        claude_hooks = json.loads((project / ".claude" / "settings.json").read_text(encoding="utf-8"))
+        claude_hooks["hooks"]["Stop"][0]["hooks"][0]["command"] = 'python ".claude/hooks/arbor-stop-memory-hygiene"'
+        (project / ".claude" / "settings.json").write_text(json.dumps(claude_hooks, indent=2) + "\n", encoding="utf-8")
         drift_proc = subprocess.run(
             [
                 sys.executable,
@@ -776,7 +808,7 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
         check(
             errors,
             "| .claude/settings.json + .claude/hooks/ | yes | drift |" in drift_proc.stdout,
-            "framework check should detect missing Claude project hook wrapper",
+            "framework check should detect stale Claude project hook command",
         )
         drift_repair_proc = subprocess.run(
             [

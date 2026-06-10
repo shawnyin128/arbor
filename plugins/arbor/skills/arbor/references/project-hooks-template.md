@@ -52,6 +52,7 @@ current repository.
 - Codex re-registration replaces only Arbor wrapper commands under `.codex/hooks/arbor-*`; unrelated Codex hook events, matcher groups, handlers, and settings are preserved.
 - Legacy Arbor-only Codex hook intent lists are converted to Codex's executable hook schema during registration.
 - Claude project hook re-registration replaces only Arbor wrapper commands under `.claude/hooks/arbor-*`; unrelated Claude hooks and settings are preserved.
+- Project hook commands use the absolute Python interpreter that ran Arbor registration; stale bare `python` or `python3` wrapper commands are hook drift and should be repaired by re-registration.
 - Arbor must not ship plugin-level hook registrations; Codex and Claude Code hook execution is project-level so `$arbor` can diagnose and repair it.
 - Re-registering Arbor hooks must be idempotent.
 - Hook execution fixes workflow order, not read depth.

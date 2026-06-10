@@ -21,6 +21,7 @@ from arbor_project_state import (
     project_path,
     resolve_project_root,
 )
+from register_project_hooks import claude_project_hook_command, codex_project_hook_command
 
 
 CODEX_REQUIRED_EVENTS = ("SessionStart", "Stop")
@@ -57,8 +58,28 @@ def load_json_object(path: Path) -> tuple[dict[str, Any] | None, str | None]:
     return data, None
 
 
-def has_event_handler(config: dict[str, Any], event: str, marker: str) -> bool:
-    return has_event_handler_with_markers(config, event, (marker,))
+def event_handler_command_state(config: dict[str, Any], event: str, marker: str, expected_command: str) -> str:
+    marker_seen = False
+    hooks = config.get("hooks")
+    if not isinstance(hooks, dict):
+        return "missing"
+    groups = hooks.get(event)
+    if not isinstance(groups, list):
+        return "missing"
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        handlers = group.get("hooks")
+        if not isinstance(handlers, list):
+            continue
+        for handler in handlers:
+            if isinstance(handler, dict):
+                command = str(handler.get("command", ""))
+                if command == expected_command:
+                    return "ok"
+                if marker in command:
+                    marker_seen = True
+    return "stale" if marker_seen else "missing"
 
 
 def has_event_handler_with_markers(config: dict[str, Any], event: str, markers: tuple[str, ...]) -> bool:
@@ -157,13 +178,23 @@ def diagnose_codex(root: Path, *, codex_trusted: bool) -> HookState:
             "rerun register_project_hooks.py --runtime codex to migrate to command hooks and wrappers",
         )
 
-    session_ok = has_event_handler(config, "SessionStart", ".codex/hooks/arbor-session-start")
-    stop_ok = has_event_handler(config, "Stop", ".codex/hooks/arbor-stop-memory-hygiene")
-    if not session_ok or not stop_ok or session_state != "ok" or stop_state != "ok":
+    session_command_state = event_handler_command_state(
+        config,
+        "SessionStart",
+        ".codex/hooks/arbor-session-start",
+        codex_project_hook_command("arbor-session-start"),
+    )
+    stop_command_state = event_handler_command_state(
+        config,
+        "Stop",
+        ".codex/hooks/arbor-stop-memory-hygiene",
+        codex_project_hook_command("arbor-stop-memory-hygiene"),
+    )
+    if session_command_state != "ok" or stop_command_state != "ok" or session_state != "ok" or stop_state != "ok":
         return HookState(
             "executable-incomplete",
             (
-                f"command hooks session={session_ok} stop={stop_ok}; "
+                f"command hooks session={session_command_state} stop={stop_command_state}; "
                 f"wrappers session={session_state} stop={stop_state}"
             ),
             files,
@@ -193,13 +224,23 @@ def diagnose_claude_project(root: Path) -> HookState:
 
     session_state = executable_file_state(session_path)
     stop_state = executable_file_state(stop_path)
-    session_ok = has_event_handler(settings, "SessionStart", ".claude/hooks/arbor-session-start")
-    stop_ok = has_event_handler(settings, "Stop", ".claude/hooks/arbor-stop-memory-hygiene")
-    if not session_ok or not stop_ok or session_state != "ok" or stop_state != "ok":
+    session_command_state = event_handler_command_state(
+        settings,
+        "SessionStart",
+        ".claude/hooks/arbor-session-start",
+        claude_project_hook_command("arbor-session-start"),
+    )
+    stop_command_state = event_handler_command_state(
+        settings,
+        "Stop",
+        ".claude/hooks/arbor-stop-memory-hygiene",
+        claude_project_hook_command("arbor-stop-memory-hygiene"),
+    )
+    if session_command_state != "ok" or stop_command_state != "ok" or session_state != "ok" or stop_state != "ok":
         return HookState(
             "project-Claude-incomplete",
             (
-                f"settings session={session_ok} stop={stop_ok}; "
+                f"settings session={session_command_state} stop={stop_command_state}; "
                 f"wrappers session={session_state} stop={stop_state}"
             ),
             files,

@@ -258,11 +258,13 @@ evidence. `converge` and `release` then refuse completion claims when those
 proofs are missing or the live artifact still collapses. See
 `plugins/arbor/skills/arbor/references/closed-loop-diagnostics.md`.
 
-Codex project hook registration writes platform-specific command strings:
-Windows registrations use `python ".codex/hooks/..."`, while macOS and Linux
-registrations use the POSIX `python3 "$(git rev-parse ...)"` root fallback.
-Hook adapters also soft-skip empty probe payloads so VS Code and runtime hook
-UIs can validate commands without reporting a false exit-code failure.
+Project hook registration writes command strings with the absolute Python
+interpreter that is running Arbor registration, rather than assuming bare
+`python` or `python3` is available in the runtime hook environment. Codex
+registrations still use a POSIX project-root fallback on macOS and Linux, and
+Claude Code registrations still use `CLAUDE_PROJECT_DIR` on POSIX. Hook
+adapters also soft-skip empty probe payloads so VS Code and runtime hook UIs can
+validate commands without reporting a false exit-code failure.
 
 When correction loops become unreliable, Arbor uses a loop-health advisory. It
 surfaces repeated same-class failures, evidence conflicts, weak replay evidence,
@@ -369,7 +371,7 @@ automatically.
 Current version:
 
 ```text
-1.1.0
+1.1.1
 ```
 
 Version files:

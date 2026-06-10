@@ -6,6 +6,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
+import subprocess
+import sys
 from copy import deepcopy
 from dataclasses import dataclass
 from json import JSONDecodeError
@@ -487,23 +490,46 @@ def current_hook_platform() -> str:
     return "windows" if os.name == "nt" else "posix"
 
 
-def codex_project_hook_command(wrapper_name: str, platform: str | None = None) -> str:
+def current_python_executable() -> str:
+    executable = sys.executable or ("python" if current_hook_platform() == "windows" else "python3")
+    return str(Path(executable).expanduser().resolve()) if executable else executable
+
+
+def command_arg(value: str, platform: str) -> str:
+    if platform == "windows":
+        return subprocess.list2cmdline([value])
+    if platform == "posix":
+        return shlex.quote(value)
+    raise HookRegistrationError(f"unknown hook command platform: {platform}")
+
+
+def codex_project_hook_command(
+    wrapper_name: str,
+    platform: str | None = None,
+    python_executable: str | None = None,
+) -> str:
     selected = platform or current_hook_platform()
     wrapper = f".codex/hooks/{wrapper_name}"
+    python = command_arg(python_executable or current_python_executable(), selected)
     if selected == "windows":
-        return f'python "{wrapper}"'
+        return f"{python} {command_arg(wrapper, selected)}"
     if selected == "posix":
-        return f'python3 "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/{wrapper}"'
+        return f'{python} "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/{wrapper}"'
     raise HookRegistrationError(f"unknown hook command platform: {selected}")
 
 
-def claude_project_hook_command(wrapper_name: str, platform: str | None = None) -> str:
+def claude_project_hook_command(
+    wrapper_name: str,
+    platform: str | None = None,
+    python_executable: str | None = None,
+) -> str:
     selected = platform or current_hook_platform()
     wrapper = f".claude/hooks/{wrapper_name}"
+    python = command_arg(python_executable or current_python_executable(), selected)
     if selected == "windows":
-        return f'python "{wrapper}"'
+        return f"{python} {command_arg(wrapper, selected)}"
     if selected == "posix":
-        return f'python3 "${{CLAUDE_PROJECT_DIR}}/{wrapper}"'
+        return f'{python} "${{CLAUDE_PROJECT_DIR}}/{wrapper}"'
     raise HookRegistrationError(f"unknown hook command platform: {selected}")
 
 
