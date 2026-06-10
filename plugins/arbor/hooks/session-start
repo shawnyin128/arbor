@@ -8,10 +8,9 @@ stdout from a SessionStart hook is automatically treated as additional context
 by both Codex and Claude Code, so no JSON envelope is needed for the success
 path.
 
-Soft-fails on stderr with a non-zero exit code rather than blocking the
-session: a missing ``cwd``, an unreadable shared script, or a downstream
-error all degrade to "no Arbor context this session" instead of failing
-session start.
+Soft-skips empty probe payloads and missing ``cwd`` with exit code 0 so hook
+UIs can validate the command without showing a failure. Unreadable shared
+scripts or downstream errors still report stderr and exit non-zero.
 """
 
 from __future__ import annotations
@@ -130,8 +129,11 @@ def apply_budget(packet: str, budget: int) -> str:
 
 
 def main() -> int:
+    raw_payload = sys.stdin.read()
+    if not raw_payload.strip():
+        return 0
     try:
-        payload = parse_hook_payload(sys.stdin.read())
+        payload = parse_hook_payload(raw_payload)
     except json.JSONDecodeError as exc:
         _emit_error(f"could not parse hook event JSON: {exc}")
         return 1
@@ -143,7 +145,7 @@ def main() -> int:
     cwd = payload.get("cwd")
     if not cwd:
         _emit_error("hook event payload missing 'cwd'; skipping startup context")
-        return 1
+        return 0
 
     plugin_root = resolve_plugin_root()
     script = plugin_root / "skills" / "arbor" / "scripts" / "run_session_startup_hook.py"

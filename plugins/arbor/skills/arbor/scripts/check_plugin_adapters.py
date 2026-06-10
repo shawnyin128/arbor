@@ -384,7 +384,13 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
     try:
         from init_project_memory import CLAUDE_BRIDGE_OFF, CLAUDE_BRIDGE_ON, init_project_memory
         from diagnose_project_hooks import diagnose, render_text as render_hook_diagnosis
-        from register_project_hooks import ARBOR_HOOKS, INSTALL_RUNTIME_CLAUDE, INSTALL_RUNTIME_CODEX, register_project_hooks
+        from register_project_hooks import (
+            ARBOR_HOOKS,
+            INSTALL_RUNTIME_CLAUDE,
+            INSTALL_RUNTIME_CODEX,
+            codex_project_hook_command,
+            register_project_hooks,
+        )
     finally:
         sys.path.pop(0)
 
@@ -418,6 +424,12 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             check(errors, term in codex_text, f"Codex project hook settings missing `{term}`")
         for forbidden in ('"owner": "arbor"', '"entrypoint":'):
             check(errors, forbidden not in codex_text, f"Codex project hook config must not contain legacy intent field `{forbidden}`")
+        windows_command = codex_project_hook_command("arbor-session-start", platform="windows")
+        posix_command = codex_project_hook_command("arbor-session-start", platform="posix")
+        check(errors, "python " in windows_command, "Windows Codex hook command should use python")
+        check(errors, "$(" not in windows_command and "||" not in windows_command and "python3" not in windows_command, "Windows Codex hook command must not use POSIX shell syntax")
+        check(errors, "$(git rev-parse --show-toplevel" in posix_command, "POSIX Codex hook command should keep git root fallback")
+        check(errors, "python3 " in posix_command, "POSIX Codex hook command should use python3")
 
         codex_env = os.environ.copy()
         codex_env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
@@ -443,6 +455,16 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             "# Project Startup Context" in session_proc.stdout,
             "Codex SessionStart wrapper should emit Arbor startup context",
         )
+        empty_session_proc = subprocess.run(
+            hook_command(plugin_root / "hooks" / "session-start"),
+            input="",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            env=codex_env,
+        )
+        check(errors, empty_session_proc.returncode == 0, f"SessionStart adapter should soft-exit for empty hook payload: {empty_session_proc.stderr.strip()}")
 
         _git(["init"], project)
         _git(["add", "-A"], project)
@@ -486,6 +508,16 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         )
         check(errors, stop_proc.returncode == 0, f"Codex Stop wrapper smoke failed: {stop_proc.stderr.strip()}")
         assert_stop_allows(errors, stop_proc, "Codex Stop wrapper smoke")
+        empty_stop_proc = subprocess.run(
+            hook_command(plugin_root / "hooks" / "stop-memory-hygiene"),
+            input="",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            env=codex_env,
+        )
+        check(errors, empty_stop_proc.returncode == 0, f"Stop adapter should soft-exit for empty hook payload: {empty_stop_proc.stderr.strip()}")
         check(
             errors,
             "[hook:resume]" in memory.read_text(encoding="utf-8"),

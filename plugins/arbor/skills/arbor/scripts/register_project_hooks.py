@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from copy import deepcopy
 from dataclasses import dataclass
 from json import JSONDecodeError
@@ -480,6 +481,32 @@ ARBOR_CLAUDE_COMMAND_MARKERS = (
     ".claude/hooks/arbor-session-start",
     ".claude/hooks/arbor-stop-memory-hygiene",
 )
+
+
+def current_hook_platform() -> str:
+    return "windows" if os.name == "nt" else "posix"
+
+
+def codex_project_hook_command(wrapper_name: str, platform: str | None = None) -> str:
+    selected = platform or current_hook_platform()
+    wrapper = f".codex/hooks/{wrapper_name}"
+    if selected == "windows":
+        return f'python "{wrapper}"'
+    if selected == "posix":
+        return f'python3 "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/{wrapper}"'
+    raise HookRegistrationError(f"unknown hook command platform: {selected}")
+
+
+def claude_project_hook_command(wrapper_name: str, platform: str | None = None) -> str:
+    selected = platform or current_hook_platform()
+    wrapper = f".claude/hooks/{wrapper_name}"
+    if selected == "windows":
+        return f'python "{wrapper}"'
+    if selected == "posix":
+        return f'python3 "${{CLAUDE_PROJECT_DIR}}/{wrapper}"'
+    raise HookRegistrationError(f"unknown hook command platform: {selected}")
+
+
 CODEX_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
     "SessionStart": [
         {
@@ -487,10 +514,7 @@ CODEX_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": (
-                        'python3 "$(git rev-parse --show-toplevel 2>/dev/null || pwd)'
-                        '/.codex/hooks/arbor-session-start"'
-                    ),
+                    "command": codex_project_hook_command("arbor-session-start"),
                     "statusMessage": "Loading Arbor startup context",
                 }
             ],
@@ -501,10 +525,7 @@ CODEX_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": (
-                        'python3 "$(git rev-parse --show-toplevel 2>/dev/null || pwd)'
-                        '/.codex/hooks/arbor-stop-memory-hygiene"'
-                    ),
+                    "command": codex_project_hook_command("arbor-stop-memory-hygiene"),
                     "timeout": 30,
                 }
             ],
@@ -518,7 +539,7 @@ CLAUDE_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": 'python3 "${CLAUDE_PROJECT_DIR}/.claude/hooks/arbor-session-start"',
+                    "command": claude_project_hook_command("arbor-session-start"),
                 }
             ],
         }
@@ -528,7 +549,7 @@ CLAUDE_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": 'python3 "${CLAUDE_PROJECT_DIR}/.claude/hooks/arbor-stop-memory-hygiene"',
+                    "command": claude_project_hook_command("arbor-stop-memory-hygiene"),
                 }
             ],
         }

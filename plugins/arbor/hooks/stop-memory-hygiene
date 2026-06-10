@@ -30,9 +30,10 @@ The adapter still self-gates:
 * Dirty Arbor worktrees stay silent by default, preventing hook prompts from
   replacing the user-facing final answer.
 
-Any unexpected failure (missing ``cwd``, unreadable shared script, git or
-subprocess error) soft-fails on stderr with a non-zero exit code and never
-blocks the stop: a degraded turn is better than a wedged session.
+Empty probe payloads and missing ``cwd`` soft-exit with code 0 so hook UIs can
+validate the command without showing a failure. Unexpected failures in shared
+scripts, git, or subprocesses still report stderr and exit non-zero without
+blocking the stop.
 """
 
 from __future__ import annotations
@@ -645,8 +646,11 @@ def run_agents_guide_quality_check(project_root: Path, plugin_root: Path) -> tup
 
 
 def main() -> int:
+    raw_payload = sys.stdin.read()
+    if not raw_payload.strip():
+        return 0
     try:
-        payload = parse_hook_payload(sys.stdin.read())
+        payload = parse_hook_payload(raw_payload)
     except json.JSONDecodeError as exc:
         _emit_error(f"could not parse hook event JSON: {exc}")
         return 1
@@ -659,7 +663,7 @@ def main() -> int:
     cwd = payload.get("cwd")
     if not cwd:
         _emit_error("hook event payload missing 'cwd'; not blocking stop")
-        return 1
+        return 0
 
     project_root = Path(cwd)
     # Only Arbor-managed projects keep an `.arbor` directory; staying silent

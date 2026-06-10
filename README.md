@@ -258,6 +258,12 @@ evidence. `converge` and `release` then refuse completion claims when those
 proofs are missing or the live artifact still collapses. See
 `plugins/arbor/skills/arbor/references/closed-loop-diagnostics.md`.
 
+Codex project hook registration writes platform-specific command strings:
+Windows registrations use `python ".codex/hooks/..."`, while macOS and Linux
+registrations use the POSIX `python3 "$(git rev-parse ...)"` root fallback.
+Hook adapters also soft-skip empty probe payloads so VS Code and runtime hook
+UIs can validate commands without reporting a false exit-code failure.
+
 When correction loops become unreliable, Arbor uses a loop-health advisory. It
 surfaces repeated same-class failures, evidence conflicts, weak replay evidence,
 context contamination, or round-limit pressure. It may recommend narrowing
@@ -372,7 +378,7 @@ automatically.
 Current version:
 
 ```text
-1.0.19
+1.0.20
 ```
 
 Version files:
