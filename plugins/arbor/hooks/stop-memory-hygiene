@@ -127,6 +127,7 @@ TRUNCATION_NOTICE = (
     "[truncated - Arbor memory hygiene packet exceeded the adapter budget; "
     "the agent can run deeper git reads on demand]"
 )
+PROBE_PAYLOAD_MARKER = "__arbor_probe_payload__"
 
 
 def _emit_error(message: str) -> None:
@@ -159,7 +160,10 @@ def resolve_plugin_root() -> Path:
 def parse_hook_payload(raw: str) -> dict:
     if not raw.strip():
         return {}
-    return json.loads(raw)
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        return {PROBE_PAYLOAD_MARKER: True}
+    return data
 
 
 def worktree_is_dirty(root: str) -> bool:
@@ -652,8 +656,9 @@ def main() -> int:
     try:
         payload = parse_hook_payload(raw_payload)
     except json.JSONDecodeError as exc:
-        _emit_error(f"could not parse hook event JSON: {exc}")
-        return 1
+        return allow_stop()
+    if payload.get(PROBE_PAYLOAD_MARKER):
+        return allow_stop()
 
     # Claude is already continuing because of this hook; allowing the stop
     # here is what guarantees the adapter can never loop.

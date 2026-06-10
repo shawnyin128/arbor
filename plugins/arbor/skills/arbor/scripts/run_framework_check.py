@@ -105,8 +105,11 @@ def hook_row(surface: str, state: HookState, *, required: bool) -> FrameworkRow:
         "project-Claude-missing": "missing",
         "project-Claude-incomplete": "drift",
         "project-Claude-ready": "pass",
-        "Claude-plugin-ready": "pass",
-        "Claude-plugin-unknown": "not_applicable",
+        "shared-adapters-ready": "pass",
+        "shared-adapters-unknown": "not_applicable",
+        "shared-adapters-drift": "drift",
+        "shared-adapters-incomplete": "drift",
+        "shared-adapters-probe-failed": "drift",
     }
     if state.status in mapping:
         status = mapping[state.status]
@@ -225,7 +228,7 @@ def build_rows(root: Path, plugin_root: Path | None, *, runtime: str, codex_trus
             required=runtime_applies(runtime, INSTALL_RUNTIME_CLAUDE),
         )
     )
-    rows.append(hook_row("packaged Claude hook definitions", hook_state.claude_plugin, required=True))
+    rows.append(hook_row("shared hook adapters", hook_state.shared_adapters, required=True))
     return rows
 
 
@@ -333,7 +336,7 @@ def selected_runtime_label(rows: list[FrameworkRow]) -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="Project root to inspect.")
-    parser.add_argument("--plugin-root", type=Path, default=None, help="Arbor plugin root for packaged hook checks.")
+    parser.add_argument("--plugin-root", type=Path, default=None, help="Arbor plugin root for shared hook adapter checks.")
     parser.add_argument("--mode", choices=MODE_CHOICES, default=MODE_CHECK, help="check is read-only; repair applies safe Arbor framework repairs.")
     parser.add_argument("--runtime", choices=RUNTIME_CHOICES, default="auto", help="Runtime hook surface to check or repair.")
     parser.add_argument("--codex-trusted", action="store_true", help="Assert Codex project hooks are already trusted in /hooks.")

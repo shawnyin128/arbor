@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
+import sys
 from dataclasses import asdict, dataclass
 from json import JSONDecodeError
 from pathlib import Path
@@ -23,20 +25,6 @@ from arbor_project_state import (
 
 CODEX_REQUIRED_EVENTS = ("SessionStart", "Stop")
 CLAUDE_REQUIRED_EVENTS = ("SessionStart", "Stop")
-PACKAGED_SESSION_MARKERS = (
-    "ARBOR_PLUGIN_ROOT",
-    "PLUGIN_ROOT",
-    "CODEX_PLUGIN_ROOT",
-    "CLAUDE_PLUGIN_ROOT",
-    "/hooks/session-start",
-)
-PACKAGED_STOP_MARKERS = (
-    "ARBOR_PLUGIN_ROOT",
-    "PLUGIN_ROOT",
-    "CODEX_PLUGIN_ROOT",
-    "CLAUDE_PLUGIN_ROOT",
-    "/hooks/stop-memory-hygiene",
-)
 
 
 @dataclass(frozen=True)
@@ -52,7 +40,7 @@ class HookDiagnosis:
     root: str
     codex: HookState
     claude_project: HookState
-    claude_plugin: HookState
+    shared_adapters: HookState
 
 
 def load_json_object(path: Path) -> tuple[dict[str, Any] | None, str | None]:
@@ -110,6 +98,40 @@ def executable_file_state(path: Path) -> str:
         return "ok"
     if not path.stat().st_mode & 0o111:
         return "not_executable"
+    return "ok"
+
+
+def adapter_command(path: Path) -> list[str]:
+    if os.name == "nt":
+        return [sys.executable, str(path)]
+    return [str(path)]
+
+
+def adapter_probe_state(plugin_root: Path, session_path: Path, stop_path: Path) -> str:
+    env = os.environ.copy()
+    env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
+    env["PLUGIN_ROOT"] = str(plugin_root)
+    env["CODEX_PLUGIN_ROOT"] = str(plugin_root)
+    env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+    probes = (
+        ("session null", session_path, "null"),
+        ("session malformed", session_path, "{bad json"),
+        ("stop null", stop_path, "null"),
+        ("stop malformed", stop_path, "{bad json"),
+    )
+    for label, path, payload in probes:
+        proc = subprocess.run(
+            adapter_command(path),
+            input=payload,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            check=False,
+        )
+        if proc.returncode != 0 or proc.stderr:
+            detail = proc.stderr.strip() or proc.stdout.strip() or f"exit {proc.returncode}"
+            return f"{label} probe failed: {detail}"
     return "ok"
 
 
@@ -186,35 +208,39 @@ def diagnose_claude_project(root: Path) -> HookState:
     return HookState("project-Claude-ready", "project-level Claude hook settings and wrappers exist", files, "run a Claude Code hook smoke")
 
 
-def diagnose_claude_plugin(plugin_root: Path | None) -> HookState:
+def diagnose_shared_adapters(plugin_root: Path | None) -> HookState:
     if plugin_root is None:
-        return HookState("Claude-plugin-unknown", "no plugin root was provided", [], "pass --plugin-root to inspect packaged hooks")
+        return HookState("shared-adapters-unknown", "no plugin root was provided", [], "pass --plugin-root to inspect shared hook adapters")
     manifest_path = plugin_root / "hooks" / "hooks.json"
     session_path = plugin_root / "hooks" / "session-start"
     stop_path = plugin_root / "hooks" / "stop-memory-hygiene"
-    files = [str(manifest_path), str(session_path), str(stop_path)]
-    manifest, error = load_json_object(manifest_path)
-    if error == "missing":
-        return HookState("Claude-plugin-missing", "plugin hooks/hooks.json is missing", files, "restore plugin-level Claude hooks manifest")
-    if error:
-        return HookState("Claude-plugin-invalid", f"plugin hooks/hooks.json is {error}", files, "repair plugin hook manifest JSON")
-    assert manifest is not None
+    files = [str(session_path), str(stop_path)]
+    if manifest_path.exists():
+        return HookState(
+            "shared-adapters-drift",
+            "legacy plugin-level hooks/hooks.json is present; Arbor now supports only project-level runtime hook registration",
+            [str(manifest_path), *files],
+            "remove hooks/hooks.json and run register_project_hooks.py for each target runtime",
+        )
 
     session_state = executable_file_state(session_path)
     stop_state = executable_file_state(stop_path)
-    session_ok = has_event_handler_with_markers(manifest, "SessionStart", PACKAGED_SESSION_MARKERS)
-    stop_ok = has_event_handler_with_markers(manifest, "Stop", PACKAGED_STOP_MARKERS)
-    if not session_ok or not stop_ok or session_state != "ok" or stop_state != "ok":
+    if session_state != "ok" or stop_state != "ok":
         return HookState(
-            "Claude-plugin-incomplete",
-            (
-                f"manifest session={session_ok} stop={stop_ok}; "
-                f"adapters session={session_state} stop={stop_state}"
-            ),
+            "shared-adapters-incomplete",
+            f"adapters session={session_state} stop={stop_state}",
             files,
-            "repair plugin hooks/hooks.json or adapter executability",
+            "restore hooks/session-start and hooks/stop-memory-hygiene",
         )
-    return HookState("Claude-plugin-ready", "packaged plugin manifest and adapters exist", files, "install plugin and verify in the target runtime")
+    probe_state = adapter_probe_state(plugin_root, session_path, stop_path)
+    if probe_state != "ok":
+        return HookState(
+            "shared-adapters-probe-failed",
+            f"shared adapters exist but hook UI probe smoke failed: {probe_state}",
+            files,
+            "sync local plugin cache or reinstall Arbor from a version with probe-safe adapters",
+        )
+    return HookState("shared-adapters-ready", "shared hook adapter scripts exist for project-level wrappers", files, "none")
 
 
 def diagnose(root: Path, plugin_root: Path | None = None, *, codex_trusted: bool = False) -> HookDiagnosis:
@@ -224,7 +250,7 @@ def diagnose(root: Path, plugin_root: Path | None = None, *, codex_trusted: bool
         root=str(resolved),
         codex=diagnose_codex(resolved, codex_trusted=codex_trusted),
         claude_project=diagnose_claude_project(resolved),
-        claude_plugin=diagnose_claude_plugin(resolved_plugin),
+        shared_adapters=diagnose_shared_adapters(resolved_plugin),
     )
 
 
@@ -233,9 +259,9 @@ def render_text(diagnosis: HookDiagnosis) -> str:
     lines.extend(
         [
             "## Interpretation",
-            "- Codex project hooks, Claude project hooks, and packaged plugin hooks are separate runtime surfaces.",
-            "- A ready packaged plugin hook does not register Codex `.codex/` project hooks.",
-            "- Missing Claude project hooks are acceptable when the installed packaged plugin hook surface is the intended path.",
+            "- Codex and Claude Code hooks are project-level runtime surfaces managed under `.codex/` and `.claude/`.",
+            "- Arbor no longer ships plugin-level hook registrations; installed plugins provide shared adapters only.",
+            "- Missing Claude project hooks mean Claude Code has not been initialized for this project yet.",
             "- `executable-untrusted` means files exist but the runtime trust/approval step still needs an interactive smoke.",
             "- Silent Stop can still be registered correctly while memory content behavior must be verified by replay.",
             "",
@@ -244,7 +270,7 @@ def render_text(diagnosis: HookDiagnosis) -> str:
     for label, state in (
         ("Codex project hooks", diagnosis.codex),
         ("Claude project hooks", diagnosis.claude_project),
-        ("Packaged plugin hooks", diagnosis.claude_plugin),
+        ("Shared hook adapters", diagnosis.shared_adapters),
     ):
         lines.extend(
             [

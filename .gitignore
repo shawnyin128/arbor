@@ -18,6 +18,7 @@ __pycache__/
 /scripts/
 /tests/
 AGENTS.md
+CLAUDE.md
 
 # Internal skill validation artifacts. Runtime skill references can be published,
 # but fixture corpora and baseline harnesses are development-only.

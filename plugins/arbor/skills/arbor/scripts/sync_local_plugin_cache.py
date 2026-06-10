@@ -25,10 +25,10 @@ CLAUDE_CACHE_BASE = Path.home() / ".claude" / "plugins" / "cache" / "arbor" / "a
 CODEX_MARKETPLACE_PLUGIN = Path.home() / ".codex" / ".tmp" / "marketplaces" / "arbor" / "plugins" / "arbor"
 CLAUDE_INSTALLED_PLUGINS = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
 HOOK_ADAPTER_RELS = (
-    Path("hooks") / "hooks.json",
     Path("hooks") / "session-start",
     Path("hooks") / "stop-memory-hygiene",
 )
+LEGACY_PLUGIN_HOOK_MANIFEST = Path("hooks") / "hooks.json"
 
 
 def repo_root_from_script() -> Path:
@@ -80,6 +80,20 @@ def refresh_cached_hook_adapters(source: Path, cache_base: Path) -> int:
     return refreshed
 
 
+def remove_legacy_plugin_hook_manifests(cache_base: Path) -> int:
+    if not cache_base.is_dir():
+        return 0
+    removed = 0
+    for cached_version in cache_base.iterdir():
+        if not cached_version.is_dir():
+            continue
+        legacy_manifest = cached_version / LEGACY_PLUGIN_HOOK_MANIFEST
+        if legacy_manifest.is_file():
+            legacy_manifest.unlink()
+            removed += 1
+    return removed
+
+
 def update_claude_registry(cache_path: Path, version: str, commit: str) -> None:
     if not CLAUDE_INSTALLED_PLUGINS.exists():
         return
@@ -120,12 +134,15 @@ def main(argv: list[str] | None = None) -> int:
         sync_tree(source, target)
 
     refreshed_hooks = 0
+    removed_legacy_hooks = 0
     if args.runtime in ("both", "codex"):
         if CODEX_MARKETPLACE_PLUGIN.exists():
             sync_tree(source, CODEX_MARKETPLACE_PLUGIN)
         refreshed_hooks += refresh_cached_hook_adapters(source, CODEX_CACHE_BASE)
+        removed_legacy_hooks += remove_legacy_plugin_hook_manifests(CODEX_CACHE_BASE)
     if args.runtime in ("both", "claude"):
         refreshed_hooks += refresh_cached_hook_adapters(source, CLAUDE_CACHE_BASE)
+        removed_legacy_hooks += remove_legacy_plugin_hook_manifests(CLAUDE_CACHE_BASE)
 
     if args.update_claude_registry and args.runtime in ("both", "claude"):
         update_claude_registry(CLAUDE_CACHE_BASE / version, version, commit)
@@ -134,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{runtime}: synced {target}")
     print("older cache versions preserved")
     print(f"cached hook adapters refreshed: {refreshed_hooks}")
+    print(f"legacy plugin hook manifests removed: {removed_legacy_hooks}")
     return 0
 
 

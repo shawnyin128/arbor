@@ -35,6 +35,7 @@ TRUNCATION_NOTICE = (
     "[truncated - Arbor SessionStart context exceeded the runtime "
     "injection budget; the agent can run deeper reads on demand]"
 )
+PROBE_PAYLOAD_MARKER = "__arbor_probe_payload__"
 
 
 def _emit_error(message: str) -> None:
@@ -52,7 +53,10 @@ def resolve_plugin_root() -> Path:
 def parse_hook_payload(raw: str) -> dict:
     if not raw.strip():
         return {}
-    return json.loads(raw)
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        return {PROBE_PAYLOAD_MARKER: True}
+    return data
 
 
 def split_sections(packet: str) -> tuple[str, list[tuple[str, str]]]:
@@ -135,8 +139,9 @@ def main() -> int:
     try:
         payload = parse_hook_payload(raw_payload)
     except json.JSONDecodeError as exc:
-        _emit_error(f"could not parse hook event JSON: {exc}")
-        return 1
+        return 0
+    if payload.get(PROBE_PAYLOAD_MARKER):
+        return 0
 
     source = payload.get("source")
     if source is not None and source not in RELEVANT_SOURCES:

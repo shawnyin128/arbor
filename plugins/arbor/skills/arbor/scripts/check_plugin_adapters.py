@@ -200,7 +200,7 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         "| Surface | Required | Status | Evidence | Repair |",
         ".codex/hooks.json + .codex/hooks/",
         ".claude/settings.json + .claude/hooks/",
-        "packaged Claude hook definitions",
+        "shared hook adapters",
         "Project-level hooks are required for the selected runtime",
         "Allowed `Status` values",
         "Allowed `Required` values",
@@ -230,7 +230,7 @@ def validate_startup_bootstrap_contract(plugin_root: Path, errors: list[str]) ->
         "non-interactive `codex exec` runs are not a reliable proof",
         "existing `AGENTS.md` and `.arbor/memory.md` are not proof that the Claude adapter was initialized",
         "`.codex/hooks.json` is not a Claude hook registration",
-        "plugin package ships `hooks/hooks.json`",
+        "no longer ships plugin-level hook registrations",
         "Project-level `.claude/settings.json`",
         ".claude/hooks/",
         "`.codex/hooks.json` is not a Claude hook registration",
@@ -599,8 +599,8 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         )
         rendered = render_hook_diagnosis(diagnosed)
         for term in (
-            "separate runtime surfaces",
-            "does not register Codex",
+            "project-level runtime surfaces",
+            "no longer ships plugin-level hook registrations",
             "memory content behavior must be verified by replay",
         ):
             check(errors, term in rendered, f"hook diagnosis rendering missing `{term}`")
@@ -625,8 +625,25 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         )
         check(
             errors,
-            diagnosed.claude_plugin.status == "Claude-plugin-ready",
-            "diagnostic should classify packaged Claude plugin hooks as ready",
+            diagnosed.shared_adapters.status == "shared-adapters-ready",
+            "diagnostic should classify shared hook adapters as ready",
+        )
+
+        broken_plugin = Path(tmp) / "broken-plugin"
+        broken_hooks = broken_plugin / "hooks"
+        broken_hooks.mkdir(parents=True)
+        for adapter_name in ("session-start", "stop-memory-hygiene"):
+            adapter = broken_hooks / adapter_name
+            adapter.write_text(
+                "#!/usr/bin/env python3\nimport sys\nprint('broken adapter probe', file=sys.stderr)\nsys.exit(1)\n",
+                encoding="utf-8",
+            )
+            adapter.chmod(0o755)
+        broken_diagnosed = diagnose(project, broken_plugin, codex_trusted=False)
+        check(
+            errors,
+            broken_diagnosed.shared_adapters.status == "shared-adapters-probe-failed",
+            "diagnostic should classify shared adapters that fail hook UI probes",
         )
 
 
@@ -655,6 +672,7 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
             "| .arbor/memory.md | yes | missing |",
             "| .codex/hooks.json + .codex/hooks/ | yes | missing |",
             "| .claude/settings.json + .claude/hooks/ | no | not_applicable |",
+            "| shared hook adapters | yes | pass |",
             "Result: needs_repair",
         ):
             check(errors, term in check_output, f"framework check detect-only output missing `{term}`")
@@ -703,6 +721,7 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
             "| CLAUDE.md | yes | pass |",
             "| .codex/hooks.json + .codex/hooks/ | yes | blocked |",
             "| .claude/settings.json + .claude/hooks/ | yes | pass |",
+            "| shared hook adapters | yes | pass |",
             "Result: blocked",
         ):
             check(errors, term in repair_output, f"framework check repair output missing `{term}`")
@@ -726,6 +745,62 @@ def validate_framework_check_repair_smoke(plugin_root: Path, errors: list[str]) 
             project / ".claude" / "hooks" / "arbor-stop-memory-hygiene",
         ):
             check(errors, path.is_file(), f"framework repair should create {path}")
+
+        codex_hooks = json.loads((project / ".codex" / "hooks.json").read_text(encoding="utf-8"))
+        codex_hooks["hooks"]["Stop"][0]["hooks"][0]["command"] = "python missing-stop-wrapper.py"
+        (project / ".codex" / "hooks.json").write_text(json.dumps(codex_hooks, indent=2) + "\n", encoding="utf-8")
+        (project / ".claude" / "hooks" / "arbor-stop-memory-hygiene").unlink()
+        drift_proc = subprocess.run(
+            [
+                sys.executable,
+                str(script),
+                "--root",
+                str(project),
+                "--plugin-root",
+                str(plugin_root),
+                "--runtime",
+                "both",
+                "--codex-trusted",
+            ],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        check(errors, drift_proc.returncode == 0, f"framework drift detect smoke failed: {drift_proc.stderr}")
+        check(
+            errors,
+            "| .codex/hooks.json + .codex/hooks/ | yes | drift |" in drift_proc.stdout,
+            "framework check should detect corrupted Codex project hook command",
+        )
+        check(
+            errors,
+            "| .claude/settings.json + .claude/hooks/ | yes | drift |" in drift_proc.stdout,
+            "framework check should detect missing Claude project hook wrapper",
+        )
+        drift_repair_proc = subprocess.run(
+            [
+                sys.executable,
+                str(script),
+                "--root",
+                str(project),
+                "--plugin-root",
+                str(plugin_root),
+                "--mode",
+                "repair",
+                "--runtime",
+                "both",
+                "--claude-bridge",
+                "on",
+                "--codex-trusted",
+            ],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        check(errors, drift_repair_proc.returncode == 0, f"framework drift repair smoke failed: {drift_repair_proc.stderr}")
+        check(errors, "After: pass" in drift_repair_proc.stdout, "framework repair should restore corrupted project hook surfaces")
 
 
 def validate_skill_testing_red_green_review_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -1226,21 +1301,7 @@ def validate_agents_guide_quality_smoke(plugin_root: Path, errors: list[str]) ->
 
 def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None:
     hooks_manifest = plugin_root / "hooks" / "hooks.json"
-    manifest = load_json(hooks_manifest, errors)
-    manifest_text = hooks_manifest.read_text(encoding="utf-8")
-    for term in (
-        "SessionStart",
-        "Stop",
-        "ARBOR_PLUGIN_ROOT",
-        "PLUGIN_ROOT",
-        "CODEX_PLUGIN_ROOT",
-        "CLAUDE_PLUGIN_ROOT",
-        "/hooks/session-start",
-        "/hooks/stop-memory-hygiene",
-        "test -n",
-        "|| exit 0",
-    ):
-        check(errors, term in manifest_text, f"Claude plugin hook manifest missing `{term}`")
+    check(errors, not hooks_manifest.exists(), "plugin-level hooks/hooks.json must not ship; Arbor hooks are project-level only")
 
     session_start = plugin_root / "hooks" / "session-start"
     check(errors, session_start.is_file(), "hooks/session-start must exist")
@@ -1250,64 +1311,6 @@ def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None
     check(errors, os.access(stop_adapter, os.X_OK), "hooks/stop-memory-hygiene must be executable")
     check(errors, not (plugin_root / "hooks" / "pre-compact").exists(), "PreCompact adapter must not ship in this release")
     check(errors, not (plugin_root / "agents").exists(), "plugin-level agents directory is out of scope for this release")
-
-    hooks = manifest.get("hooks")
-    if isinstance(hooks, dict):
-        for event, adapter_name in (("SessionStart", "session-start"), ("Stop", "stop-memory-hygiene")):
-            groups = hooks.get(event)
-            command = None
-            if isinstance(groups, list) and groups:
-                handlers = groups[0].get("hooks") if isinstance(groups[0], dict) else None
-                if isinstance(handlers, list) and handlers and isinstance(handlers[0], dict):
-                    command = handlers[0].get("command")
-            if not isinstance(command, str):
-                check(errors, False, f"{event} packaged hook command must be a string")
-                continue
-            for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CODEX_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
-                env = os.environ.copy()
-                env.pop("ARBOR_PLUGIN_ROOT", None)
-                env.pop("PLUGIN_ROOT", None)
-                env.pop("CODEX_PLUGIN_ROOT", None)
-                env.pop("CLAUDE_PLUGIN_ROOT", None)
-                env[env_name] = str(plugin_root)
-                payload = {
-                    "session_id": "packaged-hook-smoke",
-                    "transcript_path": str(plugin_root / "transcript.jsonl"),
-                    "cwd": str(plugin_root),
-                    "hook_event_name": event,
-                    "source": "clear",
-                    "stop_hook_active": True,
-                }
-                proc = subprocess.run(
-                    command,
-                    input=json.dumps(payload),
-                    text=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=True,
-                    env=env,
-                    cwd=plugin_root,
-                    check=False,
-                )
-                check(errors, proc.returncode == 0, f"{event} packaged hook command failed with {env_name}: {proc.stderr.strip()}")
-            env = os.environ.copy()
-            env.pop("ARBOR_PLUGIN_ROOT", None)
-            env.pop("PLUGIN_ROOT", None)
-            env.pop("CODEX_PLUGIN_ROOT", None)
-            env.pop("CLAUDE_PLUGIN_ROOT", None)
-            proc = subprocess.run(
-                command,
-                input=json.dumps({"hook_event_name": event}),
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,
-                env=env,
-                cwd=plugin_root,
-                check=False,
-            )
-            check(errors, proc.returncode == 0, f"{event} packaged hook command must silently allow missing plugin roots")
-            check(errors, proc.stdout == "", f"{event} packaged hook command should stay quiet when plugin roots are missing")
 
 
 def validate_public_entrypoint_contract(plugin_root: Path, errors: list[str]) -> None:
@@ -1580,6 +1583,26 @@ def validate_session_start_smoke(plugin_root: Path, errors: list[str]) -> None:
         check(errors, clear_proc.returncode == 0, f"SessionStart clear smoke failed: {clear_proc.stderr.strip()}")
         check(errors, clear_proc.stdout == "", "SessionStart clear source must not inject context")
 
+        env = os.environ.copy()
+        env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
+        for label, raw_payload in (
+            ("null", "null"),
+            ("array", "[]"),
+            ("string", json.dumps("probe")),
+            ("malformed", "{bad json"),
+        ):
+            probe_proc = subprocess.run(
+                hook_command(plugin_root / "hooks" / "session-start"),
+                input=raw_payload,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                env=env,
+            )
+            check(errors, probe_proc.returncode == 0, f"SessionStart {label} probe must soft-skip: {probe_proc.stderr.strip()}")
+            check(errors, probe_proc.stderr == "", f"SessionStart {label} probe must stay quiet")
+
 
 def run_stop_hook(
     plugin_root: Path,
@@ -1655,6 +1678,26 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         clean_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
         check(errors, clean_proc.returncode == 0, f"Stop clean smoke failed: {clean_proc.stderr.strip()}")
         assert_stop_allows(errors, clean_proc, "Stop clean smoke")
+
+        env = os.environ.copy()
+        env["ARBOR_PLUGIN_ROOT"] = str(plugin_root)
+        for label, raw_payload in (
+            ("null", "null"),
+            ("array", "[]"),
+            ("string", json.dumps("probe")),
+            ("malformed", "{bad json"),
+        ):
+            probe_proc = subprocess.run(
+                hook_command(plugin_root / "hooks" / "stop-memory-hygiene"),
+                input=raw_payload,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                env=env,
+            )
+            check(errors, probe_proc.returncode == 0, f"Stop {label} probe must soft-allow: {probe_proc.stderr.strip()}")
+            check(errors, probe_proc.stderr == "", f"Stop {label} probe must stay quiet")
 
         transcript = project.parent / "arbor-stop-transcript.jsonl"
         transcript.write_text(
@@ -2772,9 +2815,12 @@ def validate_release_version_management_contract(plugin_root: Path, errors: list
             "CLAUDE_CACHE_BASE / version",
             "refresh_cached_hook_adapters",
             "HOOK_ADAPTER_RELS",
+            "LEGACY_PLUGIN_HOOK_MANIFEST",
+            "remove_legacy_plugin_hook_manifests",
             "shutil.rmtree(target)",
             "older cache versions preserved",
             "cached hook adapters refreshed",
+            "legacy plugin hook manifests removed",
         ],
         "skills/arbor/references/real-workflow-chain-review.md": [
             "marketplace snapshots",

@@ -111,7 +111,7 @@ Use `arbor` for minimal framework-file and project-hook checks:
 - register Claude Code project hooks in `.claude/settings.json` with wrappers
   under `.claude/hooks/`, and create the `CLAUDE.md` bridge in Claude Code even
   after Codex already created the canonical Arbor files;
-- check packaged Claude hook definitions.
+- check shared hook adapters used by project-level wrappers.
 
 `arbor` is not a project-summary, project-status, resume-summary, or subjective
 health-advice command. For ordinary "what does this project do?" or "where were
@@ -125,13 +125,13 @@ uses one strict table with `Surface`, `Required`, `Status`, `Evidence`, and
 `Repair`, followed by one `Result:` line. It checks only Arbor-created or
 Arbor-managed surfaces:
 `AGENTS.md`, `.arbor/memory.md`, `CLAUDE.md`, Codex project hooks, Claude
-project hooks, and packaged hook definitions. It must not use subjective
+project hooks, and shared hook adapters. It must not use subjective
 sections such as `Framework Health`, `Healthy`, `Maintenance blockers`,
 `Suggested Arbor maintenance actions`, or `No action required`, and it must not
 use the old `Fixability`, `Repair action`, `Summary:`, or `Repair: ... auto`
 report vocabulary.
 
-Project-level hooks are required for the selected runtime. Claude plugin hooks
+Project-level hooks are required for the selected runtime. Shared hook adapters
 do not make missing `.claude/settings.json` project hooks acceptable when the
 selected runtime is Claude Code.
 
@@ -279,10 +279,9 @@ the version source files match the target version.
 
 Local plugin cache sync is versioned and additive. A release may refresh the
 target version directory under the Codex and Claude plugin caches, but it should
-preserve older version directories because running clients can keep trusted hook
-definitions that still reference a previous cache path until reload. Sync may
-also refresh the shared hook adapter files inside older cache directories to
-repair stale packaged hook root resolvers without pruning those versions.
+preserve older version directories because running clients can keep loaded plugin
+files until reload. Sync may also refresh the shared hook adapter files inside
+older cache directories without pruning those versions.
 
 ## Hooks
 
@@ -300,19 +299,11 @@ maintenance has already run. Validate Codex hook firing in a trusted interactive
 Codex session or desktop session; non-interactive `codex exec` runs are not a
 reliable hook runtime proof. `AGENTS.md` remains the reliable native bootstrap.
 
-Claude Code plugin installation ships a plugin-level `hooks/hooks.json` manifest
-for:
-
-- `SessionStart`: injects startup context for `startup` and `resume`;
-- `Stop`: maintains context and blocks unresolved `AGENTS.md` guide-quality
-  drift; after guide quality passes, `ARBOR_STOP_MEMORY_HYGIENE_MODE=block`
-  can still opt into the older memory-packet blocking behavior.
-
-Claude Code project initialization can also write `.claude/settings.json` plus
-wrappers under `.claude/hooks/` when explicit per-project wrappers are desired.
-Packaged hooks resolve the plugin root through `ARBOR_PLUGIN_ROOT`,
-`PLUGIN_ROOT`, `CODEX_PLUGIN_ROOT`, then `CLAUDE_PLUGIN_ROOT`, and exit quietly
-when no runtime root is present.
+Claude Code initialization writes executable project hooks into target-project
+`.claude/settings.json` plus wrappers under `.claude/hooks/`. Arbor does not
+ship plugin-level hook registrations: uninitialized projects have no
+project-local `.arbor/` state to maintain, and project-level wrappers are the
+surface that `$arbor` can diagnose and repair for both Codex and Claude Code.
 
 When hook state is unclear, run the diagnostic helper and inspect the status:
 
@@ -323,9 +314,9 @@ python3 plugins/arbor/skills/arbor/scripts/diagnose_project_hooks.py \
 ```
 
 The diagnostic distinguishes stale intent-only Codex files, executable wrapper
-state, Claude plugin manifest state, project-level Claude hooks, and Codex
-trust gaps. File presence is not the same thing as proof that a runtime fired a
-hook.
+state, shared adapter state, project-level Claude hooks, legacy plugin-level
+hook drift, and Codex trust gaps. File presence is not the same thing as proof
+that a runtime fired a hook.
 
 ## Validation
 
@@ -378,7 +369,7 @@ automatically.
 Current version:
 
 ```text
-1.0.20
+1.1.0
 ```
 
 Version files:

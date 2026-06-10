@@ -1186,7 +1186,6 @@ def assert_cache_matches_source(_: CaseContext, __: RuntimeResult | None) -> Non
         for rel in (
             ".codex-plugin/plugin.json",
             ".claude-plugin/plugin.json",
-            "hooks/hooks.json",
             "hooks/session-start",
             "hooks/stop-memory-hygiene",
             "skills/arbor/scripts/diagnose_project_hooks.py",
@@ -1659,7 +1658,7 @@ def make_cases() -> dict[str, CaseSpec]:
                 "Use exactly one table with Surface, Required, Status, Evidence, and Repair columns, followed by one Result line. "
                 "Generate the report from scripts/run_framework_check.py when the script is available; do not hand-write or reinterpret the framework table. "
                 "The Result line must be exactly one of `Result: pass`, `Result: needs_repair`, or `Result: blocked`; do not include counts or prose in that line. "
-                "Check only Arbor-created or Arbor-managed surfaces: AGENTS.md, .arbor/memory.md, CLAUDE.md, .codex/hooks.json + .codex/hooks/, .claude/settings.json + .claude/hooks/, and packaged hook definitions. "
+                "Check only Arbor-created or Arbor-managed surfaces: AGENTS.md, .arbor/memory.md, CLAUDE.md, .codex/hooks.json + .codex/hooks/, .claude/settings.json + .claude/hooks/, and shared hook adapters. "
                 "Project-level hooks are required for the selected runtime; do not say missing project-level hooks are acceptable because plugin hooks exist. "
                 "Use only these lowercase Status values: pass, fail, missing, drift, blocked, not_applicable. "
                 "Use only these lowercase Required values: yes, no. "
