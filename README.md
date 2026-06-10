@@ -273,8 +273,9 @@ Codex initialization writes executable project hooks into target-project
 `.codex/hooks.json` plus wrappers under `.codex/hooks/`:
 
 - `SessionStart`: injects startup context for `startup` and `resume`;
-- `Stop`: defaults to silent context maintenance for `.arbor/memory.md` recovery
-  notes and conservative `AGENTS.md` Project Map drift updates.
+- `Stop`: maintains `.arbor/memory.md` recovery notes, applies conservative
+  `AGENTS.md` Project Map drift updates, and blocks stop when `AGENTS.md`
+  guide quality still fails in Arbor-managed projects.
 
 Codex still requires hook trust through `/hooks`; an initialized
 `.codex/hooks.json` is not proof that startup context or Stop context
@@ -286,8 +287,9 @@ Claude Code plugin installation ships a plugin-level `hooks/hooks.json` manifest
 for:
 
 - `SessionStart`: injects startup context for `startup` and `resume`;
-- `Stop`: defaults to silent context maintenance and can use
-  `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` for the older blocking behavior.
+- `Stop`: maintains context and blocks unresolved `AGENTS.md` guide-quality
+  drift; after guide quality passes, `ARBOR_STOP_MEMORY_HYGIENE_MODE=block`
+  can still opt into the older memory-packet blocking behavior.
 
 Claude Code project initialization can also write `.claude/settings.json` plus
 wrappers under `.claude/hooks/` when explicit per-project wrappers are desired.
@@ -359,7 +361,7 @@ automatically.
 Current version:
 
 ```text
-1.0.17
+1.0.18
 ```
 
 Version files:

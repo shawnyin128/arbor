@@ -282,19 +282,25 @@ The runtime is auto-detected from the script's installed cache path (`~/.codex/p
 Arbor has runtime-specific hook surfaces. `.codex/hooks.json` plus `.codex/hooks/` is the Codex project surface for two executable hooks:
 
 - `SessionStart`: delegates to `hooks/session-start`, which loads startup context in the required order.
-- `Stop`: delegates to `hooks/stop-memory-hygiene`, which quietly runs Arbor
-  context maintenance. The Stop path refreshes `.arbor/memory.md` recovery
-  state when needed and applies conservative `AGENTS.md` Project Map drift
-  updates for durable entrypoint changes.
+- `Stop`: delegates to `hooks/stop-memory-hygiene`, which runs Arbor context
+  maintenance. The Stop path refreshes `.arbor/memory.md` recovery state when
+  needed, applies conservative `AGENTS.md` Project Map drift updates for durable
+  entrypoint changes, then blocks stop when `AGENTS.md` guide quality still has
+  missing required sections, unexpected top-level sections, template
+  placeholders, thin Project Map content, missing durable entrypoints, stale
+  mapped paths, or transient workflow progress that belongs in
+  `.arbor/memory.md`, skills, review docs, or durable project docs.
 
 The underlying Arbor hook intents remain `arbor.session_startup_context`, `arbor.in_session_memory_hygiene`, and `arbor.goal_constraint_drift`, but Codex has no native project-guide drift event. Guide drift stays skill-driven through `run_agents_guide_drift_hook.py`.
 
 The Stop context-maintenance hook should be treated as high-recall around Arbor
 resume state and durable guide drift. It should run before stops, handoffs,
 release gates, commits, cache syncs, failed checks, or user review checkpoints
-when Arbor-managed changes or guide/map drift may exist. Suppress mutation for
-clean direct answers, read-only inspections with no unresolved Arbor state,
-explicit no-write turns, and unrelated dirty files outside Arbor scope.
+when Arbor-managed changes or guide/map drift may exist. It is also the primary
+`AGENTS.md` drift guard for users who use Arbor only as a context layer. It
+auto-applies only conservative Project Map path maintenance before the quality
+check, and still honors `stop_hook_active`, non-Arbor projects, and explicit
+no-write/read-only payloads before any mutation or block.
 
 Do not store Arbor hook state in user-global memory. Re-register hooks when needed; registration is idempotent and should preserve unrelated project hooks.
 
@@ -313,11 +319,17 @@ adapter scripts:
 - `hooks/stop-memory-hygiene` (`Stop`) is the compatibility-named Stop
   context-maintenance adapter. It maps memory hygiene and conservative
   `AGENTS.md` Project Map drift maintenance onto each runtime's Stop event.
-  `Stop` output can re-enter the agent loop as a visible continuation, so the
-  adapter defaults to silent, non-blocking JSON with suppressed hook output. It
-  honors `stop_hook_active` first so it can never loop. Set
+  After safe map maintenance, it runs `AGENTS.md` guide quality checks on
+  Arbor-managed projects and blocks stop until the guide is repaired when the
+  guide has missing required sections, unexpected top-level sections, template
+  placeholders, thin Project Map content, missing durable entrypoints, stale
+  mapped paths, or transient workflow progress. `Stop` output can re-enter the
+  agent loop as a visible continuation, so memory hygiene remains silent by
+  default; guide-quality failures are the intentional blocking path. It honors
+  `stop_hook_active` first so it can never loop. Set
   `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the
-  `run_memory_hygiene_hook.py` packet as the block reason for memory debugging.
+  `run_memory_hygiene_hook.py` packet as the block reason for memory debugging
+  after guide quality passes.
 
 `arbor.goal_constraint_drift` has no native Claude Code event; it stays user/skill-driven there.
 
@@ -341,6 +353,7 @@ adapter scripts:
 - `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments
 - `scripts/run_memory_hygiene_hook.py`: execute Hook 2 and forward optional agent-selected diff arguments
 - `scripts/run_agents_guide_drift_hook.py`: execute Hook 3 and forward optional agent-selected project doc paths
+- `scripts/check_agents_guide_quality.py`: validate `AGENTS.md` guide shape and Project Map usefulness for Stop-time blocking and explicit checks
 - `scripts/diagnose_project_hooks.py`: classify Codex and Claude hook surfaces as intent-only, executable wrapper state, packaged plugin manifest state, and trust gaps
 - `scripts/check_process_state.py`: validate Arbor workflow state facts without mutating implementation or routing decisions
 - `scripts/register_project_hooks.py`: create or update `.codex/hooks.json` plus `.codex/hooks/` wrappers on Codex, or `.claude/settings.json` plus `.claude/hooks/` wrappers on Claude Code

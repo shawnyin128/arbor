@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import asdict, dataclass
 from json import JSONDecodeError
 from pathlib import Path
@@ -105,6 +106,8 @@ def executable_file_state(path: Path) -> str:
         return "missing"
     if not path.is_file():
         return "not_a_file"
+    if os.name == "nt":
+        return "ok"
     if not path.stat().st_mode & 0o111:
         return "not_executable"
     return "ok"

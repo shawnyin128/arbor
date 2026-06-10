@@ -137,6 +137,16 @@ def allow_stop() -> int:
     return 0
 
 
+def block_stop(reason: str, system_message: str) -> int:
+    output = {
+        "decision": "block",
+        "reason": apply_budget(reason, REASON_BUDGET),
+        "systemMessage": system_message,
+    }
+    print(json.dumps(output))
+    return 0
+
+
 def resolve_plugin_root() -> Path:
     for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CODEX_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
         env = os.environ.get(env_name)
@@ -619,6 +629,21 @@ def refresh_agents_project_map(root: Path) -> bool:
     return False
 
 
+def run_agents_guide_quality_check(project_root: Path, plugin_root: Path) -> tuple[bool, str]:
+    script = plugin_root / "skills" / "arbor" / "scripts" / "check_agents_guide_quality.py"
+    if not script.is_file():
+        return True, ""
+    proc = subprocess.run(
+        [sys.executable, str(script), "--root", str(project_root)],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    output = proc.stdout.strip() or proc.stderr.strip()
+    return proc.returncode == 0, output
+
+
 def main() -> int:
     try:
         payload = parse_hook_payload(sys.stdin.read())
@@ -655,6 +680,12 @@ def main() -> int:
         else:
             prune_hook_fallback_memory(project_root)
         refresh_agents_project_map(project_root)
+        guide_ok, guide_output = run_agents_guide_quality_check(project_root, plugin_root)
+        if not guide_ok:
+            return block_stop(
+                guide_output,
+                "Arbor: AGENTS.md guide quality must be fixed before stop.",
+            )
     except OSError as exc:
         _emit_error(f"could not refresh quiet Stop context maintenance: {exc}")
         return 1
@@ -681,13 +712,7 @@ def main() -> int:
         _emit_error(f"shared memory hygiene script exited {proc.returncode}: {detail}")
         return 1
 
-    output = {
-        "decision": "block",
-        "reason": apply_budget(proc.stdout, REASON_BUDGET),
-        "systemMessage": "Arbor: checking in-flight memory before stop.",
-    }
-    print(json.dumps(output))
-    return 0
+    return block_stop(proc.stdout, "Arbor: checking in-flight memory before stop.")
 
 
 if __name__ == "__main__":

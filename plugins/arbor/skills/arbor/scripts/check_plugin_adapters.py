@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,23 @@ def load_json(path: Path, errors: list[str]) -> dict[str, Any]:
 
 def plugin_root_from_script() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+def hook_command(path: Path) -> list[str]:
+    if os.name == "nt":
+        return [sys.executable, str(path)]
+    return [str(path)]
+
+
+def valid_agents_guide(project_goal: str = "This project tests Arbor adapter behavior.", map_entries: str = "- `src/`: source code.") -> str:
+    return (
+        "# Agent Guide\n\n"
+        "## Startup Protocol\n\nRead startup context.\n\n"
+        "## Workflow Entrypoint Protocol\n\nUse public entrypoints.\n\n"
+        f"## Project Goal\n\n{project_goal}\n\n"
+        "## Project Constraints\n\n- Keep AGENTS concise.\n\n"
+        f"## Project Map\n\n{map_entries}\n"
+    )
 
 
 def repo_root_from_plugin(plugin_root: Path) -> Path | None:
@@ -382,6 +400,8 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         check(errors, agents.is_file(), "Codex-style initialization should create AGENTS.md")
         check(errors, memory.is_file(), "Codex-style initialization should create .arbor/memory.md")
         check(errors, not claude.exists(), "Codex-style initialization should not create CLAUDE.md by default")
+        (project / "src").mkdir()
+        agents.write_text(valid_agents_guide(), encoding="utf-8")
 
         register_project_hooks(project, runtime=INSTALL_RUNTIME_CODEX)
         codex_hooks = project / ".codex" / "hooks.json"
@@ -409,7 +429,7 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             "source": "startup",
         }
         session_proc = subprocess.run(
-            [str(codex_session)],
+            hook_command(codex_session),
             input=json.dumps(session_payload),
             text=True,
             stdout=subprocess.PIPE,
@@ -456,7 +476,7 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
             "stop_hook_active": False,
         }
         stop_proc = subprocess.run(
-            [str(codex_stop)],
+            hook_command(codex_stop),
             input=json.dumps(stop_payload),
             text=True,
             stdout=subprocess.PIPE,
@@ -484,7 +504,7 @@ def validate_cross_runtime_initialization_contract(plugin_root: Path, errors: li
         duplicated_memory = memory.read_text(encoding="utf-8") + "\n## In-flight\n\n- [hook:fallback] stale duplicate\n"
         memory.write_text(duplicated_memory, encoding="utf-8")
         stop_proc = subprocess.run(
-            [str(codex_stop)],
+            hook_command(codex_stop),
             input=json.dumps(stop_payload),
             text=True,
             stdout=subprocess.PIPE,
@@ -1081,6 +1101,97 @@ def validate_agents_guide_drift_smoke(plugin_root: Path, errors: list[str]) -> N
                 check(errors, term in output, f"AGENTS guide drift smoke {label} missing `{term}`")
 
 
+def validate_agents_guide_quality_smoke(plugin_root: Path, errors: list[str]) -> None:
+    import sys
+
+    script = plugin_root / "skills" / "arbor" / "scripts" / "check_agents_guide_quality.py"
+    check(errors, script.is_file(), "AGENTS guide quality checker must exist")
+    if not script.is_file():
+        return
+
+    cases = [
+        (
+            "valid guide",
+            "# Agent Guide\n\n"
+            "## Startup Protocol\n\nRead startup context.\n\n"
+            "## Workflow Entrypoint Protocol\n\nUse public entrypoints.\n\n"
+            "## Project Goal\n\nThis project tests guide quality.\n\n"
+            "## Project Constraints\n\n- Keep AGENTS concise.\n\n"
+            "## Project Map\n\n- `src/`: source code.\n",
+            {"src": "dir"},
+            True,
+            ("AGENTS guide quality: pass",),
+        ),
+        (
+            "extra section",
+            "# Agent Guide\n\n"
+            "## Startup Protocol\n\nRead startup context.\n\n"
+            "## Workflow Entrypoint Protocol\n\nUse public entrypoints.\n\n"
+            "## Project Goal\n\nThis project tests guide quality.\n\n"
+            "## Project Constraints\n\n- Keep AGENTS concise.\n\n"
+            "## Project Map\n\n- `src/`: source code.\n\n"
+            "## Random Notes\n\nDo not keep this here.\n",
+            {"src": "dir"},
+            False,
+            ("extra_section", "Random Notes"),
+        ),
+        (
+            "placeholder project map",
+            "# Agent Guide\n\n"
+            "## Startup Protocol\n\nRead startup context.\n\n"
+            "## Workflow Entrypoint Protocol\n\nUse public entrypoints.\n\n"
+            "## Project Goal\n\nThis project tests guide quality.\n\n"
+            "## Project Constraints\n\n- Keep AGENTS concise.\n\n"
+            "## Project Map\n\nArbor has not recorded a durable project map for this repository yet.\n",
+            {"src": "dir"},
+            False,
+            ("template_placeholder", "thin_project_map"),
+        ),
+        (
+            "missing durable candidate",
+            "# Agent Guide\n\n"
+            "## Startup Protocol\n\nRead startup context.\n\n"
+            "## Workflow Entrypoint Protocol\n\nUse public entrypoints.\n\n"
+            "## Project Goal\n\nThis project tests guide quality.\n\n"
+            "## Project Constraints\n\n- Keep AGENTS concise.\n\n"
+            "## Project Map\n\n- `src/`: source code.\n",
+            {"src": "dir", "tools": "dir"},
+            False,
+            ("missing_project_map_entry", "`tools/`"),
+        ),
+    ]
+
+    with tempfile.TemporaryDirectory(prefix="arbor-guide-quality-") as tmp:
+        for label, agents_text, filesystem, should_pass, expected_terms in cases:
+            project = Path(tmp) / label.replace(" ", "-")
+            project.mkdir()
+            (project / ".arbor").mkdir()
+            (project / "AGENTS.md").write_text(agents_text, encoding="utf-8")
+            for name, kind in filesystem.items():
+                target = project / name
+                if kind == "dir":
+                    target.mkdir()
+                else:
+                    target.write_text("", encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, str(script), "--root", str(project)],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            if should_pass:
+                check(
+                    errors,
+                    proc.returncode == 0,
+                    f"AGENTS guide quality smoke {label} should pass: {proc.stdout}{proc.stderr}",
+                )
+            else:
+                check(errors, proc.returncode != 0, f"AGENTS guide quality smoke {label} should fail")
+            for term in expected_terms:
+                check(errors, term in proc.stdout, f"AGENTS guide quality smoke {label} missing `{term}`")
+
+
 def validate_claude_hook_structure(plugin_root: Path, errors: list[str]) -> None:
     hooks_manifest = plugin_root / "hooks" / "hooks.json"
     manifest = load_json(hooks_manifest, errors)
@@ -1372,7 +1483,7 @@ def run_session_start(plugin_root: Path, project_root: Path, source: str) -> sub
         "source": source,
     }
     return subprocess.run(
-        [str(plugin_root / "hooks" / "session-start")],
+        hook_command(plugin_root / "hooks" / "session-start"),
         input=json.dumps(payload),
         text=True,
         stdout=subprocess.PIPE,
@@ -1462,7 +1573,7 @@ def run_stop_hook(
     if extra_payload:
         payload.update(extra_payload)
     return subprocess.run(
-        [str(plugin_root / "hooks" / "stop-memory-hygiene")],
+        hook_command(plugin_root / "hooks" / "stop-memory-hygiene"),
         input=json.dumps(payload),
         text=True,
         stdout=subprocess.PIPE,
@@ -1502,7 +1613,7 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         project = Path(tmp)
         (project / ".arbor").mkdir()
         (project / ".arbor" / "memory.md").write_text("# Arbor Memory\n\n- Pending note.\n", encoding="utf-8")
-        (project / "AGENTS.md").write_text("# Project Guide\n\n## Project Map\n\n- `src/`: existing source.\n", encoding="utf-8")
+        (project / "AGENTS.md").write_text(valid_agents_guide(map_entries="- `src/`: existing source."), encoding="utf-8")
         (project / "src").mkdir()
         _git(["init"], project)
         _git(["add", "-A"], project)
@@ -1627,6 +1738,15 @@ def validate_stop_memory_hygiene_smoke(plugin_root: Path, errors: list[str]) -> 
         check(errors, stale_proc.returncode == 0, f"Stop stale-map smoke failed: {stale_proc.stderr.strip()}")
         agents_after_stale = (project / "AGENTS.md").read_text(encoding="utf-8")
         check(errors, "`legacy/`" not in agents_after_stale, "Stop adapter must prune stale AGENTS Project Map entries")
+
+        bad_agents = agents_after_stale + "\n## Scratch Notes\n\nTemporary workflow notes.\n"
+        (project / "AGENTS.md").write_text(bad_agents, encoding="utf-8")
+        guide_block_proc = run_stop_hook(plugin_root, project, stop_hook_active=False)
+        check(errors, guide_block_proc.returncode == 0, f"Stop guide quality block smoke failed: {guide_block_proc.stderr.strip()}")
+        check(errors, '"decision": "block"' in guide_block_proc.stdout, "Stop adapter must block AGENTS guide quality failures")
+        check(errors, "extra_section" in guide_block_proc.stdout, "Stop guide quality block must name extra_section")
+        check(errors, "Scratch Notes" in guide_block_proc.stdout, "Stop guide quality block must name the unexpected section")
+        (project / "AGENTS.md").write_text(agents_after_stale, encoding="utf-8")
 
         before_no_write = agents_after_stale
         (project / "docs").mkdir()
@@ -2691,7 +2811,9 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "R30",
         "R31",
         "R33",
+        "R34",
         "assert_multi_feature_queue_continuation",
+        "assert_agents_guide_quality_stop_blocks",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
     for category in (
@@ -2704,6 +2826,7 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "release_publish",
         "feedback_triage",
         "multi_feature_queue",
+        "agents_guide_quality",
     ):
         check(errors, category in runner_text, f"real workflow chain runner missing routing category `{category}`")
     for case_number in range(1, 29):
@@ -2714,6 +2837,8 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
     check(errors, '"R32"' in runner_text, "real workflow chain runner missing feedback triage case R32")
     check(errors, "| R33 |" in text, "real workflow chain review missing multi-feature queue case R33")
     check(errors, '"R33"' in runner_text, "real workflow chain runner missing multi-feature queue case R33")
+    check(errors, "| R34 |" in text, "real workflow chain review missing AGENTS guide quality case R34")
+    check(errors, '"R34"' in runner_text, "real workflow chain runner missing AGENTS guide quality case R34")
     for term in (
         "active_feature_id",
         "Q2",
@@ -2721,6 +2846,12 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "ready through converge",
     ):
         check(errors, contains_term(text, term), f"real workflow chain review missing multi-feature proof term `{term}`")
+    for term in (
+        "AGENTS guide quality",
+        "extra_section",
+        "stop_hook_active",
+    ):
+        check(errors, contains_term(text, term), f"real workflow chain review missing guide-quality proof term `{term}`")
 
 
 def main() -> int:
@@ -2737,6 +2868,7 @@ def main() -> int:
     validate_public_trigger_contract_matrix(plugin_root, errors)
     validate_project_hook_contract(plugin_root, errors)
     validate_agents_guide_drift_smoke(plugin_root, errors)
+    validate_agents_guide_quality_smoke(plugin_root, errors)
     validate_claude_hook_structure(plugin_root, errors)
     validate_public_entrypoint_contract(plugin_root, errors)
     validate_brainstorm_feature_queue_contract(plugin_root, errors)

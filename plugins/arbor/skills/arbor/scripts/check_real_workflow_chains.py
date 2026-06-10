@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import textwrap
 from dataclasses import dataclass, field
@@ -121,6 +122,11 @@ ROUTING_REPLAY_CASES = {
         "situation": "A broad brainstorm queue should finalize only the current feature and activate the next unfinished registry row without consuming or skipping later planned rows.",
         "expected_chain": "converge -> internal release(finalize_feature) -> next feature ready through converge",
     },
+    "R34": {
+        "category": "agents_guide_quality",
+        "situation": "Stop should block AGENTS guide-quality drift even when Arbor is used only as a context layer.",
+        "expected_chain": "Stop hook AGENTS guide quality gate",
+    },
     "R27": {
         "category": "planning_continuation",
         "situation": "A split-context engineering planning continuation should still become brainstorm.",
@@ -142,6 +148,7 @@ REQUIRED_ROUTING_CATEGORIES = {
     "release_publish",
     "feedback_triage",
     "multi_feature_queue",
+    "agents_guide_quality",
 }
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -319,6 +326,12 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = 60, env: dict[st
 def write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(textwrap.dedent(text).lstrip(), encoding="utf-8")
+
+
+def hook_command(path: Path) -> list[str]:
+    if os.name == "nt":
+        return [sys.executable, str(path)]
+    return [str(path)]
 
 
 def append(path: Path, text: str) -> None:
@@ -676,6 +689,56 @@ def setup_project_map_drift_context(ctx: CaseContext) -> None:
     write(ctx.workdir / "src/example.py", "def answer() -> int:\n    return 41\n")
     commit_all(ctx)
     write(ctx.workdir / "tools/map_helper.py", "def helper() -> str:\n    return 'map'\n")
+
+
+def setup_agents_guide_quality_context(ctx: CaseContext) -> None:
+    init_git(ctx)
+    write(
+        ctx.workdir / "AGENTS.md",
+        """
+        # Agent Guide
+
+        ## Startup Protocol
+
+        Read startup context before project overviews.
+
+        ## Workflow Entrypoint Protocol
+
+        Use public Arbor entrypoints only when managed workflow is needed.
+
+        ## Project Goal
+
+        This repository tests Stop-time AGENTS guide quality blocking.
+
+        ## Project Constraints
+
+        - Keep AGENTS concise.
+
+        ## Project Map
+
+        - `src/`: source code.
+
+        ## Scratch Notes
+
+        Temporary implementation notes do not belong in AGENTS.
+        """,
+    )
+    write(
+        ctx.workdir / ".arbor/memory.md",
+        """
+        # Session Memory
+
+        ## Observations
+
+        - None.
+
+        ## In-flight
+
+        - None.
+        """,
+    )
+    write(ctx.workdir / "src/example.py", "def answer() -> int:\n    return 41\n")
+    commit_all(ctx)
 
 
 def runtime_available(runtime: str) -> bool:
@@ -1183,7 +1246,7 @@ def assert_session_start_hook(ctx: CaseContext, _: RuntimeResult | None) -> None
     env = os.environ.copy()
     env["CLAUDE_PLUGIN_ROOT"] = str(ctx.plugin_root)
     proc = subprocess.run(
-        [str(hook)],
+        hook_command(hook),
         cwd=ctx.workdir,
         input=json.dumps(payload),
         text=True,
@@ -1197,6 +1260,54 @@ def assert_session_start_hook(ctx: CaseContext, _: RuntimeResult | None) -> None
     require(proc.returncode == 0, f"SessionStart failed: {proc.stderr}")
     for term in ("# Project Startup Context", "AGENTS.md", ".arbor/memory.md", "git status"):
         require(term in proc.stdout, f"SessionStart output missing {term}")
+
+
+def assert_agents_guide_quality_stop_blocks(ctx: CaseContext, _: RuntimeResult | None) -> None:
+    hook = ctx.plugin_root / "hooks/stop-memory-hygiene"
+    require(hook.exists(), "Stop hook missing")
+    payload = {
+        "session_id": "real-workflow-chain-review",
+        "transcript_path": str(ctx.workdir / "transcript.jsonl"),
+        "cwd": str(ctx.workdir),
+        "hook_event_name": "Stop",
+        "stop_hook_active": False,
+    }
+    env = os.environ.copy()
+    env["ARBOR_PLUGIN_ROOT"] = str(ctx.plugin_root)
+    proc = subprocess.run(
+        hook_command(hook),
+        cwd=ctx.workdir,
+        input=json.dumps(payload),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        env=env,
+    )
+    write(ctx.artifacts / "stop-guide-quality.stdout.txt", proc.stdout)
+    write(ctx.artifacts / "stop-guide-quality.stderr.txt", proc.stderr)
+    require(proc.returncode == 0, f"Stop hook failed: {proc.stderr}")
+    for term in ("AGENTS guide quality", "extra_section", "Scratch Notes"):
+        require(term in proc.stdout, f"Stop guide-quality block output missing {term}")
+    decision = json.loads(proc.stdout)
+    require(decision.get("decision") == "block", "Stop guide-quality case must block")
+
+    payload["stop_hook_active"] = True
+    active_proc = subprocess.run(
+        hook_command(hook),
+        cwd=ctx.workdir,
+        input=json.dumps(payload),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        env=env,
+    )
+    write(ctx.artifacts / "stop-guide-quality-active.stdout.txt", active_proc.stdout)
+    write(ctx.artifacts / "stop-guide-quality-active.stderr.txt", active_proc.stderr)
+    require(active_proc.returncode == 0, f"Stop active replay failed: {active_proc.stderr}")
+    active_decision = json.loads(active_proc.stdout)
+    require(active_decision.get("continue") is True, "stop_hook_active must allow continuation to end")
 
 
 def assert_runner_tracked(_: CaseContext, __: RuntimeResult | None) -> None:
@@ -1651,6 +1762,15 @@ def make_cases() -> dict[str, CaseSpec]:
             codex_sandbox="danger-full-access",
         ),
         CaseSpec(
+            "R34",
+            "Stop blocks AGENTS guide quality drift",
+            "",
+            setup_agents_guide_quality_context,
+            [assert_agents_guide_quality_stop_blocks],
+            runtimes=(RUNTIME_LOCAL,),
+            requires_agent=False,
+        ),
+        CaseSpec(
             "R28",
             "AGENTS project map drift is updated",
             agent_prompt(
@@ -1697,7 +1817,10 @@ def reset_artifact_dir(artifacts: Path) -> None:
 
 
 def make_case_context(case_id: str, runtime: str, artifact_root: Path, plugin_root: Path) -> CaseContext:
-    workdir = Path(tempfile.mkdtemp(prefix=f"arbor-e2e-{runtime}-", dir="/private/tmp"))
+    temp_parent = Path(tempfile.gettempdir()) if os.name == "nt" else Path("/private/tmp")
+    if not temp_parent.is_dir():
+        temp_parent = Path(tempfile.gettempdir())
+    workdir = Path(tempfile.mkdtemp(prefix=f"arbor-e2e-{runtime}-", dir=str(temp_parent)))
     artifacts = artifact_root / f"{case_id}-{runtime}"
     reset_artifact_dir(artifacts)
     write(artifacts / "workdir.txt", str(workdir) + "\n")
@@ -1790,7 +1913,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", choices=(RUNTIME_CODEX, RUNTIME_CLAUDE, RUNTIME_LOCAL, RUNTIME_ALL), default=RUNTIME_LOCAL)
     parser.add_argument("--cases", default="R14,R20,R24", help="Comma-separated case ids or 'all'.")
-    parser.add_argument("--artifact-root", type=Path, default=Path("/private/tmp/arbor-real-workflow-chain-review"))
+    default_artifact_root = Path("/private/tmp/arbor-real-workflow-chain-review")
+    if os.name == "nt" or not default_artifact_root.parent.is_dir():
+        default_artifact_root = Path(tempfile.gettempdir()) / "arbor-real-workflow-chain-review"
+    parser.add_argument("--artifact-root", type=Path, default=default_artifact_root)
     parser.add_argument("--plugin-root", type=Path, default=PLUGIN_ROOT)
     parser.add_argument("--keep-workdirs", action="store_true", help="Keep temporary repositories for debugging.")
     parser.add_argument("--report", type=Path, default=None, help="Optional JSON report path.")
