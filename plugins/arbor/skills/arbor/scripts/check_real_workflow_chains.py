@@ -127,6 +127,11 @@ ROUTING_REPLAY_CASES = {
         "situation": "Stop should block AGENTS guide-quality drift even when Arbor is used only as a context layer.",
         "expected_chain": "Stop hook AGENTS guide quality gate",
     },
+    "R35": {
+        "category": "closed_loop_diagnostics",
+        "situation": "Feedback about simulation collapse should route to diagnostic brainstorm before schema-first repair.",
+        "expected_chain": "feedback -> brainstorm closed-loop diagnostics",
+    },
     "R27": {
         "category": "planning_continuation",
         "situation": "A split-context engineering planning continuation should still become brainstorm.",
@@ -149,6 +154,7 @@ REQUIRED_ROUTING_CATEGORIES = {
     "feedback_triage",
     "multi_feature_queue",
     "agents_guide_quality",
+    "closed_loop_diagnostics",
 }
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -741,6 +747,33 @@ def setup_agents_guide_quality_context(ctx: CaseContext) -> None:
     commit_all(ctx)
 
 
+def setup_closed_loop_diagnostics_context(ctx: CaseContext) -> None:
+    common_project(ctx)
+    write(
+        ctx.workdir / "docs/reviewer-note.md",
+        """
+        # Reviewer Note
+
+        The agent simulation has a simulation collapse: demand candidates flood
+        the timeline, the live artifact is dominated by one candidate source,
+        and the state trajectory is not being inspected. A schema-first
+        validator fix would hide the symptom but would not explain the
+        event/effect trace, candidate pool, decision distribution, dimension
+        checks, or budget balance.
+        """,
+    )
+    write(
+        ctx.workdir / "artifacts/live-timeline.txt",
+        """
+        tick 001: demand,demand,demand,demand
+        tick 002: demand,demand,demand,demand
+        tick 003: demand,demand,demand,demand
+        """,
+    )
+    git(ctx, "add", ".")
+    git(ctx, "commit", "-m", "test: seed closed-loop diagnostics fixture")
+
+
 def runtime_available(runtime: str) -> bool:
     return shutil.which(runtime) is not None
 
@@ -1310,6 +1343,38 @@ def assert_agents_guide_quality_stop_blocks(ctx: CaseContext, _: RuntimeResult |
     require(active_decision.get("continue") is True, "stop_hook_active must allow continuation to end")
 
 
+def assert_closed_loop_feedback_routes_to_brainstorm(ctx: CaseContext, _: RuntimeResult | None) -> None:
+    feedback = ctx.plugin_root / "skills/feedback/SKILL.md"
+    brainstorm = ctx.plugin_root / "skills/brainstorm/SKILL.md"
+    converge = ctx.plugin_root / "skills/converge/SKILL.md"
+    release = ctx.plugin_root / "skills/release/SKILL.md"
+    reference = ctx.plugin_root / "skills/arbor/references/closed-loop-diagnostics.md"
+    fixture = ctx.workdir / "docs/reviewer-note.md"
+    artifact = ctx.workdir / "artifacts/live-timeline.txt"
+    for path in (feedback, brainstorm, converge, release, reference, fixture, artifact):
+        require(path.exists(), f"closed-loop diagnostics proof missing {path}")
+
+    feedback_text = feedback.read_text(encoding="utf-8")
+    brainstorm_text = brainstorm.read_text(encoding="utf-8")
+    converge_text = converge.read_text(encoding="utf-8")
+    release_text = release.read_text(encoding="utf-8")
+    reference_text = reference.read_text(encoding="utf-8")
+    fixture_text = fixture.read_text(encoding="utf-8")
+
+    for term in ("simulation collapse", "closed-loop diagnostics", "state trajectory", "brainstorm"):
+        require(term in feedback_text, f"feedback contract missing {term}")
+    for term in ("state variables", "feedback loop", "event/effect trace", "candidate source", "budget balance"):
+        require(term in brainstorm_text, f"brainstorm contract missing {term}")
+    for term in ("raw trace", "state trajectory", "artifact quality", "schema-first"):
+        require(term in converge_text, f"converge gate missing {term}")
+    for term in ("live artifact", "raw trace", "state trajectory", "weak-pass gap"):
+        require(term in release_text, f"release gate missing {term}")
+    for term in ("decision distribution", "dimension", "budget balance", "schema-first"):
+        require(term in reference_text, f"reference missing {term}")
+    for term in ("simulation collapse", "live artifact", "state trajectory", "schema-first"):
+        require(term in fixture_text, f"fixture missing {term}")
+
+
 def assert_runner_tracked(_: CaseContext, __: RuntimeResult | None) -> None:
     proc = run(["git", "check-ignore", "-v", "plugins/arbor/skills/arbor/scripts/check_real_workflow_chains.py"], cwd=REPO_ROOT)
     require(proc.returncode != 0, "real workflow runner is ignored")
@@ -1767,6 +1832,15 @@ def make_cases() -> dict[str, CaseSpec]:
             "",
             setup_agents_guide_quality_context,
             [assert_agents_guide_quality_stop_blocks],
+            runtimes=(RUNTIME_LOCAL,),
+            requires_agent=False,
+        ),
+        CaseSpec(
+            "R35",
+            "closed-loop diagnostics route requires evidence",
+            "",
+            setup_closed_loop_diagnostics_context,
+            [assert_closed_loop_feedback_routes_to_brainstorm],
             runtimes=(RUNTIME_LOCAL,),
             requires_agent=False,
         ),

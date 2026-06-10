@@ -2766,6 +2766,70 @@ def validate_release_version_management_contract(plugin_root: Path, errors: list
             check(errors, term in text, f"{rel_path} missing release version management term `{term}`")
 
 
+def validate_closed_loop_diagnostics_contract(plugin_root: Path, errors: list[str]) -> None:
+    required = {
+        "skills/arbor/references/closed-loop-diagnostics.md": [
+            "state trajectory",
+            "event/effect trace",
+            "candidate pool",
+            "decision distribution",
+            "dimension",
+            "budget balance",
+            "live artifact",
+            "weak-pass gap",
+            "schema-first",
+            "closed-loop",
+        ],
+        "skills/feedback/SKILL.md": [
+            "closed-loop",
+            "simulation collapse",
+            "state trajectory",
+            "brainstorm",
+        ],
+        "skills/brainstorm/SKILL.md": [
+            "closed-loop diagnostics",
+            "state variables",
+            "feedback loop",
+            "event/effect trace",
+            "candidate source",
+            "budget balance",
+        ],
+        "skills/converge/SKILL.md": [
+            "closed-loop diagnostics",
+            "raw trace",
+            "state trajectory",
+            "artifact quality",
+            "schema-first",
+        ],
+        "skills/release/SKILL.md": [
+            "closed-loop diagnostics",
+            "live artifact",
+            "raw trace",
+            "state trajectory",
+            "weak-pass gap",
+        ],
+        "skills/arbor/scripts/check_real_workflow_chains.py": [
+            "R35",
+            "closed_loop_diagnostics",
+            "assert_closed_loop_feedback_routes_to_brainstorm",
+        ],
+        "skills/arbor/references/real-workflow-chain-review.md": [
+            "| R35 |",
+            "closed-loop diagnostics",
+            "state trajectory",
+            "schema-first",
+        ],
+    }
+    for rel_path, terms in required.items():
+        path = plugin_root / rel_path
+        check(errors, path.is_file(), f"{rel_path} missing closed-loop diagnostics contract surface")
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for term in terms:
+            check(errors, contains_term(text, term), f"{rel_path} missing closed-loop diagnostics term `{term}`")
+
+
 def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list[str]) -> None:
     real_review = plugin_root / "skills" / "arbor" / "references" / "real-workflow-chain-review.md"
     real_runner = plugin_root / "skills" / "arbor" / "scripts" / "check_real_workflow_chains.py"
@@ -2812,8 +2876,10 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "R31",
         "R33",
         "R34",
+        "R35",
         "assert_multi_feature_queue_continuation",
         "assert_agents_guide_quality_stop_blocks",
+        "assert_closed_loop_feedback_routes_to_brainstorm",
     ):
         check(errors, term in runner_text, f"real workflow chain runner missing artifact/skip hygiene term `{term}`")
     for category in (
@@ -2827,6 +2893,7 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
         "feedback_triage",
         "multi_feature_queue",
         "agents_guide_quality",
+        "closed_loop_diagnostics",
     ):
         check(errors, category in runner_text, f"real workflow chain runner missing routing category `{category}`")
     for case_number in range(1, 29):
@@ -2839,6 +2906,8 @@ def validate_real_workflow_chain_review_contract(plugin_root: Path, errors: list
     check(errors, '"R33"' in runner_text, "real workflow chain runner missing multi-feature queue case R33")
     check(errors, "| R34 |" in text, "real workflow chain review missing AGENTS guide quality case R34")
     check(errors, '"R34"' in runner_text, "real workflow chain runner missing AGENTS guide quality case R34")
+    check(errors, "| R35 |" in text, "real workflow chain review missing closed-loop diagnostics case R35")
+    check(errors, '"R35"' in runner_text, "real workflow chain runner missing closed-loop diagnostics case R35")
     for term in (
         "active_feature_id",
         "Q2",
@@ -2886,6 +2955,7 @@ def main() -> int:
     validate_evaluate_verification_method_examples_contract(plugin_root, errors)
     validate_develop_checkpoint_commit_contract(plugin_root, errors)
     validate_release_version_management_contract(plugin_root, errors)
+    validate_closed_loop_diagnostics_contract(plugin_root, errors)
     validate_cross_runtime_initialization_contract(plugin_root, errors)
     validate_framework_check_repair_smoke(plugin_root, errors)
     validate_real_workflow_chain_review_contract(plugin_root, errors)

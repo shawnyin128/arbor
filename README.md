@@ -247,6 +247,17 @@ path matching. This does not require LLM judges, fixed path matching, exact
 turn-by-turn replay, or one universal test type by default. See
 `plugins/arbor/skills/arbor/references/outcome-eval-observability.md`.
 
+Closed-loop diagnostics protect simulation, agent behavior, ranking, planning,
+scheduling, and other feedback systems from schema-first repairs that never
+explain the collapse. Feedback about simulation collapse, candidate flooding,
+runaway state, or a live artifact that still fails after tests pass routes to
+`brainstorm` unless an existing plan already requires state trajectory,
+event/effect trace, candidate source trace, decision distribution, dimension
+checks, budget balance, raw trace, live artifact quality, and weak-pass gap
+evidence. `converge` and `release` then refuse completion claims when those
+proofs are missing or the live artifact still collapses. See
+`plugins/arbor/skills/arbor/references/closed-loop-diagnostics.md`.
+
 When correction loops become unreliable, Arbor uses a loop-health advisory. It
 surfaces repeated same-class failures, evidence conflicts, weak replay evidence,
 context contamination, or round-limit pressure. It may recommend narrowing
@@ -361,7 +372,7 @@ automatically.
 Current version:
 
 ```text
-1.0.18
+1.0.19
 ```
 
 Version files:

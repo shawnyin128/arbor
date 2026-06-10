@@ -63,6 +63,32 @@ evidence when useful.
 | "Fix the typo in README.md." | No. | Return `route_correction` or handle directly outside Arbor; do not create workflow state. |
 | "Evaluate this developer handoff" or "continue convergence." | No. | Route to `converge`; do not re-plan unless missing or contradictory planning evidence is the actual blocker. |
 
+## Closed-Loop Diagnostics
+
+Use closed-loop diagnostics when planning work for simulations, agent behavior,
+ranking loops, schedulers, planners, economies, or other systems where outputs
+feed later state. If the user reports collapse, runaway behavior, domination by
+one candidate source, implausible timelines, or a live artifact that still fails
+after tests pass, plan the diagnostic before planning the repair.
+
+The Context/Test Plan must require the smallest useful evidence packet:
+
+- state variables and expected healthy ranges;
+- suspected feedback loop paths from decisions to later state;
+- state trajectory over the failing run;
+- event/effect trace connecting actions, effects, and state updates;
+- candidate source or candidate pool trace;
+- decision distribution across time, agents, or sources;
+- dimension or unit check for numeric dynamics;
+- budget balance estimate for resources, demand, capacity, probability mass,
+  inventory, money, energy, or time;
+- live artifact sample and artifact quality criteria;
+- weak-pass gap when live runtime telemetry or raw trace proof is unavailable.
+
+Do not accept a schema-first, validator-first, parser-first, or normalizer-first
+repair plan as the default root-cause path unless the diagnostic evidence shows
+the interface contract caused the closed-loop failure.
+
 ## Checklist
 
 Follow this normal sequence for brainstorm runs. Stop early with the correct terminal state when route correction, missing evidence, or a blocking clarification prevents later steps.
@@ -557,3 +583,4 @@ If any answer fails, revise the structured output before responding.
 
 - `references/brainstorm-boundary.md`: boundary, persistence, evidence, clarification, scope, and approval rules.
 - `references/brainstorm-simulation-cases.md`: regression cases from user simulation.
+- `../arbor/references/closed-loop-diagnostics.md`: evidence packet and gates for simulation or system-dynamics failures.

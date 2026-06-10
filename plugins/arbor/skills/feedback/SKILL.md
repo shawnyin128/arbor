@@ -146,6 +146,23 @@ close but not identical, follow the same evidence-owner reasoning.
 | "This feedback could refer to two current features." | Yes. | Return `needs_evidence`, state the routing opinion and ambiguity, and ask for the feature or review document identity; do not guess a quality loop. |
 | "What is the project status?" | No. | Answer directly or use `arbor` startup context; do not emit a feedback checkpoint. |
 
+## Closed-Loop Diagnostics Trigger
+
+When feedback reports simulation collapse, runaway behavior, saturation,
+starvation, oscillation, a candidate class flooding the output, or a live
+artifact that still behaves wrong after tests pass, treat the issue as a
+closed-loop diagnostics candidate. This is usually a planning issue, not a
+current-loop repair, unless an existing review plan already required the needed
+trace evidence.
+
+Route to `brainstorm` and stop when the feedback lacks a diagnostic packet with
+state trajectory, event/effect trace, candidate pool or candidate source trace,
+decision distribution, dimension or unit check, budget balance estimate, and a
+live artifact sample. Do not route directly to `converge` just because the
+tempting fix is schema-first validation, parser hardening, or normalizer
+cleanup; first require evidence that distinguishes system dynamics from an
+interface contract defect.
+
 ## Checklist
 
 1. **Confirm invocation and acceptance**: load on explicit `feedback` invocation

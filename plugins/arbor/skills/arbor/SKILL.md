@@ -348,6 +348,7 @@ adapter scripts:
 - `references/delegation-packet-effort-budget.md`: optional delegation packet and effort budget guidance for bounded evidence gathering
 - `references/outcome-eval-observability.md`: outcome-first evaluation and observable proof guidance for workflow changes
 - `references/loop-health-advisory.md`: advisory for repeated failures, evidence conflicts, weak replay, context contamination, and fresh-session handoff recommendations
+- `references/closed-loop-diagnostics.md`: diagnostic evidence packet for simulation collapse, agent behavior drift, closed-loop dynamics, live artifact quality, and schema-first weak-pass gaps
 - `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
 - `scripts/collect_project_context.py`: collect startup context in the required order
 - `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments

@@ -35,6 +35,16 @@ When the user explicitly enables `develop_evaluate_converge` automation, `releas
 | Push, PR, tag, publish, or cache sync is implied. | Stop with confirmation needed unless the user explicitly authorized that exact external action after convergence/finalization. |
 | Dirty source equals installed runtime. | Verify source tree, installed cache, and runtime evidence separately; do not claim cache/runtime state from source-only checks. |
 
+## Closed-Loop Diagnostics Gate
+
+For a closed-loop diagnostics feature, release readiness must preserve behavior
+proof, not just passing tests. Confirm the review evidence records the live
+artifact, raw trace source, state trajectory, behavior quality criterion,
+event/effect trace, and any weak-pass gap that affects release confidence. If
+the feature claims completion while the live artifact still collapses, or if
+the required raw trace and state trajectory are missing, return `blocked` or
+`needs_converge` instead of preparing a completion claim.
+
 ## Checklist
 
 1. **Confirm source**: accept only internal Arbor handoff evidence: `develop.ready_for_evaluate` for `checkpoint_develop`, completed `evaluate` states for `checkpoint_evaluate`, and `converge.converged` or equivalent evidence for `finalize_feature`. Explicit user prompts without that handoff should route to the public owner instead of running release directly.
@@ -317,6 +327,8 @@ before finishing.
 - `references/claim-proof-matrix.md`: shared Arbor Claim Proof Matrix for
   separating source tree, installed cache, runtime evidence, visible output, and
   weak-pass proof before release or public-action claims.
+- `../arbor/references/closed-loop-diagnostics.md`: behavior evidence packet
+  for simulation, agent behavior, and system-dynamics failures.
 
 ## Self-Check
 

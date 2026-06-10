@@ -78,6 +78,23 @@ owner visible instead of hiding the route behind a new router.
 | "Run develop" or "run evaluate" from a user prompt. | Use `converge` instead. | Treat direct public develop/evaluate requests as quality-loop continuation requests unless the caller is an internal handoff packet. |
 | "What is the project status?" | No. | Answer directly or use `arbor` for project context; do not append a Convergence Round. |
 
+## Closed-Loop Diagnostics Gate
+
+When the active feature is a closed-loop diagnostics feature, convergence must
+check behavior evidence, not just code checks. Load the planned diagnostic
+packet and require developer/evaluator agreement over raw trace, state
+trajectory, event/effect trace, candidate source or candidate pool trace,
+decision distribution, dimension or unit checks, budget balance, live artifact
+quality, and any weak-pass gap named by the brainstorm plan.
+
+Return `needs_brainstorm` when the review context never planned closed-loop
+diagnostics but the latest failure is simulation collapse or system-dynamics
+drift. Return the appropriate evidence route when the implementation is mainly
+schema-first parser, validator, or normalizer defense and does not prove why
+the original loop collapsed. Do not mark the feature converged while the live
+artifact still exhibits the same behavior failure or while required raw trace
+or state trajectory evidence is missing.
+
 ## Checklist
 
 1. **Match canonical example**: identify the closest example above. If none fits, classify only enough context to decide whether this is a convergence/quality-loop continuation request, bug/defect feedback on an existing feature, direct status work, or another explicit workflow skill.
@@ -220,6 +237,10 @@ If done-when evidence is absent, generic, or only a weak pass for a criterion th
 `converge` should compare the outcome evidence already produced by `develop` and `evaluate`: final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, realistic replay, and trace evidence. Do not require fixed path matching, exact turn-by-turn replay, LLM judges, subagents, worktrees, fan-out execution, or one universal test type by default.
 
 If evaluator evidence labels a deterministic substitute as a weak pass, decide whether the named remaining proof blocks the brainstorm goal. Weak-pass gaps block convergence only when exact runtime telemetry, rendered final output, publish behavior, or trace proof was part of the required outcome.
+
+For closed-loop diagnostics, treat missing raw trace, missing state trajectory,
+or missing live artifact quality evidence as a blocking weak-pass gap whenever
+the brainstorm plan required those proofs.
 
 ### Decision Trace Handoff
 
