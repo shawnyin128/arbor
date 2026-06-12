@@ -2103,17 +2103,28 @@ def validate_project_hook_registration(errors: list[str]) -> None:
         claude_text = json.dumps(claude_settings)
         codex_commands = hook_commands(codex_hooks)
         claude_commands = hook_commands(claude_settings)
-        check(errors, ".codex/hooks/arbor-session-start" in codex_text, "Codex SessionStart wrapper command missing")
-        check(errors, ".codex/hooks/arbor-stop-memory-hygiene" in codex_text, "Codex Stop wrapper command missing")
+        normalized_codex_commands = [command.replace("\\", "/") for command in codex_commands]
+        check(errors, any(".codex/hooks/arbor-session-start.cmd" in command for command in normalized_codex_commands), "Codex SessionStart wrapper command missing")
+        check(errors, any(".codex/hooks/arbor-stop-memory-hygiene.cmd" in command for command in normalized_codex_commands), "Codex Stop wrapper command missing")
         check(errors, ".claude/hooks/arbor-session-start" in claude_text, "Claude SessionStart wrapper command missing")
         check(errors, ".claude/hooks/arbor-stop-memory-hygiene" in claude_text, "Claude Stop wrapper command missing")
-        check(errors, codex_commands and all(sys.executable in command for command in codex_commands), "Codex hook commands must include the registering Python executable")
+        codex_launchers = [
+            root / ".codex" / "hooks" / "arbor-session-start.cmd",
+            root / ".codex" / "hooks" / "arbor-stop-memory-hygiene.cmd",
+        ]
+        check(
+            errors,
+            all(path.is_file() and sys.executable in path.read_text(encoding="utf-8") for path in codex_launchers),
+            "Codex Windows launchers must include the registering Python executable",
+        )
         check(errors, claude_commands and all(sys.executable in command for command in claude_commands), "Claude hook commands must include the registering Python executable")
         check(errors, all(not command.lower().startswith("python ") for command in codex_commands), "Codex hook commands must not use bare python")
         check(errors, all(not command.lower().startswith("python ") for command in claude_commands), "Claude hook commands must not use bare python")
         for wrapper in (
             root / ".codex" / "hooks" / "arbor-session-start",
             root / ".codex" / "hooks" / "arbor-stop-memory-hygiene",
+            root / ".codex" / "hooks" / "arbor-session-start.cmd",
+            root / ".codex" / "hooks" / "arbor-stop-memory-hygiene.cmd",
             root / ".claude" / "hooks" / "arbor-session-start",
             root / ".claude" / "hooks" / "arbor-stop-memory-hygiene",
         ):
@@ -2272,7 +2283,7 @@ def validate_project_hook_registration(errors: list[str]) -> None:
         check(errors, "registered 2 Arbor Claude project hooks" in output, "registration must accept UTF-8 BOM Claude hook JSON")
 
 
-def replace_hook_command(data: dict[str, Any], event: str, marker: str, command: str) -> bool:
+def replace_hook_command(data: dict[str, Any], event: str, marker: str, replacement_command: str) -> bool:
     hooks = data.get("hooks", {})
     if not isinstance(hooks, dict):
         return False
@@ -2286,8 +2297,9 @@ def replace_hook_command(data: dict[str, Any], event: str, marker: str, command:
         if not isinstance(handlers, list):
             continue
         for handler in handlers:
-            if isinstance(handler, dict) and marker in str(handler.get("command", "")):
-                handler["command"] = command
+            existing_command = str(handler.get("command", ""))
+            if isinstance(handler, dict) and marker.replace("\\", "/") in existing_command.replace("\\", "/"):
+                handler["command"] = replacement_command
                 return True
     return False
 
@@ -3714,15 +3726,18 @@ def validate_cross_platform_hook_commands(errors: list[str]) -> None:
             pass
 
     windows_python = r"C:\Program Files\Python313\python.exe"
+    windows_project = r"C:\Projects\Arbor"
     posix_python = "/opt/python/bin/python3"
 
     codex_windows = hooks.codex_project_hook_command(
         "arbor-session-start",
         platform="windows",
         python_executable=windows_python,
+        project_root=windows_project,
     )
-    check(errors, windows_python in codex_windows, "Windows Codex hook command must include absolute Python path")
-    check(errors, ".codex/hooks/arbor-session-start" in codex_windows, "Windows Codex hook command must call project wrapper")
+    check(errors, windows_python not in codex_windows, "Windows Codex hook command must delegate Python quoting to a .cmd launcher")
+    check(errors, not codex_windows.startswith('"'), "Windows Codex hook command must not quote no-space .cmd launcher paths")
+    check(errors, codex_windows.endswith(r".codex\hooks\arbor-session-start.cmd"), "Windows Codex hook command must call a project .cmd launcher")
 
     claude_windows = hooks.claude_project_hook_command(
         "arbor-stop-memory-hygiene",
@@ -3737,11 +3752,18 @@ def validate_cross_platform_hook_commands(errors: list[str]) -> None:
         "arbor-session-start",
         platform="windows",
         python_executable=windows_shell_meta_python,
+        project_root=r"C:\Project Space\Arbor",
     )
     check(
         errors,
-        codex_windows_shell_meta.startswith(f'"{windows_shell_meta_python}" '),
-        "Windows Codex hook command must quote Python paths with shell metacharacters",
+        codex_windows_shell_meta == r'cmd.exe /d /c call "C:\Project Space\Arbor\.codex\hooks\arbor-session-start.cmd"',
+        "Windows Codex hook command must use cmd.exe call for project .cmd launchers when the project path has spaces",
+    )
+    codex_launcher = hooks.render_windows_cmd_launcher(windows_shell_meta_python, "arbor-session-start")
+    check(
+        errors,
+        f'"{windows_shell_meta_python}" "%~dp0arbor-session-start"' in codex_launcher,
+        "Windows Codex launcher must quote the Python executable and same-directory wrapper",
     )
     claude_windows_shell_meta = hooks.claude_project_hook_command(
         "arbor-stop-memory-hygiene",

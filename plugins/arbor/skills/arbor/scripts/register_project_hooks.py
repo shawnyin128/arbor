@@ -37,6 +37,8 @@ RUNTIME_BOTH = "both"
 RUNTIME_CHOICES = (RUNTIME_AUTO, RUNTIME_BOTH, INSTALL_RUNTIME_CODEX, INSTALL_RUNTIME_CLAUDE)
 CODEX_SESSION_START_WRAPPER = CODEX_HOOKS_DIR / "arbor-session-start"
 CODEX_STOP_WRAPPER = CODEX_HOOKS_DIR / "arbor-stop-memory-hygiene"
+CODEX_SESSION_START_LAUNCHER = CODEX_HOOKS_DIR / "arbor-session-start.cmd"
+CODEX_STOP_LAUNCHER = CODEX_HOOKS_DIR / "arbor-stop-memory-hygiene.cmd"
 CLAUDE_SESSION_START_WRAPPER = CLAUDE_HOOKS_DIR / "arbor-session-start"
 CLAUDE_STOP_WRAPPER = CLAUDE_HOOKS_DIR / "arbor-stop-memory-hygiene"
 
@@ -453,22 +455,34 @@ def ensure_absolute_python_executable(executable: str, platform: str) -> str:
 
 def command_arg(value: str, platform: str) -> str:
     if platform == "windows":
-        return f'"{value.replace(chr(34), r"\"")}"'
+        escaped = value.replace(chr(34), r"\"")
+        return f'"{escaped}"'
     if platform == "posix":
         return shlex.quote(value)
     raise HookRegistrationError(f"unknown hook command platform: {platform}")
+
+
+def windows_cmd_launcher_command(path: str) -> str:
+    shell_sensitive = set(' \t&()^!%"<>|')
+    if not any(char in shell_sensitive for char in path):
+        return path
+    return f"cmd.exe /d /c call {command_arg(path, 'windows')}"
 
 
 def codex_project_hook_command(
     wrapper_name: str,
     platform: str | None = None,
     python_executable: str | None = None,
+    project_root: Path | str | None = None,
 ) -> str:
     selected = platform or current_hook_platform()
     wrapper = f".codex/hooks/{wrapper_name}"
     executable = ensure_absolute_python_executable(python_executable or current_python_executable(), selected)
     python = command_arg(executable, selected)
     if selected == "windows":
+        if project_root is not None:
+            launcher = PureWindowsPath(str(project_root)) / ".codex" / "hooks" / f"{wrapper_name}.cmd"
+            return windows_cmd_launcher_command(str(launcher))
         return f"{python} {command_arg(wrapper, selected)}"
     if selected == "posix":
         return f'{python} "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/{wrapper}"'
@@ -491,31 +505,34 @@ def claude_project_hook_command(
     raise HookRegistrationError(f"unknown hook command platform: {selected}")
 
 
-CODEX_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
-    "SessionStart": [
-        {
-            "matcher": "startup|resume",
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": codex_project_hook_command("arbor-session-start"),
-                    "statusMessage": "Loading Arbor startup context",
-                }
-            ],
-        }
-    ],
-    "Stop": [
-        {
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": codex_project_hook_command("arbor-stop-memory-hygiene"),
-                    "timeout": 30,
-                }
-            ],
-        }
-    ],
-}
+def codex_project_hooks(root: Path | str | None = None) -> dict[str, list[dict[str, Any]]]:
+    return {
+        "SessionStart": [
+            {
+                "matcher": "startup|resume",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": codex_project_hook_command("arbor-session-start", project_root=root),
+                        "statusMessage": "Loading Arbor startup context",
+                    }
+                ],
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": codex_project_hook_command("arbor-stop-memory-hygiene", project_root=root),
+                        "timeout": 30,
+                    }
+                ],
+            }
+        ],
+    }
+
+
 CLAUDE_PROJECT_HOOKS: dict[str, list[dict[str, Any]]] = {
     "SessionStart": [
         {
@@ -697,7 +714,7 @@ def remove_existing_arbor_claude_handlers(hooks: dict[str, Any]) -> dict[str, An
     return remove_existing_arbor_handlers(hooks, is_arbor_handler=is_arbor_claude_handler)
 
 
-def merge_codex_project_hooks(config: dict[str, Any]) -> dict[str, Any]:
+def merge_codex_project_hooks(config: dict[str, Any], root: Path | str | None = None) -> dict[str, Any]:
     merged = normalize_codex_hook_config(config)
     existing_hooks = merged.get("hooks", {})
     if existing_hooks is None:
@@ -705,7 +722,7 @@ def merge_codex_project_hooks(config: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(existing_hooks, dict):
         raise HookRegistrationError("cannot register Codex hooks: expected 'hooks' to be an object")
     hooks = remove_existing_arbor_codex_handlers(existing_hooks)
-    for event, groups in CODEX_PROJECT_HOOKS.items():
+    for event, groups in codex_project_hooks(root).items():
         existing_groups = hooks.get(event, [])
         if not isinstance(existing_groups, list):
             raise HookRegistrationError(f"cannot register Codex hooks: expected hooks.{event} to be a list")
@@ -889,6 +906,11 @@ if __name__ == "__main__":
 '''
 
 
+def render_windows_cmd_launcher(python_executable: str, wrapper_name: str) -> str:
+    python_literal = python_executable.replace("%", "%%")
+    return f'@echo off\n"{python_literal}" "%~dp0{wrapper_name}"\nexit /b %ERRORLEVEL%\n'
+
+
 def ensure_executable_file(path: Path, content: str, dry_run: bool) -> HookRegistrationAction:
     existed = path.exists()
     if existed and not path.is_file():
@@ -942,7 +964,7 @@ def register_codex_project_hooks(root: Path, dry_run: bool = False) -> list[Hook
     path = hook_config_path(root)
 
     config = load_codex_hook_config(path)
-    merged = merge_codex_project_hooks(config)
+    merged = merge_codex_project_hooks(config, root)
     actions = [
         write_json_file(path, config, merged, dry_run, "registered 2 Arbor Codex executable project hooks"),
         ensure_executable_file(
@@ -956,6 +978,22 @@ def register_codex_project_hooks(root: Path, dry_run: bool = False) -> list[Hook
             dry_run,
         ),
     ]
+    if current_hook_platform() == "windows":
+        executable = ensure_absolute_python_executable(current_python_executable(), "windows")
+        actions.extend(
+            [
+                ensure_executable_file(
+                    codex_hook_wrapper_path(root, CODEX_SESSION_START_LAUNCHER),
+                    render_windows_cmd_launcher(executable, CODEX_SESSION_START_WRAPPER.name),
+                    dry_run,
+                ),
+                ensure_executable_file(
+                    codex_hook_wrapper_path(root, CODEX_STOP_LAUNCHER),
+                    render_windows_cmd_launcher(executable, CODEX_STOP_WRAPPER.name),
+                    dry_run,
+                ),
+            ]
+        )
     return actions
 
 

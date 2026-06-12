@@ -239,13 +239,13 @@ def diagnose_codex(root: Path, *, codex_trusted: bool) -> HookState:
         config,
         "SessionStart",
         ".codex/hooks/arbor-session-start",
-        codex_project_hook_command("arbor-session-start"),
+        codex_project_hook_command("arbor-session-start", project_root=root),
     )
     stop_command_state = event_handler_command_state(
         config,
         "Stop",
         ".codex/hooks/arbor-stop-memory-hygiene",
-        codex_project_hook_command("arbor-stop-memory-hygiene"),
+        codex_project_hook_command("arbor-stop-memory-hygiene", project_root=root),
     )
     if session_command_state != "ok" or stop_command_state != "ok" or session_state != "ok" or stop_state != "ok":
         return HookState(

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -15,6 +16,7 @@ SCRIPTS_ROOT = PLUGIN_ROOT / "skills" / "arbor" / "scripts"
 HOOKS_ROOT = PLUGIN_ROOT / "hooks"
 TRANSIENT_DIR_NAMES = {"__pycache__", ".pytest_cache", ".mypy_cache"}
 TRANSIENT_SUFFIXES = {".pyc", ".pyo"}
+FSTRING_EXPR_BACKSLASH_PATTERN = re.compile(r"""(?s)f(['"])(?:(?!\1).)*\{[^}\n]*\\[^}\n]*\}""")
 
 
 def is_transient(path: Path) -> bool:
@@ -52,6 +54,10 @@ def validate_roots(roots: list[Path]) -> list[str]:
             try:
                 source = path.read_text(encoding="utf-8")
                 compile(source, str(path), "exec")
+                if FSTRING_EXPR_BACKSLASH_PATTERN.search(source):
+                    failures.append(
+                        f"Python 3.9 incompatible f-string expression backslash in {path}"
+                    )
             except SyntaxError as exc:
                 failures.append(f"syntax error in {path}: {exc}")
             except UnicodeDecodeError as exc:
