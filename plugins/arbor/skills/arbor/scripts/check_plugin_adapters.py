@@ -1102,7 +1102,19 @@ def validate_release_readiness_check(errors: list[str]) -> None:
             "published source git status launch failures must explain the launch error",
         )
 
-    code, output = run_command_status([sys.executable, str(script), "--skip-quality-gate"])
+    with tempfile.TemporaryDirectory(prefix="arbor-release-readiness-current-state-") as tmp:
+        current_state_cache_root = Path(tmp)
+        code, output = run_command_status(
+            [
+                sys.executable,
+                str(script),
+                "--skip-quality-gate",
+                "--codex-cache-base",
+                str(current_state_cache_root / "codex-cache"),
+                "--claude-cache-base",
+                str(current_state_cache_root / "claude-cache"),
+            ]
+        )
     check(errors, code == 1, "release readiness checker must fail when install-state or runtime smoke evidence is missing")
     for term in (
         "Arbor release readiness",
