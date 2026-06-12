@@ -81,7 +81,7 @@ def complete_runtime_smoke_evidence() -> str:
         "- Multi-version cache selection with broken older adapter: pass\n"
         "- POSIX command rendering: pass\n\n"
         "## Hook Runtime Smoke\n\n"
-        "| Runtime | Platform | Event | Trusted | Fired | Wrapper command uses absolute Python | Cache discovery path | Evidence | Unavailable reason |\n"
+        "| Runtime | Platform | Event | Trusted | Fired | Wrapper or launcher uses absolute Python | Cache discovery path | Evidence | Unavailable reason |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
         "| Codex | Windows | SessionStart | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0 | startup context rendered | none |\n"
         "| Codex | Windows | Stop | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0 | memory hygiene completed | none |\n"
@@ -388,7 +388,7 @@ def validate_runtime_smoke_evidence_checker(errors: list[str]) -> None:
                     "| Codex | Windows | SessionStart | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0 | startup context rendered | none |",
                     "| Codex | Windows | SessionStart | yes | yes | no | C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0 | startup context rendered | none |",
                 ),
-                "Hook Runtime Smoke row 1 fired but wrapper command does not use absolute Python",
+                "Hook Runtime Smoke row 1 fired but wrapper or launcher does not use absolute Python",
                 "runtime smoke evidence checker must reject fired rows without absolute Python proof",
             ),
         ]

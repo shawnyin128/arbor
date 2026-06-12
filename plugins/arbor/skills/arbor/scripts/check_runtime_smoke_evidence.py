@@ -334,7 +334,7 @@ def validate_evidence(path: Path) -> list[str]:
         if fired_is_passing and not cell_is_passing(trusted):
             failures.append(f"Hook Runtime Smoke row {index} fired but is not trusted")
         if fired_is_passing and not cell_is_passing(absolute_python):
-            failures.append(f"Hook Runtime Smoke row {index} fired but wrapper command does not use absolute Python")
+            failures.append(f"Hook Runtime Smoke row {index} fired but wrapper or launcher does not use absolute Python")
         if fired_is_passing and cache_path_lower in {"", "pending", "not run", "none"}:
             failures.append(f"Hook Runtime Smoke row {index} fired but lacks concrete cache discovery path")
         elif fired_is_passing and not cache_discovery_path_is_concrete(cache_path):

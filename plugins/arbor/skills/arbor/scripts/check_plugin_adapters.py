@@ -514,7 +514,7 @@ def validate_readme_quality_contract(errors: list[str]) -> None:
         "Runtime smoke evidence records its own validator command passing",
         "full Codex and Claude Code event matrix",
         "Fired rows must include runtime trust proof",
-        "absolute Python command proof",
+        "absolute Python wrapper-or-launcher proof",
         "cache path that supplied the hook adapter",
         "Drift, missing caches, dirty source, or `not run` install-state checks mean the runtime evidence is not yet publishable",
         "Automatic cache discovery considers only complete Arbor plugin roots in `X.Y.Z`",
@@ -908,10 +908,10 @@ def validate_runtime_smoke_template(errors: list[str]) -> None:
         "## Hook Runtime Smoke",
         "Trusted",
         "Fired",
-        "Wrapper command uses absolute Python",
+        "Wrapper or launcher uses absolute Python",
         "Cache discovery path",
         "Fired rows must include absolute local cache discovery paths",
-        "Fired rows must prove runtime trust and absolute Python commands",
+        "Fired rows must prove runtime trust and absolute Python wrapper-or-launcher use",
         "Keep all template rows",
         "exactly one row for each template matrix entry",
         "No extra runtime rows",
@@ -952,7 +952,7 @@ def complete_runtime_smoke_evidence() -> str:
         "- Legacy plugin-level `hooks/hooks.json` present: no\n"
         "- `__pycache__` / `*.pyc` present in synced cache: no\n\n"
         "## Hook Runtime Smoke\n\n"
-        "| Runtime | OS | Event | Trusted | Fired | Wrapper command uses absolute Python | Cache discovery path | Evidence | Unavailable reason |\n"
+        "| Runtime | OS | Event | Trusted | Fired | Wrapper or launcher uses absolute Python | Cache discovery path | Evidence | Unavailable reason |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
         "| Codex | Windows | SessionStart | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0 | startup context rendered | none |\n"
         "| Codex | Windows | Stop | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0 | memory hygiene completed | none |\n"

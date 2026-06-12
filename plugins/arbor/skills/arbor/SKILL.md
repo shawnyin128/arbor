@@ -227,12 +227,15 @@ Project hooks delegate to shared adapter scripts:
   maintenance for dirty or transcript-backed recovery context, then block stop
   only when guide quality still fails in that active-maintenance path.
 
-Hook commands use the absolute Python interpreter that ran registration. Stale
+Hook wrappers use the absolute Python interpreter that ran registration. Stale
 bare `python` or `python3` wrapper commands are hook drift and should be
 repaired by re-registration.
-Windows hook command arguments must be quoted even when paths have no spaces,
-because shell metacharacters such as `&` are valid in paths but unsafe when
-emitted bare.
+Codex on Windows launches project hooks through `.cmd` files. Launcher paths
+without shell-sensitive characters must be emitted unquoted because Codex's
+Windows hook runner executes that form reliably; paths with spaces or
+shell-sensitive characters must be routed through `cmd.exe /d /c call "..."`.
+The launcher itself must quote the absolute Python interpreter and
+same-directory wrapper path.
 POSIX Claude Code hook commands must prefer `CLAUDE_PROJECT_DIR` and fall back
 to `pwd` so wrapper paths stay project-local when the runtime variable is not
 available.
@@ -389,7 +392,7 @@ failures.
 - `scripts/check_quality_gate.py`: run the deterministic Arbor v2 hard gate
 - `scripts/check_runtime_smoke_evidence.py`: validate filled runtime smoke
   evidence before treating it as release proof; any passing Fired marker
-  requires runtime trust, absolute Python command, absolute local cache path,
+  requires runtime trust, absolute Python wrapper-or-launcher proof, absolute local cache path,
   and evidence; the runtime matrix must include exactly one row for each
   template matrix entry with no extra runtime rows; audit metadata and required
   sections must each appear exactly once; release readiness also requires Codex

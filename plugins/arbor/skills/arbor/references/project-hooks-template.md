@@ -101,12 +101,15 @@ current repository.
 - Claude project hook re-registration replaces only Arbor wrapper commands
   under `.claude/hooks/arbor-*`; unrelated Claude hooks and settings are
   preserved.
-- Project hook commands use the absolute Python interpreter that ran Arbor
+- Project hook wrappers use the absolute Python interpreter that ran Arbor
   registration; stale bare `python` or `python3` wrapper commands are hook drift
   and should be repaired by re-registration.
-- Windows project hook command arguments must be quoted even when the path has
-  no spaces, because shell metacharacters such as `&` are valid in paths but
-  unsafe when emitted bare.
+- Codex on Windows launches project hooks through `.cmd` files. Launcher paths
+  without shell-sensitive characters are emitted unquoted because Codex's
+  Windows hook runner executes that form reliably; paths with spaces or
+  shell-sensitive characters are routed through `cmd.exe /d /c call "..."`. The
+  launcher itself quotes the absolute Python interpreter and same-directory
+  wrapper path.
 - POSIX Claude Code hook commands must prefer `CLAUDE_PROJECT_DIR` and fall
   back to `pwd` so wrapper paths remain project-local when the runtime variable
   is unavailable.

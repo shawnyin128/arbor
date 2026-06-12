@@ -156,13 +156,15 @@ Claude Code initialization writes executable project hooks into
 `.claude/settings.json` plus wrappers under `.claude/hooks/` with the same
 shared adapter behavior.
 
-Project hook commands use the absolute Python interpreter that ran Arbor
+Project hook wrappers use the absolute Python interpreter that ran Arbor
 registration instead of assuming bare `python` or `python3` is available in the
 runtime hook environment. Hook adapters soft-skip empty probe payloads so hook
 UIs can validate commands without false failures.
-Windows hook command arguments are quoted even when paths have no spaces,
-because shell metacharacters such as `&` are valid in paths but unsafe when
-emitted bare.
+Codex on Windows launches project hooks through `.cmd` files. Launcher paths
+without shell-sensitive characters are emitted unquoted because Codex's Windows
+hook runner executes that form reliably; paths with spaces or shell-sensitive
+characters are routed through `cmd.exe /d /c call "..."`. The launcher itself
+quotes the absolute Python interpreter and same-directory wrapper path.
 POSIX Claude Code hook commands prefer `CLAUDE_PROJECT_DIR` and fall back to
 `pwd` so missing runtime project-directory variables do not resolve wrappers
 under the filesystem root.
@@ -357,7 +359,7 @@ Runtime smoke evidence records its own validator command passing. It must keep
 the full Codex and Claude Code event matrix for Windows and macOS/Linux,
 including unavailable rows with concrete reasons. The matrix must contain exactly
 one row for each template matrix entry and no extra runtime rows. Fired rows
-must include runtime trust proof, absolute Python command proof, and the absolute
+must include runtime trust proof, absolute Python wrapper-or-launcher proof, and the absolute
 local cache path that supplied the hook adapter. Any passing `Fired` marker,
 including `ok` or `ready`, is treated as a fired row and must carry the same
 proof. If any row is `not run`, blocked, or failed, keep it listed under Known

@@ -57,7 +57,7 @@ Use either `- none` or explicit risk entries, never both.
 Fired rows must include absolute local cache discovery paths.
 Fired cache discovery paths must point at the same version directory named by
 the `Version:` field above.
-Fired rows must prove runtime trust and absolute Python commands.
+Fired rows must prove runtime trust and absolute Python wrapper-or-launcher use.
 Fired row Evidence must describe concrete observed output or runtime state;
 `none` and `n/a` are not evidence.
 Fired rows must not also carry a concrete unavailable reason.
@@ -66,7 +66,7 @@ must include the same evidence.
 Fired must be either a passing marker or `not run`; do not use ambiguous values
 such as `no`.
 
-| Runtime | OS | Event | Trusted | Fired | Wrapper command uses absolute Python | Cache discovery path | Evidence | Unavailable reason |
+| Runtime | OS | Event | Trusted | Fired | Wrapper or launcher uses absolute Python | Cache discovery path | Evidence | Unavailable reason |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Codex | Windows | SessionStart | pending | pending | pending | pending | pending | pending |
 | Codex | Windows | Stop | pending | pending | pending | pending | pending | pending |
