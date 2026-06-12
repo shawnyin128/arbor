@@ -2104,30 +2104,59 @@ def validate_project_hook_registration(errors: list[str]) -> None:
         codex_commands = hook_commands(codex_hooks)
         claude_commands = hook_commands(claude_settings)
         normalized_codex_commands = [command.replace("\\", "/") for command in codex_commands]
-        check(errors, any(".codex/hooks/arbor-session-start.cmd" in command for command in normalized_codex_commands), "Codex SessionStart wrapper command missing")
-        check(errors, any(".codex/hooks/arbor-stop-memory-hygiene.cmd" in command for command in normalized_codex_commands), "Codex Stop wrapper command missing")
-        check(errors, ".claude/hooks/arbor-session-start" in claude_text, "Claude SessionStart wrapper command missing")
-        check(errors, ".claude/hooks/arbor-stop-memory-hygiene" in claude_text, "Claude Stop wrapper command missing")
-        codex_launchers = [
-            root / ".codex" / "hooks" / "arbor-session-start.cmd",
-            root / ".codex" / "hooks" / "arbor-stop-memory-hygiene.cmd",
-        ]
+        is_windows = os.name == "nt"
+        registering_python = str(Path(sys.executable).expanduser().resolve())
+        codex_command_suffix = ".cmd" if is_windows else ""
         check(
             errors,
-            all(path.is_file() and sys.executable in path.read_text(encoding="utf-8") for path in codex_launchers),
-            "Codex Windows launchers must include the registering Python executable",
+            any(f".codex/hooks/arbor-session-start{codex_command_suffix}" in command for command in normalized_codex_commands),
+            "Codex SessionStart wrapper command missing",
         )
-        check(errors, claude_commands and all(sys.executable in command for command in claude_commands), "Claude hook commands must include the registering Python executable")
+        check(
+            errors,
+            any(f".codex/hooks/arbor-stop-memory-hygiene{codex_command_suffix}" in command for command in normalized_codex_commands),
+            "Codex Stop wrapper command missing",
+        )
+        check(errors, ".claude/hooks/arbor-session-start" in claude_text, "Claude SessionStart wrapper command missing")
+        check(errors, ".claude/hooks/arbor-stop-memory-hygiene" in claude_text, "Claude Stop wrapper command missing")
+        if is_windows:
+            codex_launchers = [
+                root / ".codex" / "hooks" / "arbor-session-start.cmd",
+                root / ".codex" / "hooks" / "arbor-stop-memory-hygiene.cmd",
+            ]
+            check(
+                errors,
+                all(path.is_file() and registering_python in path.read_text(encoding="utf-8") for path in codex_launchers),
+                "Codex Windows launchers must include the registering Python executable",
+            )
+        else:
+            check(
+                errors,
+                all(".cmd" not in command for command in normalized_codex_commands),
+                "POSIX Codex hook commands must not call Windows .cmd launchers",
+            )
+            check(
+                errors,
+                codex_commands and all(registering_python in command for command in codex_commands),
+                "POSIX Codex hook commands must include the registering Python executable",
+            )
+        check(errors, claude_commands and all(registering_python in command for command in claude_commands), "Claude hook commands must include the registering Python executable")
         check(errors, all(not command.lower().startswith("python ") for command in codex_commands), "Codex hook commands must not use bare python")
         check(errors, all(not command.lower().startswith("python ") for command in claude_commands), "Claude hook commands must not use bare python")
-        for wrapper in (
+        required_wrappers = [
             root / ".codex" / "hooks" / "arbor-session-start",
             root / ".codex" / "hooks" / "arbor-stop-memory-hygiene",
-            root / ".codex" / "hooks" / "arbor-session-start.cmd",
-            root / ".codex" / "hooks" / "arbor-stop-memory-hygiene.cmd",
             root / ".claude" / "hooks" / "arbor-session-start",
             root / ".claude" / "hooks" / "arbor-stop-memory-hygiene",
-        ):
+        ]
+        if is_windows:
+            required_wrappers.extend(
+                [
+                    root / ".codex" / "hooks" / "arbor-session-start.cmd",
+                    root / ".codex" / "hooks" / "arbor-stop-memory-hygiene.cmd",
+                ]
+            )
+        for wrapper in required_wrappers:
             check(errors, wrapper.is_file(), f"missing project hook wrapper: {wrapper}")
         second_registration = run_command(
             [
@@ -3792,6 +3821,49 @@ def validate_cross_platform_hook_commands(errors: list[str]) -> None:
     check(errors, "CLAUDE_PROJECT_DIR" in claude_posix, "POSIX Claude command must use CLAUDE_PROJECT_DIR")
     check(errors, "$(pwd)" in claude_posix, "POSIX Claude command must fall back to pwd when CLAUDE_PROJECT_DIR is unavailable")
     check(errors, ".claude/hooks/arbor-stop-memory-hygiene" in claude_posix, "POSIX Claude command must call project wrapper")
+
+    original_current_hook_platform = hooks.current_hook_platform
+    original_current_python_executable = hooks.current_python_executable
+    try:
+        hooks.current_hook_platform = lambda: "posix"
+        hooks.current_python_executable = lambda: posix_python
+        with tempfile.TemporaryDirectory(prefix="arbor-forced-posix-registration-check-") as tmp:
+            root = Path(tmp)
+            hooks.register_project_hooks(root, runtime="both")
+            codex_hooks = load_json(root / ".codex" / "hooks.json", errors)
+            claude_settings = load_json(root / ".claude" / "settings.json", errors)
+            codex_commands = hook_commands(codex_hooks)
+            claude_commands = hook_commands(claude_settings)
+            normalized_codex_commands = [command.replace("\\", "/") for command in codex_commands]
+            check(
+                errors,
+                any(".codex/hooks/arbor-session-start" in command for command in normalized_codex_commands),
+                "forced POSIX Codex registration must call the SessionStart wrapper",
+            )
+            check(
+                errors,
+                all(".cmd" not in command for command in normalized_codex_commands),
+                "forced POSIX Codex registration must not call Windows .cmd launchers",
+            )
+            check(
+                errors,
+                codex_commands and all(posix_python in command for command in codex_commands),
+                "forced POSIX Codex registration must include the resolved Python executable",
+            )
+            check(
+                errors,
+                claude_commands and all(".claude/hooks/" in command.replace("\\", "/") for command in claude_commands),
+                "forced POSIX registration must preserve Claude wrapper commands",
+            )
+            check(
+                errors,
+                not (root / ".codex" / "hooks" / "arbor-session-start.cmd").exists()
+                and not (root / ".codex" / "hooks" / "arbor-stop-memory-hygiene.cmd").exists(),
+                "forced POSIX registration must not create Windows .cmd launchers",
+            )
+    finally:
+        hooks.current_hook_platform = original_current_hook_platform
+        hooks.current_python_executable = original_current_python_executable
 
     for platform, executable in (
         ("windows", "python"),
