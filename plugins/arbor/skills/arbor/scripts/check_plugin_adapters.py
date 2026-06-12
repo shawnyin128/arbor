@@ -3416,6 +3416,24 @@ def validate_session_start_and_stop_behavior(errors: list[str]) -> None:
         original_session_looks_like = session_module.looks_like_arbor_plugin_root
         original_arbor_plugin_root_env = os.environ.get("ARBOR_PLUGIN_ROOT")
 
+        bom_session_stdout = io.StringIO()
+        bom_session_stderr = io.StringIO()
+        session_module.sys.stdin = io.StringIO("\ufeff" + json.dumps({"cwd": str(root), "source": "startup"}))
+        try:
+            with contextlib.redirect_stdout(bom_session_stdout), contextlib.redirect_stderr(bom_session_stderr):
+                bom_session_code = session_module.main()
+        except json.JSONDecodeError as exc:
+            add_error(errors, f"SessionStart BOM-prefixed hook payloads must not raise JSONDecodeError: {exc}")
+            bom_session_code = 1
+        finally:
+            session_module.sys.stdin = original_session_stdin
+        check(errors, bom_session_code == 0, "SessionStart BOM-prefixed hook payload must exit 0")
+        check(
+            errors,
+            "# Project Startup Context" in bom_session_stdout.getvalue(),
+            "SessionStart must tolerate UTF-8 BOM-prefixed hook payloads",
+        )
+
         def raise_session_env_root_oserror(root_path: Path) -> bool:
             raise OSError("simulated SessionStart env root stat failure")
 
@@ -3491,6 +3509,26 @@ def validate_session_start_and_stop_behavior(errors: list[str]) -> None:
         stop_module = load_hook_adapter_module("stop-memory-hygiene")
         original_stop_subprocess_run = stop_module.subprocess.run
         original_stop_looks_like = stop_module.looks_like_arbor_plugin_root
+        original_stop_stdin = stop_module.sys.stdin
+
+        (root / ".arbor" / "memory.md").write_text("# Session Memory\n\n## In-flight\n\n- None.\n", encoding="utf-8")
+        bom_memory_before = (root / ".arbor" / "memory.md").read_text(encoding="utf-8")
+        bom_stop_stdout = io.StringIO()
+        bom_stop_stderr = io.StringIO()
+        stop_module.sys.stdin = io.StringIO("\ufeff" + json.dumps({"cwd": str(root)}))
+        try:
+            with contextlib.redirect_stdout(bom_stop_stdout), contextlib.redirect_stderr(bom_stop_stderr):
+                bom_stop_code = stop_module.main()
+        except json.JSONDecodeError as exc:
+            add_error(errors, f"Stop BOM-prefixed hook payloads must not raise JSONDecodeError: {exc}")
+            bom_stop_code = 1
+        finally:
+            stop_module.sys.stdin = original_stop_stdin
+        bom_memory_after = (root / ".arbor" / "memory.md").read_text(encoding="utf-8")
+        check(errors, bom_stop_code == 0, "Stop BOM-prefixed hook payload must exit 0")
+        check(errors, "[hook:resume]" in bom_memory_after, "Stop BOM-prefixed payloads must still run quiet memory maintenance")
+        check(errors, bom_memory_before != bom_memory_after, "Stop BOM-prefixed payloads must not silently skip maintenance")
+        check(errors, '"continue": true' in bom_stop_stdout.getvalue(), "Stop BOM-prefixed payloads must allow stop")
 
         def raise_stop_env_root_oserror(root_path: Path) -> bool:
             raise OSError("simulated Stop env root stat failure")
@@ -3551,7 +3589,6 @@ def validate_session_start_and_stop_behavior(errors: list[str]) -> None:
         finally:
             stop_module.subprocess.run = original_stop_subprocess_run
 
-        original_stop_stdin = stop_module.sys.stdin
         original_stop_git_status_lines = stop_module.git_status_lines
         original_stop_guide_check = stop_module.run_agents_guide_quality_check
         original_stop_mode = os.environ.get("ARBOR_STOP_MEMORY_HYGIENE_MODE")

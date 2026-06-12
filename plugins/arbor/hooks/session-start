@@ -79,9 +79,10 @@ def internal_subprocess_timeout_seconds() -> float:
 
 
 def parse_hook_payload(raw: str) -> dict:
-    if not raw.strip():
+    normalized = raw.lstrip("\ufeff")
+    if not normalized.strip():
         return {}
-    data = json.loads(raw)
+    data = json.loads(normalized)
     if not isinstance(data, dict):
         return {PROBE_PAYLOAD_MARKER: True}
     return data
