@@ -24,9 +24,9 @@ Do not use Arbor as a project-summary command, project-status command,
 subjective health report, migration advisor, broad maintenance report, planning
 method, implementation method, review method, or branch-finishing policy.
 Ordinary questions such as "what does this repo do?", "where were we?", or
-"what should I do next?" should load startup context when required by
-`AGENTS.md`, then answer directly from project sources unless the user also asks
-to initialize Arbor or run an Arbor framework check.
+"what should I do next?" should use injected SessionStart context when present,
+then answer directly from project sources unless the user also asks to
+initialize Arbor or run an Arbor framework check.
 
 ## Startup Workflow
 
@@ -42,18 +42,19 @@ When initializing, resuming, or checking Arbor state in a project:
    On Claude Code, use the same script with `--runtime claude`. Use
    `--runtime both` only when both project hook surfaces are intentionally
    requested.
-3. Load startup context in this order:
+3. Confirm the project SessionStart hook is the normal startup path. Its
+   deterministic context packet loads:
    - `AGENTS.md`
    - formatted `git log`
    - `.arbor/memory.md`
    - `git status`
-4. Use `scripts/collect_project_context.py --root <project-root>` when a
-   deterministic ordered context packet is useful.
+4. Use `scripts/collect_project_context.py --root <project-root>` when hooks
+   are unavailable or a deterministic ordered context packet is useful.
 5. Read additional project files only when the user request requires them.
 
-On Codex, `AGENTS.md` is the reliable native startup bootstrap. Do not assume
-`.codex/hooks.json` has already injected startup context; Codex may skip hooks
-until the user trusts them through `/hooks`.
+On Codex, project hooks may be skipped until the user trusts them through
+`/hooks`. `AGENTS.md` remains the durable project guide and fallback map, not
+proof that startup context was injected.
 
 On Claude Code, `CLAUDE.md` is a short bridge to the canonical Arbor files. A
 project initialized from Codex still needs Claude initialization to create
@@ -179,7 +180,6 @@ Arbor-managed changes.
 
 It should contain:
 
-- Startup Protocol;
 - Project Goal;
 - Project Constraints;
 - Project Map;
@@ -194,20 +194,22 @@ Project Map pointers should change. Put unresolved current-session state in
 knowledge in project docs.
 
 Use `scripts/run_agents_guide_drift_hook.py --root <project-root>` when
-Project Map drift needs an explicit packet. The Stop hook may also apply safe
-Project Map path maintenance before running guide quality checks, but only when
-the current session already has dirty Arbor-managed state or transcript
-recovery context; clean direct turns should not mutate `AGENTS.md` just because
-old map drift exists.
+Project Map drift needs an explicit packet. The Stop hook also applies safe
+Project Map path maintenance when the current git status includes new durable
+top-level entrypoints that are missing from the map, while still ignoring
+artifact directories such as `outputs/`, `tmp/`, caches, and build outputs.
+Clean direct turns should not mutate `AGENTS.md` just because old pre-existing
+map drift exists.
 
 ## Runtime Entrypoints
 
 Arbor runs the same context layer on Codex and Claude Code, but each runtime has
 its own project-local hook surface.
 
-- **Codex** auto-loads `AGENTS.md` natively. Project-level executable hooks are
-  registered in `.codex/hooks.json` with wrappers under `.codex/hooks/`.
-  Codex may skip untrusted hooks until the user reviews them in `/hooks`.
+- **Codex** uses project-level executable hooks registered in
+  `.codex/hooks.json` with wrappers under `.codex/hooks/` for Arbor startup
+  context. Codex may skip untrusted hooks until the user reviews them in
+  `/hooks`; `AGENTS.md` remains a project guide and fallback map.
 - **Claude Code** reads `CLAUDE.md` natively. Project-level executable hooks
   are registered in `.claude/settings.json` with wrappers under `.claude/hooks/`.
   The bridge points Claude Code back to `AGENTS.md` and `.arbor/memory.md`.

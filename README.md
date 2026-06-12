@@ -77,8 +77,8 @@ Use it for:
 
 `$arbor` is not a project summary, project status report, resume summary, health
 assessment, migration report, or maintenance advisor. For ordinary questions
-such as "what does this project do?" or "where were we?", load startup context
-and answer directly from project sources.
+such as "what does this project do?" or "where were we?", use injected startup
+context when present and answer directly from project sources.
 
 The normal `$arbor` output is detect-only and comes from
 `plugins/arbor/skills/arbor/scripts/run_framework_check.py` when available. It
@@ -102,16 +102,19 @@ user-authored project guidance.
 
 ## Startup Context
 
-Fresh and resumed sessions should load context in this order:
+Fresh and resumed sessions normally receive Arbor context from the project
+`SessionStart` hook. The deterministic startup packet loads:
 
 1. `AGENTS.md`
 2. recent formatted git history
 3. `.arbor/memory.md`
 4. `git status --short`
 
-`AGENTS.md` remains the reliable native bootstrap for Codex. Do not treat
-`.codex/hooks.json` as proof that startup context has already been injected,
-because Codex hooks still require runtime trust.
+`AGENTS.md` is the durable project guide and Project Map, not the primary
+startup protocol. Do not treat `.codex/hooks.json` as proof that startup
+context has already been injected, because Codex hooks still require runtime
+trust. If hooks are unavailable, use `AGENTS.md` as the map and inspect
+`.arbor/memory.md` plus git status before answering resume questions.
 
 `CLAUDE.md` is the native Claude Code bridge. It should stay short and point to
 the canonical Arbor files instead of duplicating the full project guide.
@@ -144,13 +147,15 @@ Codex initialization writes executable project hooks into target-project
 `.codex/hooks.json` plus wrappers under `.codex/hooks/`:
 
 - `SessionStart`: injects startup context for `startup` and `resume`.
-- `Stop`: quietly maintains `.arbor/memory.md` recovery notes and, only when
-  the current session already has dirty Arbor-managed state or transcript
-  recovery context, conservative `AGENTS.md` Project Map drift. A tracked
-  deletion under `.arbor/` still counts as Arbor-managed state so Stop can
-  recreate the recovery file before the session ends. Arbor reads unquoted
-  porcelain status, so spaces or special characters in `.arbor/` paths do not
-  hide Arbor-managed changes from Stop.
+- `Stop`: quietly maintains `.arbor/memory.md` recovery notes when Arbor
+  context would otherwise be hard to resume, and applies conservative
+  `AGENTS.md` Project Map drift when current git status shows new durable
+  top-level entrypoints. Output/artifact directories such as `outputs/`, `tmp/`,
+  caches, and build outputs are ignored. A tracked deletion under `.arbor/`
+  still counts as Arbor-managed state so Stop can recreate the recovery file
+  before the session ends. Arbor reads unquoted porcelain status, so spaces or
+  special characters in `.arbor/` paths do not hide Arbor-managed changes from
+  Stop.
 
 Claude Code initialization writes executable project hooks into
 `.claude/settings.json` plus wrappers under `.claude/hooks/` with the same

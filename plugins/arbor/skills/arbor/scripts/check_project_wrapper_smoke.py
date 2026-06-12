@@ -110,11 +110,10 @@ def next_patch_version(version: str) -> str:
 def valid_agents() -> str:
     return (
         "# Agent Guide\n\n"
-        "## Startup Protocol\n\n"
-        "Load Arbor startup context first.\n\n"
         "## Project Goal\n\n"
         "This fixture validates Arbor project wrapper smoke behavior.\n\n"
         "## Project Constraints\n\n"
+        "- Normal startup context is loaded by the Arbor SessionStart hook.\n"
         "- Keep fixture state local.\n\n"
         "## Project Map\n\n"
         "- `src/`: fixture source.\n"

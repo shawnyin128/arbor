@@ -294,6 +294,10 @@ def validate_reference_and_script_inventory(errors: list[str]) -> None:
     check(errors, "check_process_state.py" not in scripts, "old process-state checker must not be published")
     check(errors, "check_real_workflow_chains.py" not in scripts, "old real-chain checker must not be published")
     check(errors, "real-workflow-chain-review.md" not in references, "old real-chain reference must not be published")
+    agents_template = load_text(REFERENCES_ROOT / "agents-template.md", errors)
+    check(errors, "## Startup Protocol" not in agents_template, "AGENTS template must not publish a full Startup Protocol section")
+    check(errors, "## Project Map" in agents_template, "AGENTS template must keep Project Map as the durable orientation surface")
+    check(errors, "SessionStart hook" in agents_template, "AGENTS template must name the SessionStart hook as the normal startup path")
     for script in sorted(SCRIPTS_ROOT.glob("*.py")):
         text = load_text(script, errors)
         marker = "sys.dont_write_bytecode = True"
@@ -2078,7 +2082,6 @@ def validate_project_hook_registration(errors: list[str]) -> None:
         root = Path(tmp)
         (root / "AGENTS.md").write_text(
             "# Agent Guide\n\n"
-            "## Startup Protocol\n\nRead startup context.\n\n"
             "## Project Goal\n\nAdapter smoke project.\n\n"
             "## Project Constraints\n\n- Keep checks deterministic.\n\n"
             "## Project Map\n\n- `README.md`: overview.\n",
@@ -3344,7 +3347,6 @@ def load_hook_adapter_module(adapter_name: str) -> Any:
 def valid_agents_for_smoke() -> str:
     return (
         "# Agent Guide\n\n"
-        "## Startup Protocol\n\nRead startup context.\n\n"
         "## Project Goal\n\nSmoke project.\n\n"
         "## Project Constraints\n\n- Keep checks deterministic.\n\n"
         "## Project Map\n\n- `README.md`: overview.\n"
@@ -3616,6 +3618,54 @@ def validate_session_start_and_stop_behavior(errors: list[str]) -> None:
         check(errors, clean_stop_code == 0, "Stop clean project map check must not surface as a hook failure")
         check(errors, before_agents == after_agents, "Stop clean direct turns must not mutate AGENTS.md for pre-existing map drift")
         check(errors, '"continue": true' in clean_stop_output, "Stop clean project map check must allow stop")
+
+    with tempfile.TemporaryDirectory(prefix="arbor-stop-new-entrypoint-map-check-") as tmp:
+        root = Path(tmp)
+        run_git(root, errors, "init")
+        run_git(root, errors, "config", "user.email", "arbor@example.invalid")
+        run_git(root, errors, "config", "user.name", "Arbor Check")
+        (root / "README.md").write_text("# Smoke\n", encoding="utf-8")
+        (root / "AGENTS.md").write_text(valid_agents_for_smoke(), encoding="utf-8")
+        (root / ".arbor").mkdir()
+        memory_path = root / ".arbor" / "memory.md"
+        memory_path.write_text("# Session Memory\n\n## In-flight\n\n- None.\n", encoding="utf-8")
+        run_git(root, errors, "add", ".")
+        run_git(root, errors, "commit", "-m", "clean initialized project")
+        (root / "src").mkdir()
+        (root / "src" / "main.py").write_text("print('hello')\n", encoding="utf-8")
+        before_memory = memory_path.read_text(encoding="utf-8")
+        new_entrypoint_code, new_entrypoint_output = run_adapter(
+            "stop-memory-hygiene",
+            json.dumps({"cwd": str(root)}),
+            errors,
+            env,
+        )
+        updated_agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+        after_memory = memory_path.read_text(encoding="utf-8")
+        check(errors, new_entrypoint_code == 0, "Stop new durable entrypoint drift must not surface as a hook failure")
+        check(errors, "- `src/`:" in updated_agents, "Stop must update AGENTS Project Map for a newly added durable top-level entrypoint")
+        check(errors, before_memory == after_memory, "Stop Project Map-only drift must not mutate Arbor memory")
+        check(errors, '"continue": true' in new_entrypoint_output, "Stop new durable entrypoint drift must allow stop")
+
+    with tempfile.TemporaryDirectory(prefix="arbor-stop-output-artifact-map-check-") as tmp:
+        root = Path(tmp)
+        run_git(root, errors, "init")
+        run_git(root, errors, "config", "user.email", "arbor@example.invalid")
+        run_git(root, errors, "config", "user.name", "Arbor Check")
+        (root / "README.md").write_text("# Smoke\n", encoding="utf-8")
+        (root / "AGENTS.md").write_text(valid_agents_for_smoke(), encoding="utf-8")
+        (root / ".arbor").mkdir()
+        (root / ".arbor" / "memory.md").write_text("# Session Memory\n\n## In-flight\n\n- None.\n", encoding="utf-8")
+        run_git(root, errors, "add", ".")
+        run_git(root, errors, "commit", "-m", "clean initialized project")
+        (root / "outputs").mkdir()
+        (root / "outputs" / "scratch.txt").write_text("scratch\n", encoding="utf-8")
+        before_agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+        artifact_code, artifact_output = run_adapter("stop-memory-hygiene", json.dumps({"cwd": str(root)}), errors, env)
+        after_agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+        check(errors, artifact_code == 0, "Stop ignored output artifact drift must not surface as a hook failure")
+        check(errors, before_agents == after_agents, "Stop must not add ignored output artifact directories to AGENTS Project Map")
+        check(errors, '"continue": true' in artifact_output, "Stop ignored output artifact drift must allow stop")
 
     with tempfile.TemporaryDirectory(prefix="arbor-stop-unrelated-dirty-check-") as tmp:
         root = Path(tmp)

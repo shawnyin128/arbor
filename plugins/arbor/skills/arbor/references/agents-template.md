@@ -1,21 +1,5 @@
 # Agent Guide
 
-## Startup Protocol
-
-At the start of a fresh or resumed session, and before answering project
-overview questions such as "what does this project do?", load Arbor startup
-context first:
-
-1. Read this `AGENTS.md`.
-2. Read recent formatted git history.
-3. Read `.arbor/memory.md`.
-4. Read `git status --short`.
-
-If the Arbor plugin is available, prefer its startup context helper or
-`arbor:arbor` skill. If no helper path is available, perform the four reads
-manually before answering. Do not treat `.codex/hooks.json` as proof that
-startup context has already been injected.
-
 ## Project Goal
 
 Arbor has not recorded a stable project goal for this repository yet. Inspect
@@ -24,8 +8,12 @@ this section once the durable goal is known.
 
 ## Project Constraints
 
+- Normal Arbor startup context is loaded by the project SessionStart hook when
+  the runtime fires trusted project hooks. If hooks are unavailable, use this
+  guide as the durable map and inspect `.arbor/memory.md` plus git status
+  before answering resume questions.
 - Keep this file concise; record only durable repository-wide guidance that is
-  useful at startup.
+  useful for project orientation.
 - Keep transient current-session progress in `.arbor/memory.md`.
 - Put task-specific procedures, examples, and long design notes in skills or
   referenced project docs.

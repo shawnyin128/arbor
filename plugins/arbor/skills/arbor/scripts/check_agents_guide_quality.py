@@ -18,7 +18,6 @@ from run_agents_guide_drift_hook import project_map_token_exists, project_map_to
 
 
 REQUIRED_TOP_LEVEL_SECTIONS = (
-    "Startup Protocol",
     "Project Goal",
     "Project Constraints",
     "Project Map",
@@ -216,7 +215,7 @@ def render_text(result: GuideQualityResult) -> str:
     lines.append("")
     lines.append(
         "Fix AGENTS.md before stopping: keep only the Arbor guide sections, move transient detail elsewhere, "
-        "and make Project Map useful for startup orientation."
+        "and make Project Map useful for durable project orientation."
     )
     return "\n".join(lines) + "\n"
 

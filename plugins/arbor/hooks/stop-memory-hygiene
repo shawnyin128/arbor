@@ -621,6 +621,42 @@ def project_map_candidates(root: Path) -> list[str]:
     return candidates
 
 
+def durable_project_map_candidate_for_path(path: str) -> str | None:
+    normalized = path.replace("\\", "/").strip()
+    if not normalized:
+        return None
+    first = normalized.split("/", 1)[0]
+    if not first or first in SKIP_PROJECT_MAP_NAMES or first.startswith("."):
+        return None
+    if "/" in normalized:
+        return f"{first}/"
+    if first in INCLUDE_PROJECT_MAP_FILES:
+        return first
+    return None
+
+
+def status_project_map_drift_candidates(root: Path, status_lines: list[str]) -> list[str]:
+    agents_path = root / PROJECT_GUIDE_PATH
+    if not agents_path.is_file():
+        return []
+    try:
+        text = agents_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return []
+    bounds = extract_agents_section_bounds(text, PROJECT_MAP_HEADING)
+    if bounds is None:
+        return []
+    _heading_start, body_start, body_end = bounds
+    tokens = project_map_tokens(text[body_start:body_end])
+    candidates: list[str] = []
+    for line in status_lines:
+        for path in parse_status_paths(line):
+            candidate = durable_project_map_candidate_for_path(path)
+            if candidate and not candidate_is_mapped(candidate, tokens) and candidate not in candidates:
+                candidates.append(candidate)
+    return candidates
+
+
 def describe_project_map_candidate(candidate: str) -> str:
     descriptions = {
         "README.md": "public project overview and usage notes",
@@ -733,12 +769,13 @@ def main() -> int:
     arbor_status_lines = arbor_managed_status_lines(project_root, status_lines)
     dirty = bool(arbor_status_lines)
     transcript_context, transcript_path = transcript_suggests_arbor_resume_context(payload)
+    project_map_drift = bool(status_project_map_drift_candidates(project_root, status_lines))
     try:
         if dirty or transcript_context:
             refresh_quiet_memory_fallback(project_root, plugin_root, arbor_status_lines, transcript_context, transcript_path)
         else:
             prune_hook_fallback_memory(project_root)
-        if dirty or transcript_context:
+        if dirty or transcript_context or project_map_drift:
             refresh_agents_project_map(project_root)
             guide_ok, guide_output = run_agents_guide_quality_check(project_root, plugin_root)
             if not guide_ok:

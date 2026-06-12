@@ -81,13 +81,14 @@ current repository.
      project entrypoints, after adding a new skill or runtime adapter, and
      before handoff when project structure changed.
    - Stop-time mapping: safe Project Map drift is checked by the shared Stop
-     context-maintenance adapter only when the current session already has dirty
-     Arbor-managed state or transcript recovery context. After safe map
-     maintenance, Stop blocks unresolved guide-quality failures so the current
-     agent repairs `AGENTS.md` before ending the active maintenance path. Clean
-     direct turns do not mutate `AGENTS.md` or block stop for pre-existing map
-     drift. Project Goal and Project Constraints remain explicit/manual unless
-     a future design proves a safe automatic rule.
+     context-maintenance adapter when current git status includes new durable
+     top-level entrypoints that are missing from the map. Output artifacts,
+     caches, temporary directories, and build products are ignored. After safe
+     map maintenance, Stop blocks unresolved guide-quality failures so the
+     current agent repairs `AGENTS.md` before ending the active maintenance
+     path. Clean direct turns do not mutate `AGENTS.md` or block stop for
+     pre-existing map drift. Project Goal and Project Constraints remain
+     explicit/manual unless a future design proves a safe automatic rule.
 
 ## Policy
 
