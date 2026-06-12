@@ -9,6 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+
+sys.dont_write_bytecode = True
+
 from arbor_project_state import (
     CANONICAL_MEMORY_PATH,
     CLAUDE_GUIDE_PATH,
@@ -341,6 +344,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runtime", choices=RUNTIME_CHOICES, default="auto", help="Runtime hook surface to check or repair.")
     parser.add_argument("--codex-trusted", action="store_true", help="Assert Codex project hooks are already trusted in /hooks.")
     parser.add_argument("--claude-bridge", choices=CLAUDE_BRIDGE_CHOICES, default="auto", help="Claude bridge mode for repair.")
+    parser.add_argument("--strict", action="store_true", help="Exit nonzero unless the final Result is pass.")
     return parser
 
 
@@ -360,6 +364,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"arbor framework check failed: {exc}", file=sys.stderr)
         return 1
     print(render_report(report), end="")
+    if args.strict and result_status(report.rows) != RESULT_PASS:
+        return 1
     return 0
 
 

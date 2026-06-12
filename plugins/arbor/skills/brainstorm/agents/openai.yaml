@@ -1,4 +1,0 @@
-interface:
-  display_name: "Brainstorm"
-  short_description: "Clarify and plan Arbor work"
-  default_prompt: "Use $brainstorm for Arbor-managed planning, broad redesigns, evidence-backed research or experiment planning, and bug/fix planning before coding; do not use it for simple direct edits, evaluation, convergence, or release gates."

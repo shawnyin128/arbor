@@ -1,4 +1,0 @@
-interface:
-  display_name: "Converge"
-  short_description: "Public Arbor quality-loop orchestrator"
-  default_prompt: "Use $converge for public Arbor bug, defect, review-finding, repair, verification, and quality-loop continuation requests after planning exists; it owns the internal develop/evaluate cycle and routes planning changes to brainstorm."

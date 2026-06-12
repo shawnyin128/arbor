@@ -1,75 +1,79 @@
 ---
 name: arbor
-description: "Use when initializing or checking Arbor-created project framework files and runtime hook surfaces: AGENTS.md, .arbor/memory.md, CLAUDE.md, Codex project hooks, Claude project hooks, or shared hook adapters; not for project summaries, resume status, process-state reports, migration advice, or general maintenance."
+description: "Use when initializing or checking Arbor-created project framework files and runtime hook surfaces: AGENTS.md, .arbor/memory.md, CLAUDE.md, Codex project hooks, Claude project hooks, or shared hook adapters; not for project summaries, resume status, migration advice, or general maintenance."
 ---
 
 # Arbor
 
 ## Core Rule
 
-Fix the workflow order, not the agent's reading depth. Keep Arbor outcome-first:
-initialize and check only Arbor-created or Arbor-managed framework files and
-hook registration surfaces. `arbor` is not a generic project-summary skill and
-must not turn memory prose into product status, feature recommendations, or
-release advice. It is not a project-summary, project-status, resume-summary, or subjective health advice command. Ordinary
-questions like "what does this repo do?", "where were we?", or "what is the
-project status?" should load startup context when required by `AGENTS.md`, then
-answer direct and source-grounded from sources without selecting `arbor`, unless
-the user also asks to initialize Arbor or run an Arbor framework check. Long-term context is
-distributed across `AGENTS.md`, git history, and project docs;
-`AGENTS.md` is the project guide and map, not the whole memory store. Do not
-impose commit counts, byte limits, file limits, documentation depth, or
-summary-size limits as part of this skill. Use scripts as helpers; continue
-reading whatever files, diffs, logs, or docs the task requires.
+Arbor is a context reliability layer. It initializes and checks only
+Arbor-created or Arbor-managed project files and hook registration surfaces.
 
-## Red Flags
+Use Arbor for:
 
-| Red Flag | Required Correction |
-| --- | --- |
-| Project-summary shortcut: the user asks what the repo does, where work stands, or what to do next, and the response starts rendering `$arbor` status. | Load startup context when required, then answer directly from project sources unless the user explicitly asked for Arbor initialization or framework check. |
-| Broad health report shortcut: `$arbor` output adds health, maintenance, migration, process-state, feature-registry, release, or product-status sections. | Replace it with the fixed framework-check report from `run_framework_check.py`; normal `$arbor` checks only Arbor-created framework files and hook surfaces. |
-| Process-state report shortcut: process-state warnings, review docs, or feature queue rows are treated as part of the `$arbor` framework report. | Keep process-state validation in the workflow/release path; `$arbor` may report only framework surfaces and deterministic repair instructions. |
+- project initialization;
+- framework checks;
+- safe explicit framework repair;
+- project hook diagnosis;
+- startup context loading;
+- short-term memory hygiene;
+- conservative `AGENTS.md` Project Map support.
+
+Do not use Arbor as a project-summary command, project-status command,
+subjective health report, migration advisor, broad maintenance report, planning
+method, implementation method, review method, or branch-finishing policy.
+Ordinary questions such as "what does this repo do?", "where were we?", or
+"what should I do next?" should load startup context when required by
+`AGENTS.md`, then answer directly from project sources unless the user also asks
+to initialize Arbor or run an Arbor framework check.
 
 ## Startup Workflow
 
 When initializing, resuming, or checking Arbor state in a project:
 
-1. Ensure `AGENTS.md`, `.arbor/memory.md`, and the current runtime's bootstrap files exist. Use `scripts/init_project_memory.py --root <project-root>` when useful, even when `AGENTS.md` and `.arbor/memory.md` already exist. This explicit initialization flow migrates legacy `.codex/memory.md` by copying it to `.arbor/memory.md` when the canonical file is missing. Runtime-specific adapter initialization is separate from canonical project state: a project first initialized from Codex still needs a later Claude Code initialization to create the short `CLAUDE.md` bridge pointing at `AGENTS.md` and `.arbor/memory.md`. When the script lives inside a Claude Code plugin cache, it creates that bridge automatically; the `--claude-bridge on|off` flag overrides this default.
-2. Initialize hooks through the current runtime's own project surface. Use `scripts/diagnose_project_hooks.py --root <project-root> --plugin-root <arbor-plugin-root>` when the hook state is unclear; it separates intent-only files, executable wrappers, shared adapters, legacy plugin-level hook drift, and runtime trust gaps. On Codex, register project-local Arbor hooks with `scripts/register_project_hooks.py --root <project-root>` when useful; this writes executable `.codex/hooks.json` entries plus project-local wrappers under `.codex/hooks/` and preserves unrelated hook entries. Codex may still require the user to trust those hooks through `/hooks`, so file presence is not proof that a hook fired. On Claude Code, initialize project-local `.claude/settings.json` plus `.claude/hooks/` wrappers; Arbor does not ship plugin-level hook registrations because uninitialized projects have no project-local `.arbor/` state to maintain.
+1. Ensure `AGENTS.md`, `.arbor/memory.md`, and the current runtime's bootstrap
+   files exist. Use `scripts/init_project_memory.py --root <project-root>` when
+   useful. Existing `AGENTS.md` and `.arbor/memory.md` must be preserved.
+2. Initialize project hooks through the current runtime's project surface. Use
+   `scripts/diagnose_project_hooks.py --root <project-root> --plugin-root
+   <arbor-plugin-root>` when hook state is unclear. On Codex, use
+   `scripts/register_project_hooks.py --root <project-root> --runtime codex`.
+   On Claude Code, use the same script with `--runtime claude`. Use
+   `--runtime both` only when both project hook surfaces are intentionally
+   requested.
 3. Load startup context in this order:
    - `AGENTS.md`
    - formatted `git log`
    - `.arbor/memory.md`
    - `git status`
-4. Use `scripts/collect_project_context.py --root <project-root>` when a deterministic ordered context packet is useful. The script does not decide how much context is enough.
-5. Read additional docs, diffs, source files, or logs when the project map, task risk, or user request calls for them.
+4. Use `scripts/collect_project_context.py --root <project-root>` when a
+   deterministic ordered context packet is useful.
+5. Read additional project files only when the user request requires them.
 
-On Codex, `AGENTS.md` is the reliable native startup bootstrap. Do not assume `.codex/hooks.json` has already injected `arbor.session_startup_context`. For
-fresh sessions, resumed sessions, and project-overview prompts, actively run or
-manually reproduce the startup context load before answering. That bootstrap
-requirement is not a skill-selection rule: if the user asked for a normal
-project overview, answer directly from loaded sources in a direct and source-grounded response rather than rendering an `arbor` status checkpoint. Use
-`arbor` itself only for initialization, hook/context diagnosis, memory state,
-project-guide state, and deterministic Arbor framework checks.
+On Codex, `AGENTS.md` is the reliable native startup bootstrap. Do not assume
+`.codex/hooks.json` has already injected startup context; Codex may skip hooks
+until the user trusts them through `/hooks`.
 
-Collector sections include `Status`, `Source`, optional `Detail`, and raw body. Treat `missing`, `path-conflict`, `read-error`, `git-error`, and `empty` as fallback diagnostics, not blockers for reading later sections.
+On Claude Code, `CLAUDE.md` is a short bridge to the canonical Arbor files. A
+project initialized from Codex still needs Claude initialization to create
+`.claude/settings.json`, `.claude/hooks/`, and `CLAUDE.md`.
 
-## User-Facing Output Boundary
+## Visible Output Boundary
 
-Visible `arbor` output is a minimal deterministic framework check report, not a
-project summary, not a subjective health assessment, and not a maintenance
-report. Default `$arbor` runs in detect-only mode: it reports findings and does
-not mutate files unless the user explicitly asks for framework repair. Normal
-`$arbor` output must come from
-`scripts/run_framework_check.py --root <project-root> --plugin-root <arbor-plugin-root>`.
-That script is the source of truth for included surfaces, status vocabulary,
-runtime requirements, and output layout. Do not hand-write or reinterpret a
-framework report when the script can run. If the script is unavailable, the
-fallback report must use the exact same shape and vocabulary below.
+Visible `$arbor` output is a minimal deterministic framework check report.
+Default `$arbor` runs in detect-only mode and does not mutate files unless the
+user explicitly asks for framework repair.
+For automation, add `--strict`; strict mode keeps the same visible report but
+exits nonzero unless the final `Result` is `pass`.
 
-Use this fixed shape for normal visible output. The title must be exactly
-`**Arbor Framework Check**`, and the `Mode: detect-only` line is mandatory for
-default `$arbor` checks. No other normal sections are allowed:
+Normal `$arbor` output must come from:
+
+```bash
+scripts/run_framework_check.py --root <project-root> --plugin-root <arbor-plugin-root>
+```
+
+Use this exact shape if a fallback report is required:
 
 ```markdown
 **Arbor Framework Check**
@@ -94,13 +98,8 @@ Allowed `Status` values are lowercase only: `pass`, `fail`, `missing`, `drift`,
 Allowed `Required` values are lowercase only: `yes` and `no`.
 Allowed `Result` values are lowercase only: `pass`, `needs_repair`, and
 `blocked`.
-Do not substitute softer labels such as `ok`, `healthy`, `repairable`,
-`optional`, `present`, `clean`, `available`, `not configured`, or `external
-verification`; map them to the fixed vocabulary instead. Do not use title-cased
-variants such as `Pass`, `Fail`, `Warn`, `None`, `Automated`, or `Manual` in the
-table.
 
-The normal `$arbor` framework check includes only these surfaces:
+The normal framework check includes only these surfaces:
 
 - `AGENTS.md`
 - `.arbor/memory.md`
@@ -109,35 +108,24 @@ The normal `$arbor` framework check includes only these surfaces:
 - `.claude/settings.json + .claude/hooks/`
 - `shared hook adapters`
 
-Project-level hooks are required for the selected runtime. If `Runtime: codex`,
-`.codex/hooks.json + .codex/hooks/` must be `Required: yes`. If
-`Runtime: claude`, `.claude/settings.json + .claude/hooks/` must be
-`Required: yes`. If `Runtime: both`, both project-level hook surfaces must be
-required. Shared hook adapters are checked because project-level wrappers
-delegate to them, but they do not register runtime hooks by themselves.
-
-Do not include normal `$arbor` rows or sections for `docs/review/`,
-`.arbor/workflow/features.json`, process-state validation, project guide/map
-drift, git history, release/finalization, migration plans, feature registry
-reconciliation, product status, memory resume summaries, or maintenance advice.
-Do not use subjective report sections or wording such as `Framework Health`,
-`Canonical state`, `Healthy`, `Maintenance blocker`, `Suggested Arbor maintenance actions`, `Suggested next actions`, `highest priority`, `worth
-fixing`, or `No action required`.
-
-Do not use the old framework-report vocabulary: `Category`, `Check`,
-`Fixability`, `Repair action`, `Summary:`, or `Repair:`. The `Repair` column is
-an instruction column only; it must not imply that repair has already happened
-in detect-only mode. Do not write `auto`, `automated`, or similar fixability
-labels in normal visible output.
+Do not include normal `$arbor` rows or sections for git history, project
+summary, broad project health, maintenance advice, migration plans, product
+status, memory resume summaries, subjective recommendations, or unrelated local
+state.
 
 ## Framework Repair Mode
 
 Run repair mode only when the user explicitly asks Arbor to repair or fix the
-Arbor framework setup, or when the user selects a repair path from a detect-only
-report. Use `scripts/run_framework_check.py --mode repair --root <project-root>`
-and pass `--runtime codex`, `--runtime claude`, or `--runtime both` when the
-target runtime is explicit. For Claude Code bridge repair, pass
-`--claude-bridge on` when the user asked to initialize Claude Code support.
+framework setup, or when the user selects a repair path from a detect-only
+report. Use:
+
+```bash
+scripts/run_framework_check.py --mode repair --root <project-root>
+```
+
+Pass `--runtime codex`, `--runtime claude`, or `--runtime both` when the target
+runtime is explicit. For Claude Code bridge repair, pass `--claude-bridge on`
+when the user asked to initialize Claude Code support.
 
 Repair mode may apply only safe, idempotent framework repairs:
 
@@ -145,213 +133,271 @@ Repair mode may apply only safe, idempotent framework repairs:
 - create missing `AGENTS.md` from the Arbor template;
 - create missing `CLAUDE.md` bridge when Claude support is requested;
 - register or refresh Codex `.codex/hooks.json` and `.codex/hooks/` wrappers;
-- register or refresh Claude `.claude/settings.json` and `.claude/hooks/` wrappers.
+- register or refresh Claude `.claude/settings.json` and `.claude/hooks/`
+  wrappers.
 
-Repair mode must not silently apply policy-changing or destructive changes such
-as `.gitignore` policy edits, deleting files, or rewriting durable project-guide
-content. Invalid JSON, path conflicts, runtime trust, registry/review evidence
-inconsistencies, and any issue that needs user judgment or another Arbor
-workflow owner remain outside `$arbor` repair.
+Repair mode must not silently apply policy-changing or destructive edits such
+as `.gitignore` changes, deleting files, changing runtime trust, recovering
+invalid JSON, or rewriting durable user guidance.
 
-After any repair, rerun the framework check and report the before/after counts
-plus the same fixed row table. Do not present repair mode as project progress,
-release status, or a recommendation about the user's product work.
+After repair, rerun the framework check and report before/after counts plus the
+same fixed row table.
 
 ## Session Memory
 
-Use `.arbor/memory.md` as the recovery file for current Arbor context that a
-fresh agent needs to resume but cannot recover from committed history, durable
-docs, stable project guidance, and git status alone.
+Use `.arbor/memory.md` as the recovery file for current context that a fresh
+agent cannot recover from committed history, durable docs, stable project
+guidance, and git status alone.
+During explicit initialization, legacy `.codex/memory.md` is copied only when
+canonical `.arbor/memory.md` is missing and the legacy file is readable UTF-8;
+unreadable legacy memory must fail with a concise Arbor error, not a traceback.
+Dry-run validates legacy memory readability before reporting that migration
+would succeed.
+Initialization templates must also be readable UTF-8 package files; missing or
+unreadable templates must fail with a concise Arbor error, not a traceback.
+During startup context collection, unreadable memory is reported as unreadable
+and must not be treated as explicit resume context.
 
 Before adding an item, ask whether closing the session now would make the next
-agent lose Arbor-relevant discussion, checkpoint files, unresolved decisions, or
-the first resume action. Remove or shrink items once they are committed or moved
-to a durable home. Keep the file short enough to read during startup.
+agent lose Arbor-relevant discussion, changed artifact paths, unresolved
+decisions, or the first resume action. Remove or shrink items once they are
+committed or moved to a durable home. Keep the file short enough to read during
+startup.
 
-### In-Flight Memory Guard
+The Stop hook is a quiet safety net. It may preserve a concise resume pointer
+when dirty Arbor-managed state or conversation-only context would otherwise be
+lost. It should not create memory churn for clean direct answers, read-only
+inspection, or already durable state. A tracked deletion under `.arbor/` still
+counts as Arbor-managed state so Stop can recreate `.arbor/memory.md` instead of
+silently losing the recovery file. Stop status parsing must use unquoted
+porcelain status so spaces or special characters in `.arbor/` paths do not hide
+Arbor-managed changes.
 
-Every Arbor-managed workflow that leaves uncommitted or otherwise non-durable
-resume context must ensure `.arbor/memory.md` exists and records the current
-in-flight state before the assistant stops. This is mandatory even when review
-documents or feature registry rows were updated: those artifacts hold evidence,
-while `.arbor/memory.md` keeps the recovery pointer until startup context can
-recover the state without conversation memory.
+## AGENTS.md Management
 
-Use this guard whenever `git status --short` is non-empty because of Arbor workflow work:
+`AGENTS.md` is the durable project guide and map, not the whole memory store.
 
-- create `.arbor/memory.md` from `references/memory-template.md` if it is missing;
-- record the active feature, changed artifact paths, current checkpoint, unresolved risks, and next expected skill or user action;
-- keep the entry short and pre-triage; do not duplicate full review evidence;
-- after a successful commit or after the state is moved to durable docs, remove or shrink resolved entries so memory reflects only unresolved uncommitted work.
+It should contain:
 
-The Stop hook is the automatic safety net and should run memory maintenance at
-session boundaries, but active Arbor workflows should still avoid stopping with
-known stale recovery context.
+- Startup Protocol;
+- Project Goal;
+- Project Constraints;
+- Project Map;
+- minimal stable runtime notes when project-specific.
 
-## Long-Term Context
+It should not contain transient session progress, long design history, review
+logs, generic development methodology, copied external docs, or cache notes.
 
-Treat long-term context as a layered project record:
+Update `AGENTS.md` only when stable project goals, durable constraints, or
+Project Map pointers should change. Put unresolved current-session state in
+`.arbor/memory.md`, completed outcomes in git history, and deeper durable
+knowledge in project docs.
 
-- `AGENTS.md` is the durable project guide and entrypoint: stable project goal, durable constraints, and a project map pointing to the right code and docs.
-- `git log` is the completed-work history: committed features, fixes, and validation evidence.
-- project docs are the deeper knowledge base: design notes, review docs, domain context, and detailed decisions.
-
-Update `AGENTS.md` only when the stable guide or map should change. Do not compress all long-term memory into `AGENTS.md`. Put completed implementation history in commits, keep deeper durable knowledge in project docs, and keep only undecided transient observations in `.arbor/memory.md`.
-
-### Guidance Placement Guard
-
-Use `references/guidance-placement-guard.md` when deciding where agent-facing guidance belongs. The guard improves context quality without controlling how the agent reads, reasons, implements, or tests.
-
-Default placement:
-
-- Put durable repo goals, constraints, startup protocol, and map pointers in `AGENTS.md`.
-- Keep Claude Code's `CLAUDE.md` as a short bridge to `AGENTS.md` and `.arbor/memory.md`; do not duplicate the project guide there.
-- Put unresolved current-session state in `.arbor/memory.md`.
-- Put repeatable task methods, workflow contracts, and domain-specific behavior in skills and skill references.
-- Put append-only brainstorm, developer, evaluator, convergence, and release evidence in `docs/review/`.
-- Put completed outcomes in git history and release/checkpoint evidence.
-- Fetch or link volatile external context through tools, MCP servers, URLs, or task-specific docs instead of copying it into startup guidance.
-
-Only add guidance to startup files when removing it would likely cause repeated mistakes across sessions. If guidance grows into examples, tutorials, file-by-file descriptions, or task-specific procedures, move those details to a referenced doc or skill. Do not impose fixed reading limits, mandatory plan-first behavior, mandatory subagents, fixed implementation strategies, or fixed test suites as part of placement guidance.
-
-### Skill Authoring Quality Guard
-
-Use `references/skill-authoring-quality-guard.md` when creating or editing Arbor skills. Skill descriptions are discovery triggers, not workflow summaries: they should say when to load the skill, include key non-triggers when misrouting is common, and leave checklist, routing, and output details in the skill body.
-
-### Project Map Drift Guard
-
-Before handoff, release, publish, or a session boundary after adding, removing, or renaming durable project entrypoints, run `scripts/run_agents_guide_drift_hook.py --root <project-root>` or reproduce its checks manually. The drift packet includes top-level project structure, mapped path validation, git status, and `Project Map Drift Candidates`. When that section reports `update-needed`, update only the `AGENTS.md` `Project Map` section before continuing unless each missing or stale path is intentionally excluded and the reason is recorded in review evidence or `.arbor/memory.md`.
-
-Durable project-map entrypoints include stable top-level directories, new skills, hook adapters, runtime integration paths, shared helper modules, command/script roots, and project docs that future agents need for startup orientation. Do not add transient caches, pycache, scratch output, current-session implementation notes, or unresolved progress to `AGENTS.md`; those belong in ignored artifacts or `.arbor/memory.md`.
-
-### Process State Authority Guard
-
-Use `scripts/check_process_state.py --root <project-root>` when a managed Arbor workflow is about to stop, hand off, checkpoint, release, or publish and the current state needs an auditable consistency check. The checker is read-only: it validates feature-registry shape, review-document links, phase evidence, checkpoint Release Round commit evidence, short-term memory for open work, stale in-flight memory after resolved work, and optional Release Round evidence for done features.
-
-Treat normal warnings as migration or advisory evidence unless the current gate explicitly requires strictness. Use `--strict`, `--require-release-round-for-done`, or `--require-checkpoint-commit-evidence` for release gates that should fail on those gaps. Do not use this guard to choose implementation steps, tests, routes, or feature priorities.
-
-### Rendered Checkpoint Guard
-
-Use `references/rendered-checkpoint-protocol.md` as the shared boundary for Arbor's user-visible workflow checkpoints. The raw `*.v1` packet is a runtime handoff; normal users should see the rendered checkpoint from `user_response` and `ui`.
-
-The protocol applies only to Arbor workflow checkpoints and decision points. It must not force ordinary direct answers, read-only explanations, implementation strategy, testing strategy, or private reasoning into a template. For workflow checkpoints, the visible text must explain the current situation, what the checkpoint controls, evidence or findings, material defaults or judgment calls, and the next step in readable language.
-
-Before claiming a workflow-facing change is validated, inspect the final rendered response when feasible. The tracked real-chain runner captures `final-response.md`; use it to reject raw schema leaks, route labels, terminal-state labels, unexplained internal ids, and missing required visible sections. Static fixture checks are preflight, not a substitute for real final-response inspection.
-
-### Done-When Verification Thread
-
-Use `references/done-when-verification-thread.md` as the shared cross-skill contract for proving Arbor-managed work. The thread starts in `brainstorm` with task-appropriate done-when criteria, continues in `develop` by mapping self-tests to those criteria, is challenged independently by `evaluate`, is checked for agreement by `converge`, and is confirmed by `release` as evidence existence rather than correctness re-evaluation.
-
-The thread is evidence discipline, not a fixed testing strategy. It must not force one test type, full test suite, live runtime replay, subagent use, or plan-first behavior for direct tasks. Small direct answers and simple edits stay outside the managed verification thread.
-
-### Decision Trace Handoff
-
-Use `references/decision-trace-handoff.md` to preserve decision continuity across Arbor workflow roles. Brainstorm records key decisions, rejected options, allowed implementation discretion, and decision invariants. Develop records implementation-time decisions and decision deviations against that trace. Evaluate checks decision drift and hidden decision conflict. Converge checks decision trace consistency before marking a feature done.
-
-This is not a default multi-agent orchestration layer. It must not require subagents or worktrees, fan-out execution, fixed implementation strategy, or heavy workflow for direct tasks. The trace narrows only workflow evidence: it helps later stages understand the decisions that matter while preserving normal agent judgment inside the accepted scope.
-
-### Delegation Packet And Effort Budget
-
-Use `references/delegation-packet-effort-budget.md` only when optional delegation is useful for separable evidence gathering. A delegation packet names the objective, output format, tools/sources, boundaries, effort budget, context pointers, and stop conditions for a bounded investigation.
-
-This is advisory, not a default multi-agent orchestration layer. Direct answers, simple edits, tightly coupled coding, and tightly coupled workflow changes remain single-threaded by default. The guidance must not require subagents or worktrees, fan-out execution, parallel coding, fixed tool-call counts, or a fixed implementation strategy.
-
-### Outcome Evaluation And Observability
-
-Use `references/outcome-eval-observability.md` to keep workflow validation outcome-first. Evaluate final state, checkpoint outcomes, rendered output, review evidence, process state, git/file side effects, real workflow replay, and trace evidence before arguing about exact path matching.
-
-This guidance must not require LLM judges, fixed path matching, exact turn-by-turn replay, subagents, worktrees, fan-out execution, or one universal test type by default. When exact runtime telemetry or live proof is unavailable, label the strongest deterministic substitute as a weak pass and name the remaining proof.
-
-### Loop Health Advisory
-
-Use `references/loop-health-advisory.md` when a develop/evaluate correction loop shows repeated same-class failures, evidence conflicts, weak replay evidence, or context contamination. The advisory helps `evaluate` and `converge` recommend a narrower correction, re-brainstorming, stronger runtime replay, or a fresh-session handoff when the loop is becoming unreliable.
-
-The advisory is not an automatic reset mechanism. It must not automatically clear context, spawn subagents, create worktrees, or require fan-out execution. Subagents and worktrees remain optional strategies, and normal correction loops should continue when the owner is clear, evidence is coherent, and the loop remains below the round limit.
+Use `scripts/run_agents_guide_drift_hook.py --root <project-root>` when
+Project Map drift needs an explicit packet. The Stop hook may also apply safe
+Project Map path maintenance before running guide quality checks, but only when
+the current session already has dirty Arbor-managed state or transcript
+recovery context; clean direct turns should not mutate `AGENTS.md` just because
+old map drift exists.
 
 ## Runtime Entrypoints
 
-Arbor runs the same workflow on Codex and Claude Code, but each runtime carries it through a different project-local entrypoint surface. The shared project state is always `AGENTS.md` plus `.arbor/memory.md`; everything else is adapter-side and not universal across runtimes.
+Arbor runs the same context layer on Codex and Claude Code, but each runtime has
+its own project-local hook surface.
 
-- **Codex** auto-loads `AGENTS.md` natively. Project-level executable hooks are registered in `.codex/hooks.json` with wrappers under `.codex/hooks/` via `scripts/register_project_hooks.py`, but Codex may skip untrusted hooks until the user reviews them in `/hooks`. Validate hook firing in a trusted interactive Codex or desktop session; non-interactive `codex exec` runs are not a reliable proof that project hooks fired. The `AGENTS.md` Startup Protocol is the reliable Codex bootstrap and must tell the agent to run or manually reproduce `arbor.session_startup_context` on fresh/resumed/project-overview turns.
-- **Claude Code** reads `CLAUDE.md` natively. When `init_project_memory.py` runs from a Claude Code plugin install, it generates a short `CLAUDE.md` bridge that points at `AGENTS.md` and `.arbor/memory.md` (the canonical Arbor state). This must still happen when Codex already created the canonical files; existing `AGENTS.md` and `.arbor/memory.md` are not proof that the Claude adapter was initialized. Project-level `.claude/settings.json` plus `.claude/hooks/` wrappers are the supported Claude Code hook registration path. `.codex/hooks.json` is not a Claude hook registration. Goal/constraint drift is not auto-fired on Claude Code (no native event maps to it); invoke it through the user-driven workflows above.
+- **Codex** auto-loads `AGENTS.md` natively. Project-level executable hooks are
+  registered in `.codex/hooks.json` with wrappers under `.codex/hooks/`.
+  Codex may skip untrusted hooks until the user reviews them in `/hooks`.
+- **Claude Code** reads `CLAUDE.md` natively. Project-level executable hooks
+  are registered in `.claude/settings.json` with wrappers under `.claude/hooks/`.
+  The bridge points Claude Code back to `AGENTS.md` and `.arbor/memory.md`.
 
-The runtime is auto-detected from the script's installed cache path (`~/.codex/plugins/cache/...` vs `~/.claude/plugins/cache/...`). Override with `--claude-bridge on|off` on `init_project_memory.py` when needed.
+Arbor does not ship plugin-level hook registrations. Uninitialized projects do
+not have project-local `.arbor/` state to maintain, and project-level wrappers
+are the surface that `$arbor` can diagnose and repair.
 
 ## Project Hooks
 
-Arbor has runtime-specific hook surfaces. `.codex/hooks.json` plus `.codex/hooks/` is the Codex project surface for two executable hooks:
+Project hooks delegate to shared adapter scripts:
 
-- `SessionStart`: delegates to `hooks/session-start`, which loads startup context in the required order.
-- `Stop`: delegates to `hooks/stop-memory-hygiene`, which runs Arbor context
-  maintenance. The Stop path refreshes `.arbor/memory.md` recovery state when
-  needed, applies conservative `AGENTS.md` Project Map drift updates for durable
-  entrypoint changes, then blocks stop when `AGENTS.md` guide quality still has
-  missing required sections, unexpected top-level sections, template
-  placeholders, thin Project Map content, missing durable entrypoints, stale
-  mapped paths, or transient workflow progress that belongs in
-  `.arbor/memory.md`, skills, review docs, or durable project docs.
+- `hooks/session-start` calls `run_session_startup_hook.py` and applies a
+  conservative runtime injection budget.
+- `hooks/stop-memory-hygiene` calls the Stop context-maintenance path. It may
+  refresh `.arbor/memory.md`, apply conservative `AGENTS.md` Project Map path
+  maintenance for dirty or transcript-backed recovery context, then block stop
+  only when guide quality still fails in that active-maintenance path.
 
-The underlying Arbor hook intents remain `arbor.session_startup_context`, `arbor.in_session_memory_hygiene`, and `arbor.goal_constraint_drift`, but Codex has no native project-guide drift event. Guide drift stays skill-driven through `run_agents_guide_drift_hook.py`.
+Hook commands use the absolute Python interpreter that ran registration. Stale
+bare `python` or `python3` wrapper commands are hook drift and should be
+repaired by re-registration.
+Windows hook command arguments must be quoted even when paths have no spaces,
+because shell metacharacters such as `&` are valid in paths but unsafe when
+emitted bare.
+POSIX Claude Code hook commands must prefer `CLAUDE_PROJECT_DIR` and fall back
+to `pwd` so wrapper paths stay project-local when the runtime variable is not
+available.
 
-The Stop context-maintenance hook should be treated as high-recall around Arbor
-resume state and durable guide drift. It should run before stops, handoffs,
-release gates, commits, cache syncs, failed checks, or user review checkpoints
-when Arbor-managed changes or guide/map drift may exist. It is also the primary
-`AGENTS.md` drift guard for users who use Arbor only as a context layer. It
-auto-applies only conservative Project Map path maintenance before the quality
-check, and still honors `stop_hook_active`, non-Arbor projects, and explicit
-no-write/read-only payloads before any mutation or block.
+Hook diagnosis must compare project wrapper file content with Arbor's current
+generated wrapper template. A wrapper that merely exists but has stale or
+hand-edited content is hook drift, and repair mode should refresh it by
+re-registration. CRLF-versus-LF line-ending differences alone are not hook
+drift. Invalid wrapper text encodings count as stale wrapper content rather
+than diagnostic crashes, and re-registration must refresh those files from the
+current generated template.
+Hook configuration files that cannot be read as UTF-8 must be reported as
+invalid hook surfaces by diagnosis, not as Python tracebacks. Registration and
+repair must fail cleanly on unreadable hook configuration encodings instead of
+rewriting or crashing through those files.
+Re-registration must be idempotent. Windows wrappers with current content must
+not be reported as `chmod` repairs solely because Windows lacks POSIX executable
+bits; POSIX wrappers should still receive executable permission repair.
+If a registered project wrapper cannot find an installed Arbor plugin cache, it
+must soft-skip rather than return a hook failure: SessionStart emits no context,
+and Stop emits an allow-stop JSON response. Diagnose or repair hook state after
+the session is no longer at risk of being interrupted by a failing hook.
+Project wrappers and shared adapters must also ignore plugin-root environment
+paths that cannot be inspected, using the next candidate or the packaged adapter
+root instead of surfacing a hook failure.
+Automatic cache discovery must consider only complete Arbor plugin roots in
+`X.Y.Z` version directories. Explicit plugin-root environment overrides may
+still point at a local development source for smoke tests, but stale ad hoc
+cache directories such as `dev` or incomplete cache copies must be ignored.
+Wrappers must apply the same soft-fail behavior if the selected cache adapter
+exits nonzero. Failed adapter diagnostics belong in Arbor diagnosis, not in a
+runtime hook failure.
+Wrappers must also bound adapter execution with an internal timeout, configurable
+for tests through `ARBOR_HOOK_ADAPTER_TIMEOUT_SECONDS`, and soft-fail on timeout
+or adapter discovery or launch failure.
+The SessionStart adapter must bound startup helper execution, configurable for
+tests through `ARBOR_SESSION_START_INTERNAL_TIMEOUT_SECONDS`; startup helper
+timeouts or launch failures soft-skip without injecting partial context.
+The Stop adapter must also bound internal git probes and guide-quality checks,
+configurable for tests through `ARBOR_STOP_INTERNAL_TIMEOUT_SECONDS`; git probes
+and guide checks that time out or fail to start soft-skip rather than hanging or
+blocking Stop. In block mode, block-mode memory helper timeouts or launch
+failures must emit the normal allow-stop response.
+Stop wrappers must validate successful adapter stdout before passing it to the
+runtime. Empty or non-JSON Stop output must fall back to allow-stop JSON.
+Project wrappers must not pass successful adapter stderr through to the
+runtime; diagnostics belong in Arbor diagnosis, and hook stdout is the only
+success output channel.
+Hook diagnosis must bound shared-adapter probe execution, configurable for tests
+through `ARBOR_HOOK_ADAPTER_PROBE_TIMEOUT_SECONDS`, and report probe timeouts or
+launch failures as `shared-adapters-probe-failed` rather than hanging or
+crashing framework checks.
+Hook diagnosis must reject incomplete `--plugin-root` directories before
+probing shared adapters; the root must include the Codex manifest, Claude
+manifest, and Arbor skill so diagnosis matches wrapper cache-selection rules.
+SessionStart startup-context git probes must be bounded, configurable for tests
+through `ARBOR_STARTUP_GIT_TIMEOUT_SECONDS`; a timed-out or failed-to-start git
+command should mark only that context section as failed so readable file context
+can still be injected.
+The quality hard gate must bound each subprocess check, configurable for tests
+through `ARBOR_QUALITY_GATE_TIMEOUT_SECONDS`, so a stuck child check fails a row
+instead of hanging the workflow. Subprocess launch failures must also fail the
+affected row with a readable diagnostic instead of crashing the gate.
+The skill package checker must bound each `quick_validate.py` invocation,
+configurable for tests through `ARBOR_SKILL_PACKAGE_TIMEOUT_SECONDS`, so direct
+skill validation cannot hang outside the hard gate. Validator launch failures
+must be reported as normal skill package failures instead of Python tracebacks.
+The release readiness gate must also bound subprocess checks, configurable for
+tests through `ARBOR_RELEASE_READINESS_TIMEOUT_SECONDS`, so install-state or
+runtime-evidence checks cannot hang publishability decisions. Subprocess launch
+failures must fail the affected row with a readable diagnostic instead of
+crashing the gate. The published source `git status` check is part of that
+bounded release-readiness surface. Source manifests must be JSON objects.
+Direct install-state checks must bound their own git probes, configurable for
+tests through `ARBOR_INSTALL_STATE_GIT_TIMEOUT_SECONDS`, so dirty-source
+inspection cannot hang or crash when git fails to start outside release
+readiness. Source or cache digest failures are reported as install-state drift,
+not as tracebacks.
+Local plugin cache sync must bound its git dirty-source and commit probes,
+configurable for tests through `ARBOR_CACHE_SYNC_GIT_TIMEOUT_SECONDS`, so cache
+publishing cannot hang or crash while inspecting source state.
+The context boundary check must read published text files as UTF-8 only. Invalid
+UTF-8 is a package-boundary failure, not a cue to fall back to a platform
+default encoding. Published JSON surfaces must be JSON objects, so manifests and
+marketplace files cannot pass as arrays, strings, or other JSON shapes.
 
-Do not store Arbor hook state in user-global memory. Re-register hooks when needed; registration is idempotent and should preserve unrelated project hooks.
-
-Arbor no longer ships plugin-level hook registrations. Codex project hooks are
-registered in `.codex/hooks.json` and call wrappers under `.codex/hooks/`.
-Claude Code project hooks are registered in `.claude/settings.json` and call
-wrappers under `.claude/hooks/`. Those
-wrappers locate the installed Arbor plugin cache and delegate to the shared
-adapter scripts:
-
-- `hooks/session-start` (`SessionStart`) calls `run_session_startup_hook.py` and applies a conservative runtime injection budget.
-- `hooks/stop-memory-hygiene` (`Stop`) is the compatibility-named Stop
-  context-maintenance adapter. It maps memory hygiene and conservative
-  `AGENTS.md` Project Map drift maintenance onto each runtime's Stop event.
-  After safe map maintenance, it runs `AGENTS.md` guide quality checks on
-  Arbor-managed projects and blocks stop until the guide is repaired when the
-  guide has missing required sections, unexpected top-level sections, template
-  placeholders, thin Project Map content, missing durable entrypoints, stale
-  mapped paths, or transient workflow progress. `Stop` output can re-enter the
-  agent loop as a visible continuation, so memory hygiene remains silent by
-  default; guide-quality failures are the intentional blocking path. It honors
-  `stop_hook_active` first so it can never loop. Set
-  `ARBOR_STOP_MEMORY_HYGIENE_MODE=block` to opt into blocking with the
-  `run_memory_hygiene_hook.py` packet as the block reason for memory debugging
-  after guide quality passes.
-
-`arbor.goal_constraint_drift` has no native Claude Code event; it stays user/skill-driven there.
+Project wrappers and hook adapters ignore incomplete plugin-root environment
+values unless they point to a full Arbor plugin root with Codex and Claude
+manifests plus `skills/arbor/SKILL.md`. Hook adapters also soft-skip empty
+probe payloads so hook UIs can validate commands without reporting false
+failures.
 
 ## Resources
 
 - `references/memory-template.md`: template for `.arbor/memory.md`
 - `references/agents-template.md`: template for `AGENTS.md`
-- `references/claude-template.md`: bridge template for `CLAUDE.md` (Claude Code installs only)
+- `references/claude-template.md`: bridge template for `CLAUDE.md`
 - `references/project-hooks-template.md`: project hook contract
-- `references/real-workflow-chain-review.md`: real-runtime chain review case matrix and release gate
-- `references/process-state-authority.md`: source-of-truth map for Arbor workflow state
-- `references/rendered-checkpoint-protocol.md`: shared user-visible checkpoint rendering contract
-- `references/guidance-placement-guard.md`: placement rubric for startup guidance, memory, skills, review evidence, and external context
-- `references/done-when-verification-thread.md`: cross-skill done-when criteria and verification evidence thread
-- `references/decision-trace-handoff.md`: decision trace handoff for key decisions, implementation-time decisions, decision drift checks, and optional delegation boundaries
-- `references/delegation-packet-effort-budget.md`: optional delegation packet and effort budget guidance for bounded evidence gathering
-- `references/outcome-eval-observability.md`: outcome-first evaluation and observable proof guidance for workflow changes
-- `references/loop-health-advisory.md`: advisory for repeated failures, evidence conflicts, weak replay, context contamination, and fresh-session handoff recommendations
-- `references/closed-loop-diagnostics.md`: diagnostic evidence packet for simulation collapse, agent behavior drift, closed-loop dynamics, live artifact quality, and schema-first weak-pass gaps
-- `scripts/init_project_memory.py`: create missing project memory files without overwriting existing files
-- `scripts/collect_project_context.py`: collect startup context in the required order
-- `scripts/run_session_startup_hook.py`: execute Hook 1 and forward optional agent-selected git log arguments
-- `scripts/run_memory_hygiene_hook.py`: execute Hook 2 and forward optional agent-selected diff arguments
-- `scripts/run_agents_guide_drift_hook.py`: execute Hook 3 and forward optional agent-selected project doc paths
-- `scripts/check_agents_guide_quality.py`: validate `AGENTS.md` guide shape and Project Map usefulness for Stop-time blocking and explicit checks
-- `scripts/diagnose_project_hooks.py`: classify Codex and Claude hook surfaces as intent-only, executable wrapper state, shared adapter state, legacy plugin-level hook drift, and trust gaps
-- `scripts/check_process_state.py`: validate Arbor workflow state facts without mutating implementation or routing decisions
-- `scripts/register_project_hooks.py`: create or update `.codex/hooks.json` plus `.codex/hooks/` wrappers on Codex, or `.claude/settings.json` plus `.claude/hooks/` wrappers on Claude Code
-- `scripts/check_real_workflow_chains.py`: execute real Codex/Claude workflow chain review cases
+- `references/runtime-smoke-template.md`: release-time runtime smoke evidence
+  template
+- `scripts/init_project_memory.py`: create missing project memory files without
+  overwriting existing files
+- `scripts/collect_project_context.py`: collect startup context in the required
+  order
+- `scripts/run_session_startup_hook.py`: execute startup context loading
+- `scripts/run_memory_hygiene_hook.py`: emit memory hygiene context
+- `scripts/run_agents_guide_drift_hook.py`: emit `AGENTS.md` drift context
+- `scripts/run_framework_check.py`: render the deterministic Arbor framework
+  check and apply explicit safe repair mode
+- `scripts/sync_local_plugin_cache.py`: sync committed plugin source to local
+  runtime caches; requires matching `X.Y.Z` Codex and Claude source manifest
+  versions, refuses dirty plugin source unless explicitly overridden for local
+  development, rejects sources outside the repository, refuses sync targets
+  inside the source tree, stages cache copies before replacing installed cache
+  directories, preserves the existing installed cache if staging copy or final
+  replacement fails, refreshes cached adapters and removes legacy plugin-level
+  hook manifests only in `X.Y.Z` release cache directories, and verifies synced
+  targets after writing
+- `scripts/check_cache_sync_adapters.py`: run cache-sync adapter validation as
+  a separate module so installed-cache behavior can evolve independently
+- `scripts/check_agents_guide_quality.py`: validate `AGENTS.md` guide shape and
+  Project Map usefulness
+- `scripts/diagnose_project_hooks.py`: classify Codex and Claude hook surfaces
+- `scripts/register_project_hooks.py`: create or update Codex and Claude project
+  hook wrappers
+- `scripts/check_context_boundary.py`: ensure only the context layer is
+  published
+- `scripts/check_install_state.py`: report whether local Arbor plugin caches
+  match the source plugin without mutating them; use `--strict` for release
+  automation, `X.Y.Z` source-version enforcement, dirty-source protection, and
+  `--runtime codex|claude|both` for targeted runtime smoke; selected-cache
+  reporting mirrors project wrappers by considering only complete Arbor plugin
+  roots in `X.Y.Z` release cache directories; digest read failures become drift
+  evidence rather than tracebacks
+- `scripts/check_plugin_adapters.py`: validate shared hook adapters and project
+  hook registration behavior
+- `scripts/check_project_wrapper_smoke.py`: run repeatable local smoke checks
+  for generated Codex and Claude project wrappers through explicit plugin-root
+  and fake installed-cache discovery paths; fake cache directories must use
+  the source manifest `X.Y.Z` version rather than a hardcoded release, and
+  smoke must cover non-release cache ignore behavior, incomplete
+  higher-version cache fallback, and bad plugin-root environment fallback;
+  smoke subprocess launch failures or timeouts must be readable failures;
+  `ARBOR_PROJECT_WRAPPER_SMOKE_TIMEOUT_SECONDS` may shorten the smoke
+  subprocess timeout for tests or CI
+- `scripts/check_project_wrapper_smoke_adapters.py`: run wrapper-smoke adapter
+  contract validation as a separate module before or during broader adapter
+  checks
+- `scripts/check_python_syntax.py`: validate Arbor Python sources without
+  writing bytecode artifacts; extensionless hook adapters with invalid UTF-8
+  must fail validation rather than be skipped
+- `scripts/check_source_hygiene.py`: validate published text source hygiene,
+  including untracked files, before relying on `git diff --check`
+- `scripts/check_quality_gate.py`: run the deterministic Arbor v2 hard gate
+- `scripts/check_runtime_smoke_evidence.py`: validate filled runtime smoke
+  evidence before treating it as release proof; any passing Fired marker
+  requires runtime trust, absolute Python command, absolute local cache path,
+  and evidence; the runtime matrix must include exactly one row for each
+  template matrix entry with no extra runtime rows; audit metadata and required
+  sections must each appear exactly once; release readiness also requires Codex
+  and Claude source manifests to agree on an `X.Y.Z` release version, Codex and
+  Claude marketplace source paths to point at the plugin root under release,
+  then requires the evidence `Version:` and `Commit:` to match the source under
+  release; unreadable evidence files fail with concise diagnostics
+- `scripts/check_runtime_smoke_evidence_adapters.py`: run runtime-smoke
+  evidence contract validation as a separate module before or during broader
+  adapter checks
+- `scripts/check_skill_packages.py`: validate published Arbor skill packages

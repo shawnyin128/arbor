@@ -30,10 +30,10 @@ The adapter still self-gates:
 * Dirty Arbor worktrees stay silent by default, preventing hook prompts from
   replacing the user-facing final answer.
 
-Empty probe payloads and missing ``cwd`` soft-exit with code 0 so hook UIs can
-validate the command without showing a failure. Unexpected failures in shared
-scripts, git, or subprocesses still report stderr and exit non-zero without
-blocking the stop.
+Empty probe payloads, missing ``cwd``, git launch failures, helper timeouts, and
+helper launch failures soft-exit with code 0 so hook UIs can validate the
+command without showing a failure or blocking the stop. Shared script nonzero
+exits still report stderr and exit non-zero.
 """
 
 from __future__ import annotations
@@ -122,6 +122,7 @@ SKIP_PROJECT_MAP_NAMES = {
 }
 INCLUDE_PROJECT_MAP_FILES = {"Makefile", "README.md", "package.json", "pyproject.toml"}
 TRANSCRIPT_BUDGET = 64000
+DEFAULT_INTERNAL_SUBPROCESS_TIMEOUT_SECONDS = 10.0
 
 TRUNCATION_NOTICE = (
     "[truncated - Arbor memory hygiene packet exceeded the adapter budget; "
@@ -132,6 +133,14 @@ PROBE_PAYLOAD_MARKER = "__arbor_probe_payload__"
 
 def _emit_error(message: str) -> None:
     print(f"arbor stop-memory-hygiene: {message}", file=sys.stderr)
+
+
+def looks_like_arbor_plugin_root(root: Path) -> bool:
+    return (
+        (root / ".codex-plugin" / "plugin.json").is_file()
+        and (root / ".claude-plugin" / "plugin.json").is_file()
+        and (root / "skills" / "arbor" / "SKILL.md").is_file()
+    )
 
 
 def allow_stop() -> int:
@@ -153,7 +162,12 @@ def resolve_plugin_root() -> Path:
     for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CODEX_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
         env = os.environ.get(env_name)
         if env:
-            return Path(env).resolve()
+            try:
+                root = Path(env).expanduser().resolve()
+                if looks_like_arbor_plugin_root(root):
+                    return root
+            except (OSError, RuntimeError):
+                continue
     return Path(__file__).resolve().parent.parent
 
 
@@ -166,39 +180,102 @@ def parse_hook_payload(raw: str) -> dict:
     return data
 
 
-def worktree_is_dirty(root: str) -> bool:
-    """Return True when ``git status --porcelain`` reports uncommitted state.
-
-    A non-git directory or any git failure returns False: without a clean
-    dirty signal the adapter must not block the stop.
-    """
-    proc = subprocess.run(
-        ["git", "-C", root, "status", "--porcelain"],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if proc.returncode != 0:
-        return False
-    return bool(proc.stdout.strip())
-
-
 def git_status_lines(root: Path) -> list[str]:
-    proc = subprocess.run(
-        ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=all"],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=internal_subprocess_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired:
+        return []
+    except OSError:
+        return []
     if proc.returncode != 0:
         return []
-    return [line for line in proc.stdout.splitlines() if line.strip()]
+    return parse_porcelain_z_status(proc.stdout)
+
+
+def parse_porcelain_z_status(output: str) -> list[str]:
+    records = output.split("\0")
+    lines: list[str] = []
+    index = 0
+    while index < len(records):
+        record = records[index]
+        if not record:
+            index += 1
+            continue
+        status = record[:2]
+        path = record[3:] if len(record) > 3 else ""
+        if any(flag in status for flag in ("R", "C")) and index + 1 < len(records):
+            old_path = records[index + 1]
+            if old_path:
+                lines.append(f"{status} {old_path} -> {path}")
+            else:
+                lines.append(record)
+            index += 2
+            continue
+        lines.append(record)
+        index += 1
+    return lines
+
+
+def project_has_arbor_plugin_source(root: Path) -> bool:
+    plugin_root = root / "plugins" / "arbor"
+    return (
+        (plugin_root / ".codex-plugin" / "plugin.json").is_file()
+        and (plugin_root / ".claude-plugin" / "plugin.json").is_file()
+        and (plugin_root / "skills" / "arbor" / "SKILL.md").is_file()
+    )
+
+
+def arbor_managed_status_lines(root: Path, status_lines: list[str]) -> list[str]:
+    managed_prefixes = (
+        ".arbor/",
+        ".codex/hooks",
+        ".codex/hooks.json",
+        ".claude/hooks",
+        ".claude/settings.json",
+    )
+    if project_has_arbor_plugin_source(root):
+        managed_prefixes = (*managed_prefixes, "plugins/arbor/")
+    managed_exact = {"AGENTS.md", "CLAUDE.md"}
+    selected: list[str] = []
+    for line in status_lines:
+        paths = [path.replace("\\", "/") for path in parse_status_paths(line)]
+        if any(path in managed_exact or any(path.startswith(prefix) for prefix in managed_prefixes) for path in paths):
+            selected.append(line)
+    return selected
+
+
+def project_is_arbor_managed(root: Path, status_lines: list[str]) -> bool:
+    if (root / ".arbor").is_dir():
+        return True
+    for line in status_lines:
+        paths = [path.replace("\\", "/") for path in parse_status_paths(line)]
+        if any(path.startswith(".arbor/") for path in paths):
+            return True
+    return False
 
 
 def blocking_mode_enabled() -> bool:
     return os.environ.get(MODE_ENV, "silent").strip().lower() == "block"
+
+
+def internal_subprocess_timeout_seconds() -> float:
+    raw = os.environ.get("ARBOR_STOP_INTERNAL_TIMEOUT_SECONDS")
+    if not raw:
+        return DEFAULT_INTERNAL_SUBPROCESS_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_INTERNAL_SUBPROCESS_TIMEOUT_SECONDS
+    if value <= 0:
+        return DEFAULT_INTERNAL_SUBPROCESS_TIMEOUT_SECONDS
+    return value
 
 
 def apply_budget(packet: str, budget: int) -> str:
@@ -259,6 +336,14 @@ def parse_status_path(line: str) -> str:
     return path.strip()
 
 
+def parse_status_paths(line: str) -> list[str]:
+    path = line[3:] if len(line) > 3 else line
+    if " -> " not in path:
+        stripped = path.strip()
+        return [stripped] if stripped else []
+    return [part.strip() for part in path.split(" -> ", 1) if part.strip()]
+
+
 def compact_paths(status_lines: list[str], limit: int = 5) -> list[str]:
     paths = [parse_status_path(line) for line in status_lines if parse_status_path(line)]
     return paths[:limit]
@@ -269,52 +354,22 @@ def likely_area(paths: list[str], transcript_context: bool) -> str:
     if "AGENTS.md" in paths or "AGENTS.md" in joined:
         return "AGENTS.md guide drift"
     if ".arbor/memory.md" in paths or ".arbor/" in joined:
-        return "Arbor memory or workflow state"
+        return "Arbor memory state"
     if "plugins/arbor/hooks" in joined or ".codex/hooks" in joined or ".claude/hooks" in joined:
         return "Arbor Stop hook behavior"
     if "plugins/arbor/skills" in joined:
         return "Arbor skill contract"
-    if "docs/review" in joined:
-        return "Arbor review checkpoint"
     if transcript_context:
         return "recent Arbor conversation"
     return "dirty Arbor worktree"
 
 
-def load_active_workflow_feature(project_root: Path) -> dict:
-    registry = project_root / ".arbor" / "workflow" / "features.json"
-    if not registry.is_file():
-        return {}
-    try:
-        data = json.loads(registry.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if not isinstance(data, dict):
-        return {}
-    active_id = data.get("active_feature_id")
-    features = data.get("features")
-    if not isinstance(active_id, str) or not isinstance(features, list):
-        return {}
-    for feature in features:
-        if isinstance(feature, dict) and feature.get("id") == active_id:
-            return feature
-    return {}
-
-
-def infer_checkpoint(paths: list[str], feature: dict, transcript_context: bool) -> str:
+def infer_checkpoint(paths: list[str], transcript_context: bool) -> str:
     joined = "\n".join(paths)
-    status = str(feature.get("status", "")).strip()
-    review_doc = str(feature.get("review_doc_path", "")).strip()
-    if ".arbor/workflow/features.json" in paths or ".arbor/workflow/features.json" in joined:
-        return "workflow registry update"
-    if review_doc and review_doc in joined:
-        return "review checkpoint update"
     if "plugins/arbor/hooks/" in joined or ".codex/hooks" in joined or ".claude/hooks" in joined:
         return "hook implementation or registration repair"
     if "AGENTS.md" in paths or "AGENTS.md" in joined:
         return "project guide drift update"
-    if status:
-        return f"active feature status `{status}`"
     if transcript_context:
         return "conversation-only Arbor continuation"
     return "dirty Arbor worktree"
@@ -328,11 +383,7 @@ def build_resume_entry(
 ) -> str:
     paths = compact_paths(status_lines)
     area = likely_area(paths, transcript_context)
-    feature = load_active_workflow_feature(project_root)
-    feature_id = str(feature.get("id", "")).strip()
-    title = str(feature.get("title", "")).strip()
-    review_doc = str(feature.get("review_doc_path", "")).strip()
-    checkpoint = infer_checkpoint(paths, feature, transcript_context)
+    checkpoint = infer_checkpoint(paths, transcript_context)
     if paths:
         files = ", ".join(f"`{path}`" for path in paths)
         if len(status_lines) > len(paths):
@@ -341,20 +392,13 @@ def build_resume_entry(
         files = f"recent Stop transcript `{transcript_path}`"
     else:
         files = "no specific dirty path was available"
-    if feature_id:
-        feature_label = f"`{feature_id}`"
-        if title:
-            feature_label = f"{feature_label} ({title})"
-    else:
-        feature_label = "no active feature could be read"
-    review_label = f"`{review_doc}`" if review_doc else "no review document could be read"
     return (
         f"- {HOOK_RESUME_MARKER} Discussion: {area}. Files: {files}. "
-        f"Active feature: {feature_label}. Review: {review_label}. "
         f"Checkpoint: {checkpoint}. Unresolved: Stop detected Arbor work that is "
         "not yet recoverable from committed history alone. Next: resume from the "
-        "active feature and review document, inspect the listed paths, and run the "
-        "next Arbor workflow step before making release or handoff claims."
+        "listed paths, inspect memory and git status, and decide whether "
+        "`.arbor/memory.md`, `AGENTS.md`, or a commit should become the durable "
+        "recovery boundary."
     )
 
 
@@ -463,9 +507,6 @@ def transcript_suggests_arbor_resume_context(payload: dict) -> tuple[bool, Path 
         "resume",
         "continue",
         "next step",
-        "converge",
-        "brainstorm",
-        "feedback",
         "fix",
         "bug",
         "problem",
@@ -638,13 +679,19 @@ def run_agents_guide_quality_check(project_root: Path, plugin_root: Path) -> tup
     script = plugin_root / "skills" / "arbor" / "scripts" / "check_agents_guide_quality.py"
     if not script.is_file():
         return True, ""
-    proc = subprocess.run(
-        [sys.executable, str(script), "--root", str(project_root)],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "--root", str(project_root)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=internal_subprocess_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired:
+        return True, ""
+    except OSError:
+        return True, ""
     output = proc.stdout.strip() or proc.stderr.strip()
     return proc.returncode == 0, output
 
@@ -666,38 +713,42 @@ def main() -> int:
         return allow_stop()
 
     cwd = payload.get("cwd")
-    if not cwd:
+    if not isinstance(cwd, str) or not cwd.strip():
         _emit_error("hook event payload missing 'cwd'; not blocking stop")
-        return 0
+        return allow_stop()
 
     project_root = Path(cwd)
+    status_lines = git_status_lines(project_root)
     # Only Arbor-managed projects keep an `.arbor` directory; staying silent
-    # everywhere else keeps unrelated repositories unblocked.
-    if not (project_root / ".arbor").is_dir():
+    # everywhere else keeps unrelated repositories unblocked. A tracked
+    # deletion under `.arbor/` still counts as Arbor-managed so Stop can
+    # recreate the recovery file before the session ends.
+    if not project_is_arbor_managed(project_root, status_lines):
         return allow_stop()
 
     if no_write_requested(payload):
         return allow_stop()
 
     plugin_root = resolve_plugin_root()
-    status_lines = git_status_lines(project_root)
-    dirty = bool(status_lines)
+    arbor_status_lines = arbor_managed_status_lines(project_root, status_lines)
+    dirty = bool(arbor_status_lines)
     transcript_context, transcript_path = transcript_suggests_arbor_resume_context(payload)
     try:
         if dirty or transcript_context:
-            refresh_quiet_memory_fallback(project_root, plugin_root, status_lines, transcript_context, transcript_path)
+            refresh_quiet_memory_fallback(project_root, plugin_root, arbor_status_lines, transcript_context, transcript_path)
         else:
             prune_hook_fallback_memory(project_root)
-        refresh_agents_project_map(project_root)
-        guide_ok, guide_output = run_agents_guide_quality_check(project_root, plugin_root)
-        if not guide_ok:
-            return block_stop(
-                guide_output,
-                "Arbor: AGENTS.md guide quality must be fixed before stop.",
-            )
-    except OSError as exc:
+        if dirty or transcript_context:
+            refresh_agents_project_map(project_root)
+            guide_ok, guide_output = run_agents_guide_quality_check(project_root, plugin_root)
+            if not guide_ok:
+                return block_stop(
+                    guide_output,
+                    "Arbor: AGENTS.md guide quality must be fixed before stop.",
+                )
+    except (OSError, UnicodeError) as exc:
         _emit_error(f"could not refresh quiet Stop context maintenance: {exc}")
-        return 1
+        return allow_stop()
 
     # Default to silence: blocking Stop hooks create a visible continuation
     # that can hide the assistant's real final response in some runtimes.
@@ -709,13 +760,21 @@ def main() -> int:
         _emit_error(f"shared memory hygiene script not found at {script}")
         return 1
 
-    proc = subprocess.run(
-        [sys.executable, str(script), "--root", cwd],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "--root", cwd],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=internal_subprocess_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired as exc:
+        _emit_error(f"shared memory hygiene script timed out after {exc.timeout:g}s")
+        return allow_stop()
+    except OSError as exc:
+        _emit_error(f"shared memory hygiene script failed to start: {exc}")
+        return allow_stop()
     if proc.returncode != 0:
         detail = proc.stderr.strip() or proc.stdout.strip() or "no output"
         _emit_error(f"shared memory hygiene script exited {proc.returncode}: {detail}")

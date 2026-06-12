@@ -11,8 +11,24 @@ import sys
 from pathlib import Path
 
 
+sys.dont_write_bytecode = True
+
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_SKILLS_ROOT = PLUGIN_ROOT / "skills"
+DEFAULT_CHECK_TIMEOUT_SECONDS = 30.0
+
+
+def check_timeout_seconds() -> float:
+    raw = os.environ.get("ARBOR_SKILL_PACKAGE_TIMEOUT_SECONDS", "").strip()
+    if not raw:
+        return DEFAULT_CHECK_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_CHECK_TIMEOUT_SECONDS
+    if value <= 0:
+        return DEFAULT_CHECK_TIMEOUT_SECONDS
+    return value
 
 
 def quick_validate_candidates() -> list[Path]:
@@ -59,13 +75,21 @@ def main() -> int:
 
     failures: list[str] = []
     for skill_dir in skill_dirs:
-        proc = subprocess.run(
-            [sys.executable, str(validator), str(skill_dir)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False,
-        )
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(validator), str(skill_dir)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=check_timeout_seconds(),
+            )
+        except subprocess.TimeoutExpired as exc:
+            failures.append(f"{skill_dir}: quick_validate.py timed out after {exc.timeout}s")
+            continue
+        except OSError as exc:
+            failures.append(f"{skill_dir}: quick_validate.py failed to start: {exc}")
+            continue
         if proc.returncode != 0:
             failures.append(f"{skill_dir}: {proc.stderr.strip() or proc.stdout.strip()}")
 

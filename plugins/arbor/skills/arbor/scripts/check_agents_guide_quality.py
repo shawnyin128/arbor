@@ -6,8 +6,12 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+
+sys.dont_write_bytecode = True
 
 from arbor_project_state import PROJECT_GUIDE_PATH, ProjectStateError, resolve_project_root
 from run_agents_guide_drift_hook import project_map_token_exists, project_map_tokens, stale_project_map_entries
@@ -15,7 +19,6 @@ from run_agents_guide_drift_hook import project_map_token_exists, project_map_to
 
 REQUIRED_TOP_LEVEL_SECTIONS = (
     "Startup Protocol",
-    "Workflow Entrypoint Protocol",
     "Project Goal",
     "Project Constraints",
     "Project Map",
@@ -30,10 +33,11 @@ TRANSIENT_TERMS = (
     "in-flight",
     "work in progress",
     "review round",
-    "developer round",
-    "evaluator round",
-    "convergence round",
-    "release round",
+    "workflow entrypoint",
+    "managed quality loop",
+    "feature registry",
+    ".arbor/workflow",
+    "workflow json",
 )
 SKIP_PROJECT_MAP_NAMES = {
     ".DS_Store",
@@ -134,7 +138,7 @@ def add_transient_content_issue(text: str, issues: list[GuideIssue]) -> None:
                 GuideIssue(
                     "transient_content",
                     "blocking",
-                    f"AGENTS.md appears to contain transient workflow content matching `{term}`.",
+                    f"AGENTS.md appears to contain transient or retired Arbor content matching `{term}`.",
                 )
             )
             return

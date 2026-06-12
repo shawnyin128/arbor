@@ -1,4 +1,0 @@
-interface:
-  display_name: "Evaluate"
-  short_description: "Internal Arbor validation stage"
-  default_prompt: "Internal stage only. Do not select the evaluate skill for ordinary user requests; use $converge for public verify, review, repair, continuation, or quality-loop requests. Use evaluate only from a valid internal develop handoff selected by converge."

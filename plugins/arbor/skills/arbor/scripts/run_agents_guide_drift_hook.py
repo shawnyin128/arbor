@@ -7,7 +7,11 @@ import argparse
 import re
 import shlex
 import subprocess
+import sys
 from pathlib import Path
+
+
+sys.dont_write_bytecode = True
 
 from arbor_project_state import (
     CANONICAL_MEMORY_PATH,

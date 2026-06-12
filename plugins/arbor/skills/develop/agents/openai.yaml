@@ -1,4 +1,0 @@
-interface:
-  display_name: "Develop"
-  short_description: "Internal Arbor implementation stage"
-  default_prompt: "Internal stage only. Do not select the develop skill for ordinary user requests; use $converge for public bug, fix, repair, continuation, or quality-loop requests. Use develop only from a valid converge or equivalent internal workflow handoff."

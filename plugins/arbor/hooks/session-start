@@ -8,9 +8,10 @@ stdout from a SessionStart hook is automatically treated as additional context
 by both Codex and Claude Code, so no JSON envelope is needed for the success
 path.
 
-Soft-skips empty probe payloads and missing ``cwd`` with exit code 0 so hook
-UIs can validate the command without showing a failure. Unreadable shared
-scripts or downstream errors still report stderr and exit non-zero.
+Soft-skips empty probe payloads, missing ``cwd``, helper timeouts, and helper
+launch failures with exit code 0 so hook UIs can validate the command without
+showing a failure. Unreadable shared scripts or downstream nonzero exits still
+report stderr and exit non-zero.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from pathlib import Path
 # excess to a file with a preview note. We aim under that with headroom
 # so the truncation notice plus any wrapper-added text stays in budget.
 INJECTION_BUDGET = 9500
+DEFAULT_INTERNAL_SUBPROCESS_TIMEOUT_SECONDS = 10.0
 
 # Sources we refresh context on. clear/compact mean the user just reset
 # context deliberately; do not re-inject Arbor context in those cases.
@@ -42,12 +44,38 @@ def _emit_error(message: str) -> None:
     print(f"arbor session-start: {message}", file=sys.stderr)
 
 
+def looks_like_arbor_plugin_root(root: Path) -> bool:
+    return (
+        (root / ".codex-plugin" / "plugin.json").is_file()
+        and (root / ".claude-plugin" / "plugin.json").is_file()
+        and (root / "skills" / "arbor" / "SKILL.md").is_file()
+    )
+
+
 def resolve_plugin_root() -> Path:
     for env_name in ("ARBOR_PLUGIN_ROOT", "PLUGIN_ROOT", "CODEX_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"):
         env = os.environ.get(env_name)
         if env:
-            return Path(env).resolve()
+            try:
+                root = Path(env).expanduser().resolve()
+                if looks_like_arbor_plugin_root(root):
+                    return root
+            except (OSError, RuntimeError):
+                continue
     return Path(__file__).resolve().parent.parent
+
+
+def internal_subprocess_timeout_seconds() -> float:
+    raw = os.environ.get("ARBOR_SESSION_START_INTERNAL_TIMEOUT_SECONDS")
+    if not raw:
+        return DEFAULT_INTERNAL_SUBPROCESS_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_INTERNAL_SUBPROCESS_TIMEOUT_SECONDS
+    if value <= 0:
+        return DEFAULT_INTERNAL_SUBPROCESS_TIMEOUT_SECONDS
+    return value
 
 
 def parse_hook_payload(raw: str) -> dict:
@@ -148,8 +176,12 @@ def main() -> int:
         return 0
 
     cwd = payload.get("cwd")
-    if not cwd:
+    if not isinstance(cwd, str) or not cwd.strip():
         _emit_error("hook event payload missing 'cwd'; skipping startup context")
+        return 0
+    cwd_path = Path(cwd)
+    if not cwd_path.exists() or not cwd_path.is_dir():
+        _emit_error(f"hook event cwd is unavailable; skipping startup context: {cwd}")
         return 0
 
     plugin_root = resolve_plugin_root()
@@ -158,13 +190,21 @@ def main() -> int:
         _emit_error(f"shared startup script not found at {script}")
         return 1
 
-    proc = subprocess.run(
-        [sys.executable, str(script), "--root", cwd],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "--root", cwd],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=internal_subprocess_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired as exc:
+        _emit_error(f"shared startup script timed out after {exc.timeout:g}s")
+        return 0
+    except OSError as exc:
+        _emit_error(f"shared startup script failed to start: {exc}")
+        return 0
     if proc.returncode != 0:
         detail = proc.stderr.strip() or proc.stdout.strip() or "no output"
         _emit_error(f"shared startup script exited {proc.returncode}: {detail}")

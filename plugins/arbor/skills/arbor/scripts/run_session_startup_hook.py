@@ -4,7 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
+
+
+sys.dont_write_bytecode = True
 
 from arbor_project_state import ProjectStateError, resolve_project_root
 from collect_project_context import collect_startup_context, parse_git_log_args, render_context

@@ -13,6 +13,9 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
+
+sys.dont_write_bytecode = True
+
 from arbor_project_state import (
     CLAUDE_HOOKS_DIR,
     CLAUDE_SETTINGS_PATH,
@@ -21,11 +24,16 @@ from arbor_project_state import (
     project_path,
     resolve_project_root,
 )
-from register_project_hooks import claude_project_hook_command, codex_project_hook_command
+from register_project_hooks import claude_project_hook_command, codex_project_hook_command, render_project_hook_wrapper
 
 
 CODEX_REQUIRED_EVENTS = ("SessionStart", "Stop")
 CLAUDE_REQUIRED_EVENTS = ("SessionStart", "Stop")
+DEFAULT_ADAPTER_PROBE_TIMEOUT_SECONDS = 3.0
+
+
+def command_contains_marker(command: str, marker: str) -> bool:
+    return marker in command.replace("\\", "/")
 
 
 @dataclass(frozen=True)
@@ -50,7 +58,11 @@ def load_json_object(path: Path) -> tuple[dict[str, Any] | None, str | None]:
     if not path.is_file():
         return None, "not_a_file"
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except UnicodeError as exc:
+        return None, f"invalid_encoding: {exc}"
+    except OSError as exc:
+        return None, f"unreadable: {exc}"
     except JSONDecodeError as exc:
         return None, f"invalid_json: {exc}"
     if not isinstance(data, dict):
@@ -77,7 +89,7 @@ def event_handler_command_state(config: dict[str, Any], event: str, marker: str,
                 command = str(handler.get("command", ""))
                 if command == expected_command:
                     return "ok"
-                if marker in command:
+                if command_contains_marker(command, marker):
                     marker_seen = True
     return "stale" if marker_seen else "missing"
 
@@ -98,7 +110,7 @@ def has_event_handler_with_markers(config: dict[str, Any], event: str, markers: 
         for handler in handlers:
             if isinstance(handler, dict):
                 command = str(handler.get("command", ""))
-                if all(marker in command for marker in markers):
+                if all(command_contains_marker(command, marker) for marker in markers):
                     return True
     return False
 
@@ -122,10 +134,40 @@ def executable_file_state(path: Path) -> str:
     return "ok"
 
 
+def wrapper_file_state(path: Path, expected_content: str) -> str:
+    state = executable_file_state(path)
+    if state != "ok":
+        return state
+    try:
+        content = path.read_text(encoding="utf-8")
+    except UnicodeError:
+        return "stale"
+    except OSError as exc:
+        return f"unreadable: {exc}"
+    normalized_content = content.replace("\r\n", "\n").replace("\r", "\n")
+    normalized_expected = expected_content.replace("\r\n", "\n").replace("\r", "\n")
+    if normalized_content != normalized_expected:
+        return "stale"
+    return "ok"
+
+
 def adapter_command(path: Path) -> list[str]:
     if os.name == "nt":
         return [sys.executable, str(path)]
     return [str(path)]
+
+
+def adapter_probe_timeout_seconds() -> float:
+    raw = os.environ.get("ARBOR_HOOK_ADAPTER_PROBE_TIMEOUT_SECONDS")
+    if not raw:
+        return DEFAULT_ADAPTER_PROBE_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_ADAPTER_PROBE_TIMEOUT_SECONDS
+    if value <= 0:
+        return DEFAULT_ADAPTER_PROBE_TIMEOUT_SECONDS
+    return value
 
 
 def adapter_probe_state(plugin_root: Path, session_path: Path, stop_path: Path) -> str:
@@ -141,19 +183,34 @@ def adapter_probe_state(plugin_root: Path, session_path: Path, stop_path: Path) 
         ("stop malformed", stop_path, "{bad json"),
     )
     for label, path, payload in probes:
-        proc = subprocess.run(
-            adapter_command(path),
-            input=payload,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env,
-            check=False,
-        )
+        timeout = adapter_probe_timeout_seconds()
+        try:
+            proc = subprocess.run(
+                adapter_command(path),
+                input=payload,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            return f"{label} probe timed out after {timeout:g}s"
+        except OSError as exc:
+            return f"{label} probe failed to start: {exc}"
         if proc.returncode != 0 or proc.stderr:
             detail = proc.stderr.strip() or proc.stdout.strip() or f"exit {proc.returncode}"
             return f"{label} probe failed: {detail}"
     return "ok"
+
+
+def looks_like_arbor_plugin_root(root: Path) -> bool:
+    return (
+        (root / ".codex-plugin" / "plugin.json").is_file()
+        and (root / ".claude-plugin" / "plugin.json").is_file()
+        and (root / "skills" / "arbor" / "SKILL.md").is_file()
+    )
 
 
 def diagnose_codex(root: Path, *, codex_trusted: bool) -> HookState:
@@ -168,8 +225,8 @@ def diagnose_codex(root: Path, *, codex_trusted: bool) -> HookState:
         return HookState("invalid", f".codex/hooks.json is {error}", files, "repair or regenerate .codex/hooks.json")
     assert config is not None
 
-    session_state = executable_file_state(session_path)
-    stop_state = executable_file_state(stop_path)
+    session_state = wrapper_file_state(session_path, render_project_hook_wrapper("session-start", "codex"))
+    stop_state = wrapper_file_state(stop_path, render_project_hook_wrapper("stop-memory-hygiene", "codex"))
     if is_intent_style_codex_config(config):
         return HookState(
             "intent-only",
@@ -222,8 +279,8 @@ def diagnose_claude_project(root: Path) -> HookState:
         return HookState("project-Claude-invalid", f".claude/settings.json is {error}", files, "repair or regenerate .claude/settings.json")
     assert settings is not None
 
-    session_state = executable_file_state(session_path)
-    stop_state = executable_file_state(stop_path)
+    session_state = wrapper_file_state(session_path, render_project_hook_wrapper("session-start", "claude"))
+    stop_state = wrapper_file_state(stop_path, render_project_hook_wrapper("stop-memory-hygiene", "claude"))
     session_command_state = event_handler_command_state(
         settings,
         "SessionStart",
@@ -256,6 +313,13 @@ def diagnose_shared_adapters(plugin_root: Path | None) -> HookState:
     session_path = plugin_root / "hooks" / "session-start"
     stop_path = plugin_root / "hooks" / "stop-memory-hygiene"
     files = [str(session_path), str(stop_path)]
+    if not looks_like_arbor_plugin_root(plugin_root):
+        return HookState(
+            "shared-adapters-incomplete",
+            "plugin root is incomplete; expected Codex manifest, Claude manifest, and Arbor skill",
+            files,
+            "pass a complete Arbor plugin root or reinstall/sync the Arbor cache",
+        )
     if manifest_path.exists():
         return HookState(
             "shared-adapters-drift",

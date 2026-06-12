@@ -4,11 +4,16 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shlex
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+
+sys.dont_write_bytecode = True
 
 from arbor_project_state import (
     CANONICAL_MEMORY_PATH,
@@ -17,6 +22,7 @@ from arbor_project_state import (
 )
 
 DEFAULT_GIT_LOG_ARGS = ["--date=iso", "--pretty=format:%H%x09%ad%x09%s"]
+DEFAULT_GIT_TIMEOUT_SECONDS = 10.0
 HOOK_MEMORY_MARKERS = ("[hook:fallback]", "[hook:resume]")
 PLACEHOLDER_MEMORY_PATTERNS = (
     "no active arbor resume context recorded yet",
@@ -53,17 +59,49 @@ def read_file_section(title: str, path: Path) -> ContextSection:
     return ContextSection(title, body, "ok" if body else "empty", str(path))
 
 
+def git_timeout_seconds() -> float:
+    raw = os.environ.get("ARBOR_STARTUP_GIT_TIMEOUT_SECONDS")
+    if not raw:
+        return DEFAULT_GIT_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_GIT_TIMEOUT_SECONDS
+    if value <= 0:
+        return DEFAULT_GIT_TIMEOUT_SECONDS
+    return value
+
+
 def run_git_section(title: str, root: Path, args: list[str]) -> ContextSection:
-    proc = subprocess.run(
-        ["git", "-C", str(root), *args],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    timeout = git_timeout_seconds()
+    command = "git " + " ".join(args)
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), *args],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return ContextSection(
+            title,
+            f"[git timed out after {timeout:g}s]",
+            "git-timeout",
+            command,
+            f"timed out after {timeout:g}s",
+        )
+    except OSError as exc:
+        return ContextSection(
+            title,
+            f"[git failed to start: {exc}]",
+            "git-launch-error",
+            command,
+            f"failed to start: {exc}",
+        )
     output = proc.stdout.rstrip("\n")
     error = proc.stderr.rstrip("\n")
-    command = "git " + " ".join(args)
     if proc.returncode == 0:
         return ContextSection(title, output, "ok" if output else "empty", command)
     if output and error:
@@ -74,13 +112,19 @@ def run_git_section(title: str, root: Path, args: list[str]) -> ContextSection:
 
 
 def git_output(root: Path, args: list[str]) -> str:
-    proc = subprocess.run(
-        ["git", "-C", str(root), *args],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), *args],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=git_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired:
+        return ""
+    except OSError:
+        return ""
     return proc.stdout.strip() if proc.returncode == 0 else ""
 
 
@@ -187,7 +231,11 @@ def classify_memory(text: str, root: Path) -> tuple[str, str]:
 
 
 def annotate_memory_section(section: ContextSection, root: Path) -> ContextSection:
-    classification, reason = classify_memory(section.body, root)
+    if section.status != "ok":
+        classification = "unreadable" if section.status == "read-error" else section.status
+        reason = "memory content could not be inspected"
+    else:
+        classification, reason = classify_memory(section.body, root)
     warning = ""
     if classification == "suspicious-cross-project":
         warning = (

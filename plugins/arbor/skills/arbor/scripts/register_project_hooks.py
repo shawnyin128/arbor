@@ -12,8 +12,11 @@ import sys
 from copy import deepcopy
 from dataclasses import dataclass
 from json import JSONDecodeError
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Iterable
+
+
+sys.dont_write_bytecode = True
 
 from arbor_project_state import (
     CANONICAL_MEMORY_PATH,
@@ -48,67 +51,31 @@ MEMORY_HYGIENE_CASE_CORPUS: list[dict[str, Any]] = [
         "rationale": "uncommitted Arbor work needs a resume pointer",
     },
     {
-        "id": "trigger-brainstorm-feature-registry",
-        "situation": "after brainstorm creates or updates `.arbor/workflow/features.json`",
+        "id": "trigger-context-plan-note",
+        "situation": "after local context notes or design notes are updated for the current task",
         "expected": "trigger",
         "git_state": "dirty",
         "arbor_managed": True,
-        "checkpoint": "brainstorm_artifact",
-        "rationale": "feature state changed before commit",
+        "checkpoint": "context_note",
+        "rationale": "uncommitted context notes may be the only resume pointer",
     },
     {
-        "id": "trigger-brainstorm-review-plan",
-        "situation": "after brainstorm creates or updates a review Context/Test Plan",
+        "id": "trigger-package-edit",
+        "situation": "after Arbor package files, manifests, scripts, docs, or hook adapters change",
         "expected": "trigger",
         "git_state": "dirty",
         "arbor_managed": True,
-        "checkpoint": "brainstorm_artifact",
-        "rationale": "planning evidence changed before handoff",
+        "checkpoint": "package_edit",
+        "rationale": "package state is not durable yet",
     },
     {
-        "id": "trigger-develop-files",
-        "situation": "after develop changes code, docs, tests, manifests, scripts, or workflow artifacts",
+        "id": "trigger-hook-repair",
+        "situation": "after project hook registration or shared hook adapters are repaired",
         "expected": "trigger",
         "git_state": "dirty",
         "arbor_managed": True,
-        "checkpoint": "develop_edit",
-        "rationale": "implementation state is not durable yet",
-    },
-    {
-        "id": "trigger-develop-review-round",
-        "situation": "after develop appends a Developer Round or updates feature status",
-        "expected": "trigger",
-        "git_state": "dirty",
-        "arbor_managed": True,
-        "checkpoint": "develop_handoff",
-        "rationale": "handoff evidence should be resumable",
-    },
-    {
-        "id": "trigger-evaluate-round",
-        "situation": "after evaluate appends an Evaluator Round or records findings",
-        "expected": "trigger",
-        "git_state": "dirty",
-        "arbor_managed": True,
-        "checkpoint": "evaluate_handoff",
-        "rationale": "findings can drive the next correction loop",
-    },
-    {
-        "id": "trigger-converge-round",
-        "situation": "after converge appends a Convergence Round or changes feature status",
-        "expected": "trigger",
-        "git_state": "dirty",
-        "arbor_managed": True,
-        "checkpoint": "converge_decision",
-        "rationale": "loop decision is active state until committed",
-    },
-    {
-        "id": "trigger-release-precommit",
-        "situation": "after release prepares a local stage or commit but before the commit exists",
-        "expected": "trigger",
-        "git_state": "dirty",
-        "arbor_managed": True,
-        "checkpoint": "release_gate",
-        "rationale": "release preparation is unresolved until committed",
+        "checkpoint": "hook_repair",
+        "rationale": "the next session should know hook state changed",
     },
     {
         "id": "trigger-failed-check-dirty",
@@ -120,8 +87,8 @@ MEMORY_HYGIENE_CASE_CORPUS: list[dict[str, Any]] = [
         "rationale": "the failure is a next-step blocker",
     },
     {
-        "id": "trigger-workflow-bugfix",
-        "situation": "after a user reports a workflow bug that starts an Arbor-managed fix",
+        "id": "trigger-context-bugfix",
+        "situation": "after a user reports an Arbor context or hook bug that starts a local fix",
         "expected": "trigger",
         "git_state": "dirty_or_pending",
         "arbor_managed": True,
@@ -138,40 +105,13 @@ MEMORY_HYGIENE_CASE_CORPUS: list[dict[str, Any]] = [
         "rationale": "new constraints affect the active implementation",
     },
     {
-        "id": "trigger-brainstorm-to-converge",
-        "situation": "before handing off from brainstorm to converge with dirty Arbor artifacts",
+        "id": "trigger-session-handoff",
+        "situation": "before handing off to a future session with dirty Arbor artifacts",
         "expected": "trigger",
         "git_state": "dirty",
         "arbor_managed": True,
         "checkpoint": "skill_handoff",
-        "rationale": "the quality loop should recover the selected plan",
-    },
-    {
-        "id": "trigger-develop-to-release-evaluate",
-        "situation": "before handing off from develop to release/evaluate with dirty Arbor artifacts",
-        "expected": "trigger",
-        "git_state": "dirty",
-        "arbor_managed": True,
-        "checkpoint": "skill_handoff",
-        "rationale": "developer evidence is active handoff state",
-    },
-    {
-        "id": "trigger-evaluate-to-release-converge",
-        "situation": "before handing off from evaluate to release/converge with dirty Arbor artifacts",
-        "expected": "trigger",
-        "git_state": "dirty",
-        "arbor_managed": True,
-        "checkpoint": "skill_handoff",
-        "rationale": "evaluator decision is active handoff state",
-    },
-    {
-        "id": "trigger-converge-to-release-or-correction",
-        "situation": "before handing off from converge to release or a correction loop with dirty Arbor artifacts",
-        "expected": "trigger",
-        "git_state": "dirty",
-        "arbor_managed": True,
-        "checkpoint": "skill_handoff",
-        "rationale": "convergence route should not be lost",
+        "rationale": "the next session should recover the current local context",
     },
     {
         "id": "trigger-user-review-checkpoint",
@@ -192,13 +132,13 @@ MEMORY_HYGIENE_CASE_CORPUS: list[dict[str, Any]] = [
         "rationale": "session boundaries require recovery state",
     },
     {
-        "id": "trigger-release-preflight",
-        "situation": "before running release preflight, commit, push, tag, PR, or publish",
+        "id": "trigger-precommit",
+        "situation": "before commit, push, PR, tag, publish, or cache sync with dirty Arbor state",
         "expected": "trigger",
         "git_state": "dirty_or_staged",
         "arbor_managed": True,
-        "checkpoint": "release_gate",
-        "rationale": "release actions should see current in-flight state first",
+        "checkpoint": "durability_boundary",
+        "rationale": "durable actions should see current in-flight memory first",
     },
     {
         "id": "trigger-cache-sync",
@@ -210,8 +150,8 @@ MEMORY_HYGIENE_CASE_CORPUS: list[dict[str, Any]] = [
         "rationale": "runtime cache and source may diverge before commit",
     },
     {
-        "id": "trigger-ignored-review-assets",
-        "situation": "after editing ignored local review, fixture, or validation assets that explain uncommitted package changes",
+        "id": "trigger-ignored-validation-assets",
+        "situation": "after editing ignored local validation notes or fixtures that explain uncommitted package changes",
         "expected": "trigger",
         "git_state": "dirty_or_ignored",
         "arbor_managed": True,
@@ -264,13 +204,13 @@ MEMORY_HYGIENE_CASE_CORPUS: list[dict[str, Any]] = [
         "rationale": "stable guide drift belongs to the AGENTS phase of Stop context maintenance, not memory",
     },
     {
-        "id": "suppress-committed-review",
-        "situation": "durable review evidence already committed with no active follow-up",
+        "id": "suppress-committed-evidence",
+        "situation": "durable evidence already committed with no active follow-up",
         "expected": "suppress",
         "git_state": "clean",
         "arbor_managed": True,
         "checkpoint": "complete",
-        "rationale": "there is no remaining active loop",
+        "rationale": "there is no remaining active context",
     },
     {
         "id": "suppress-no-write-turn",
@@ -303,7 +243,7 @@ MEMORY_HYGIENE_NEGATIVE_CASES = [
 GUIDE_DRIFT_CASE_CORPUS: list[dict[str, Any]] = [
     {
         "id": "trigger-new-top-level-directory",
-        "situation": "after adding a new top-level source, tool, package, data, docs, or workflow directory",
+        "situation": "after adding a new top-level source, tool, package, data, or docs directory",
         "expected": "trigger",
         "map_area": "Project Map",
         "rationale": "new durable entrypoints should be discoverable from AGENTS.md",
@@ -320,14 +260,14 @@ GUIDE_DRIFT_CASE_CORPUS: list[dict[str, Any]] = [
         "situation": "after adding a new skill, hook adapter, runtime cache path, or shared helper module",
         "expected": "trigger",
         "map_area": "Project Map",
-        "rationale": "workflow entrypoints need an AGENTS map pointer",
+        "rationale": "durable entrypoints need an AGENTS map pointer",
     },
     {
-        "id": "trigger-guide-drift-before-release",
-        "situation": "before release, publish, push, or handoff when project structure changed",
+        "id": "trigger-guide-drift-before-handoff",
+        "situation": "before commit, publish, push, or handoff when project structure changed",
         "expected": "trigger",
         "map_area": "Project Map",
-        "rationale": "release should not publish a stale project guide",
+        "rationale": "durable actions should not preserve a stale project guide",
     },
     {
         "id": "trigger-project-map-drift-packet",
@@ -426,7 +366,7 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
             "case_corpus": MEMORY_HYGIENE_CASE_CORPUS,
             "decision_rule": (
                 "Trigger when Arbor-managed work may leave unresolved state before a stop, "
-                "handoff, release gate, commit, or session boundary; suppress only when the "
+                "handoff, commit, publish, or session boundary; suppress only when the "
                 "worktree is clean or the request is direct/read-only with no unresolved Arbor state."
             ),
         },
@@ -468,7 +408,7 @@ ARBOR_HOOKS: list[dict[str, Any]] = [
             "decision_rule": (
                 "Trigger when durable project goals, constraints, or project-map entrypoints may have changed. "
                 "If the drift packet reports Project Map Drift Candidates as update-needed, update AGENTS.md "
-                "Project Map before handoff or release unless the missing candidate or stale mapped path is intentionally excluded."
+                "Project Map before handoff unless the missing candidate or stale mapped path is intentionally excluded."
             ),
         },
         "depth_policy": "agent-selected; no fixed read limits",
@@ -491,13 +431,29 @@ def current_hook_platform() -> str:
 
 
 def current_python_executable() -> str:
-    executable = sys.executable or ("python" if current_hook_platform() == "windows" else "python3")
-    return str(Path(executable).expanduser().resolve()) if executable else executable
+    executable = sys.executable
+    if not executable:
+        raise HookRegistrationError("could not resolve an absolute Python executable for project hook registration")
+    return str(Path(executable).expanduser().resolve())
+
+
+def ensure_absolute_python_executable(executable: str, platform: str) -> str:
+    if not executable or executable in {"python", "python3"}:
+        raise HookRegistrationError("project hook commands require an absolute Python executable")
+    if platform == "windows":
+        if not PureWindowsPath(executable).is_absolute():
+            raise HookRegistrationError("project hook commands require an absolute Python executable")
+        return executable
+    if platform == "posix":
+        if not PurePosixPath(executable).is_absolute():
+            raise HookRegistrationError("project hook commands require an absolute Python executable")
+        return executable
+    raise HookRegistrationError(f"unknown hook command platform: {platform}")
 
 
 def command_arg(value: str, platform: str) -> str:
     if platform == "windows":
-        return subprocess.list2cmdline([value])
+        return f'"{value.replace(chr(34), r"\"")}"'
     if platform == "posix":
         return shlex.quote(value)
     raise HookRegistrationError(f"unknown hook command platform: {platform}")
@@ -510,7 +466,8 @@ def codex_project_hook_command(
 ) -> str:
     selected = platform or current_hook_platform()
     wrapper = f".codex/hooks/{wrapper_name}"
-    python = command_arg(python_executable or current_python_executable(), selected)
+    executable = ensure_absolute_python_executable(python_executable or current_python_executable(), selected)
+    python = command_arg(executable, selected)
     if selected == "windows":
         return f"{python} {command_arg(wrapper, selected)}"
     if selected == "posix":
@@ -525,11 +482,12 @@ def claude_project_hook_command(
 ) -> str:
     selected = platform or current_hook_platform()
     wrapper = f".claude/hooks/{wrapper_name}"
-    python = command_arg(python_executable or current_python_executable(), selected)
+    executable = ensure_absolute_python_executable(python_executable or current_python_executable(), selected)
+    python = command_arg(executable, selected)
     if selected == "windows":
         return f"{python} {command_arg(wrapper, selected)}"
     if selected == "posix":
-        return f'{python} "${{CLAUDE_PROJECT_DIR}}/{wrapper}"'
+        return f'{python} "${{CLAUDE_PROJECT_DIR:-$(pwd)}}/{wrapper}"'
     raise HookRegistrationError(f"unknown hook command platform: {selected}")
 
 
@@ -628,7 +586,9 @@ def load_codex_hook_config(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise HookRegistrationError(f"cannot register hooks at {path}: expected a file but found a directory")
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except UnicodeError as exc:
+        raise HookRegistrationError(f"cannot read {path} as UTF-8 JSON: {exc}") from exc
     except JSONDecodeError as exc:
         raise HookRegistrationError(f"cannot parse {path}: {exc}") from exc
     except OSError as exc:
@@ -673,7 +633,9 @@ def load_claude_settings(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise HookRegistrationError(f"cannot register Claude hooks at {path}: expected a file but found a directory")
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except UnicodeError as exc:
+        raise HookRegistrationError(f"cannot read {path} as UTF-8 JSON: {exc}") from exc
     except JSONDecodeError as exc:
         raise HookRegistrationError(f"cannot parse {path}: {exc}") from exc
     except OSError as exc:
@@ -690,14 +652,16 @@ def is_arbor_codex_handler(handler: Any) -> bool:
     if not isinstance(handler, dict):
         return False
     command = str(handler.get("command", ""))
-    return any(marker in command for marker in ARBOR_CODEX_COMMAND_MARKERS)
+    normalized_command = command.replace("\\", "/")
+    return any(marker in normalized_command for marker in ARBOR_CODEX_COMMAND_MARKERS)
 
 
 def is_arbor_claude_handler(handler: Any) -> bool:
     if not isinstance(handler, dict):
         return False
     command = str(handler.get("command", ""))
-    return any(marker in command for marker in ARBOR_CLAUDE_COMMAND_MARKERS)
+    normalized_command = command.replace("\\", "/")
+    return any(marker in normalized_command for marker in ARBOR_CLAUDE_COMMAND_MARKERS)
 
 
 def remove_existing_arbor_handlers(
@@ -781,6 +745,8 @@ shared adapter script so project-local hooks do not duplicate adapter logic.
 from __future__ import annotations
 
 import os
+import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -788,6 +754,8 @@ from pathlib import Path
 
 ADAPTER_NAME = "{adapter_name}"
 CACHE_HOME = "{cache_home}"
+DEFAULT_ADAPTER_TIMEOUT_SECONDS = 25.0
+RELEASE_VERSION_PATTERN = re.compile(r"\\d+\\.\\d+\\.\\d+")
 
 
 def version_key(path: Path) -> tuple[int, ...]:
@@ -806,12 +774,32 @@ def candidate_roots() -> list[Path]:
         env_root = os.environ.get(env_name)
         if env_root:
             root = Path(env_root).expanduser().resolve()
-            if root not in roots:
+            if looks_like_arbor_plugin_root(root) and root not in roots:
                 roots.append(root)
     cache = Path.home() / CACHE_HOME / "plugins" / "cache" / "arbor" / "arbor"
     if cache.is_dir():
-        roots.extend(sorted((child.resolve() for child in cache.iterdir() if child.is_dir()), key=version_key, reverse=True))
+        roots.extend(
+            sorted(
+                (
+                    child.resolve()
+                    for child in cache.iterdir()
+                    if child.is_dir()
+                    and RELEASE_VERSION_PATTERN.fullmatch(child.name)
+                    and looks_like_arbor_plugin_root(child.resolve())
+                ),
+                key=version_key,
+                reverse=True,
+            )
+        )
     return roots
+
+
+def looks_like_arbor_plugin_root(root: Path) -> bool:
+    return (
+        (root / ".codex-plugin" / "plugin.json").is_file()
+        and (root / ".claude-plugin" / "plugin.json").is_file()
+        and (root / "skills" / "arbor" / "SKILL.md").is_file()
+    )
 
 
 def resolve_adapter() -> tuple[Path, Path]:
@@ -822,19 +810,78 @@ def resolve_adapter() -> tuple[Path, Path]:
     raise RuntimeError(f"could not locate Arbor hook adapter {{ADAPTER_NAME!r}}")
 
 
+def adapter_timeout_seconds() -> float:
+    raw = os.environ.get("ARBOR_HOOK_ADAPTER_TIMEOUT_SECONDS")
+    if not raw:
+        return DEFAULT_ADAPTER_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_ADAPTER_TIMEOUT_SECONDS
+    if value <= 0:
+        return DEFAULT_ADAPTER_TIMEOUT_SECONDS
+    return value
+
+
+def allow_stop() -> None:
+    print('{{"continue": true, "suppressOutput": true}}')
+
+
+def stop_output_is_valid(stdout: str) -> bool:
+    if not stdout.strip():
+        return False
+    try:
+        payload = json.loads(stdout)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(payload, dict) and "continue" in payload
+
+
+def emit_success_output(stdout: str) -> None:
+    if ADAPTER_NAME == "stop-memory-hygiene" and not stop_output_is_valid(stdout):
+        allow_stop()
+        return
+    if stdout:
+        sys.stdout.write(stdout)
+
+
 def main() -> int:
     try:
         root, adapter = resolve_adapter()
-    except RuntimeError as exc:
-        print(f"arbor project hook: {{exc}}", file=sys.stderr)
-        return 1
+    except (RuntimeError, OSError):
+        if ADAPTER_NAME == "stop-memory-hygiene":
+            allow_stop()
+        return 0
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(root)
     env["PLUGIN_ROOT"] = str(root)
     env["CODEX_PLUGIN_ROOT"] = str(root)
     env["CLAUDE_PLUGIN_ROOT"] = str(root)
-    proc = subprocess.run([sys.executable, str(adapter)], input=sys.stdin.read(), text=True, env=env, check=False)
-    return proc.returncode
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(adapter)],
+            input=sys.stdin.read(),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            check=False,
+            timeout=adapter_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired:
+        if ADAPTER_NAME == "stop-memory-hygiene":
+            allow_stop()
+        return 0
+    except OSError:
+        if ADAPTER_NAME == "stop-memory-hygiene":
+            allow_stop()
+        return 0
+    if proc.returncode != 0:
+        if ADAPTER_NAME == "stop-memory-hygiene":
+            allow_stop()
+        return 0
+    emit_success_output(proc.stdout)
+    return 0
 
 
 if __name__ == "__main__":
@@ -848,9 +895,12 @@ def ensure_executable_file(path: Path, content: str, dry_run: bool) -> HookRegis
         raise HookRegistrationError(f"cannot initialize {path}: expected a file but found a directory")
     if path.parent.exists() and not path.parent.is_dir():
         raise HookRegistrationError(f"cannot initialize {path}: parent path is not a directory")
-    current = path.read_text(encoding="utf-8") if existed else None
+    try:
+        current = path.read_text(encoding="utf-8") if existed else None
+    except UnicodeError:
+        current = None
     if current == content:
-        if not path.stat().st_mode & 0o111:
+        if os.name != "nt" and not path.stat().st_mode & 0o111:
             if not dry_run:
                 path.chmod(0o755)
             return HookRegistrationAction(path=path, status="would_chmod" if dry_run else "chmod")
@@ -979,6 +1029,9 @@ def main() -> int:
         actions = register_project_hooks(args.root, dry_run=args.dry_run, runtime=args.runtime)
     except HookRegistrationError as exc:
         parser.error(str(exc))
+    except OSError as exc:
+        print(f"hook registration failed: {exc}", file=sys.stderr)
+        return 1
     print(render_actions(actions))
     return 0
 

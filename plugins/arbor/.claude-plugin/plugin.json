@@ -1,7 +1,7 @@
 {
   "name": "arbor",
-  "version": "1.1.1",
-  "description": "Initialize Arbor state and run minimal framework checks for Arbor-created files plus project-level hooks; not a project-summary, health, maintenance, migration, or process-state report.",
+  "version": "2.0.0",
+  "description": "Initialize Arbor state and run minimal framework checks for AGENTS.md, project memory, Claude bridge files, and project-level hooks.",
   "author": {
     "name": "Shawn",
     "url": "https://github.com/shawnyin128"
@@ -14,7 +14,6 @@
     "memory",
     "hooks",
     "project-context",
-    "agents",
-    "feedback"
+    "agents"
   ]
 }

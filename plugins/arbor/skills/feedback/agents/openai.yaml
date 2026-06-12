@@ -1,4 +1,0 @@
-interface:
-  display_name: "Feedback"
-  short_description: "Route Arbor feedback safely"
-  default_prompt: "Use $feedback when I am giving Arbor feedback, a bug report, failed check, reviewer comment, or correction and the next public owner is unclear; decide between brainstorm, converge, needs-evidence, or a direct response, stop, and ask me to confirm the next owner or provide the missing evidence; route-correct non-feedback invocations."

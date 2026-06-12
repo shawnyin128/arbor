@@ -5,7 +5,11 @@ from __future__ import annotations
 
 import argparse
 import shlex
+import sys
 from pathlib import Path
+
+
+sys.dont_write_bytecode = True
 
 from arbor_project_state import (
     CANONICAL_MEMORY_PATH,

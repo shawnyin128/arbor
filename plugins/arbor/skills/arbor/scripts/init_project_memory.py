@@ -4,8 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Iterable
+
+
+sys.dont_write_bytecode = True
 
 from arbor_project_state import (
     INSTALL_RUNTIME_CLAUDE,
@@ -30,7 +34,11 @@ CLAUDE_BRIDGE_CHOICES = (CLAUDE_BRIDGE_AUTO, CLAUDE_BRIDGE_ON, CLAUDE_BRIDGE_OFF
 
 
 def read_template(name: str) -> str:
-    return (REFERENCE_DIR / name).read_text(encoding="utf-8")
+    path = REFERENCE_DIR / name
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ProjectStateError(f"could not read Arbor template {path}: {exc}") from exc
 
 
 def resolve_claude_bridge(mode: str) -> bool:

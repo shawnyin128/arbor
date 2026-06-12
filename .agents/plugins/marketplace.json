@@ -2,7 +2,7 @@
   "name": "arbor",
   "interface": {
     "displayName": "Arbor",
-    "description": "Project memory plus explicit brainstorm, feedback, and converge workflow entrypoints"
+    "description": "Project context, memory, and project-level hooks for Codex and Claude Code"
   },
   "plugins": [
     {

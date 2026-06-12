@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+
+sys.dont_write_bytecode = True
 
 PROJECT_GUIDE_PATH = Path("AGENTS.md")
 CLAUDE_GUIDE_PATH = Path("CLAUDE.md")
@@ -90,9 +93,13 @@ def ensure_memory_file(root: Path, template: str, dry_run: bool) -> list[Project
             raise ProjectStateError(f"cannot migrate {legacy}: expected a file but found a directory")
         if canonical.parent.exists() and not canonical.parent.is_dir():
             raise ProjectStateError(f"cannot initialize {canonical}: parent path is not a directory")
+        try:
+            legacy_text = legacy.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            raise ProjectStateError(f"cannot migrate {legacy}: could not read UTF-8 legacy memory: {exc}") from exc
         if not dry_run:
             canonical.parent.mkdir(parents=True, exist_ok=True)
-            canonical.write_text(legacy.read_text(encoding="utf-8"), encoding="utf-8")
+            canonical.write_text(legacy_text, encoding="utf-8")
         status = "would_migrate_from_legacy" if dry_run else "migrated_from_legacy"
         return [
             ProjectFileAction(
