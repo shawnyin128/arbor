@@ -933,10 +933,24 @@ def validate_runtime_smoke_template(errors: list[str]) -> None:
         check(errors, term in normalized, f"runtime smoke template missing {term!r}")
 
 
+def current_source_version() -> str:
+    manifest = json.loads((PLUGIN_ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8-sig"))
+    version = manifest.get("version")
+    if not isinstance(version, str) or not version:
+        raise RuntimeError("Codex manifest must declare a version")
+    return version
+
+
+def next_patch_version(version: str) -> str:
+    major, minor, patch = (int(part) for part in version.split("."))
+    return f"{major}.{minor}.{patch + 1}"
+
+
 def complete_runtime_smoke_evidence() -> str:
+    version = current_source_version()
     return (
         "# Arbor Runtime Smoke Evidence\n\n"
-        "Version: 2.0.0\n"
+        f"Version: {version}\n"
         "Commit: 0123456\n"
         "Date: 2026-06-12\n"
         "Operator: Arbor Check\n\n"
@@ -948,9 +962,9 @@ def complete_runtime_smoke_evidence() -> str:
         "## Cache And Install State\n\n"
         "- `python3 plugins/arbor/skills/arbor/scripts/check_install_state.py --strict`: pass\n"
         "- Single-runtime install checks (`--runtime codex|claude|both`): pass\n"
-        "- Codex cache path: C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0\n"
+        f"- Codex cache path: C:/Users/example/.codex/plugins/cache/arbor/arbor/{version}\n"
         "- Claude cache path: not run - Claude Code unavailable on this machine\n"
-        "- Cache version selected by project wrapper: 2.0.0\n"
+        f"- Cache version selected by project wrapper: {version}\n"
         "- Dirty source sync guard: pass\n"
         "- Dirty source strict guard: pass\n"
         "- Legacy plugin-level `hooks/hooks.json` present: no\n"
@@ -958,8 +972,8 @@ def complete_runtime_smoke_evidence() -> str:
         "## Hook Runtime Smoke\n\n"
         "| Runtime | OS | Event | Trusted | Fired | Wrapper or launcher uses absolute Python | Cache discovery path | Evidence | Unavailable reason |\n"
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
-        "| Codex | Windows | SessionStart | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0 | startup context rendered | none |\n"
-        "| Codex | Windows | Stop | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/2.0.0 | memory hygiene completed | none |\n"
+        f"| Codex | Windows | SessionStart | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/{version} | startup context rendered | none |\n"
+        f"| Codex | Windows | Stop | yes | yes | yes | C:/Users/example/.codex/plugins/cache/arbor/arbor/{version} | memory hygiene completed | none |\n"
         "| Claude Code | Windows | SessionStart | not run | not run | yes | not run | not run | Claude Code unavailable on this machine |\n"
         "| Claude Code | Windows | Stop | not run | not run | yes | not run | not run | Claude Code unavailable on this machine |\n"
         "| Codex | macOS/Linux | SessionStart | not run | not run | yes | not run | not run | macOS/Linux runtime not available on this machine |\n"
@@ -1001,6 +1015,8 @@ def validate_release_readiness_check(errors: list[str]) -> None:
     check(errors, script.is_file(), "release readiness checker script is missing")
     if not script.is_file():
         return
+    release_version = current_source_version()
+    mismatched_version = next_patch_version(release_version)
 
     spec = importlib.util.spec_from_file_location("arbor_check_release_readiness_timeout_probe", script)
     if spec is None or spec.loader is None:
@@ -1135,8 +1151,8 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         codex_cache_base = root / "codex-cache"
         claude_cache_base = root / "claude-cache"
         copy_plugin_to_cache(source)
-        copy_plugin_to_cache(codex_cache_base / "2.0.0")
-        copy_plugin_to_cache(claude_cache_base / "2.0.0")
+        copy_plugin_to_cache(codex_cache_base / release_version)
+        copy_plugin_to_cache(claude_cache_base / release_version)
         (root / "README.md").write_text("clean public README\n", encoding="utf-8")
         write_temp_marketplaces(root)
         evidence = root / "runtime-smoke.md"
@@ -1174,8 +1190,8 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         codex_cache_base = root / "codex-cache"
         claude_cache_base = root / "claude-cache"
         copy_plugin_to_cache(source)
-        copy_plugin_to_cache(codex_cache_base / "2.0.0")
-        copy_plugin_to_cache(claude_cache_base / "2.0.0")
+        copy_plugin_to_cache(codex_cache_base / release_version)
+        copy_plugin_to_cache(claude_cache_base / release_version)
         (root / "README.md").write_text("clean public README\n", encoding="utf-8")
         write_temp_marketplaces(root)
         codex_marketplace = root / ".agents" / "plugins" / "marketplace.json"
@@ -1222,8 +1238,8 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         codex_cache_base = root / "codex-cache"
         claude_cache_base = root / "claude-cache"
         copy_plugin_to_cache(source)
-        copy_plugin_to_cache(codex_cache_base / "2.0.0")
-        copy_plugin_to_cache(claude_cache_base / "2.0.0")
+        copy_plugin_to_cache(codex_cache_base / release_version)
+        copy_plugin_to_cache(claude_cache_base / release_version)
         (root / "README.md").write_text("clean public README\n", encoding="utf-8")
         write_temp_marketplaces(root)
         evidence = root / "runtime-smoke-wrong-commit.md"
@@ -1266,10 +1282,10 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         copy_plugin_to_cache(source)
         claude_manifest = source / ".claude-plugin" / "plugin.json"
         claude_data = json.loads(claude_manifest.read_text(encoding="utf-8-sig"))
-        claude_data["version"] = "2.0.1"
+        claude_data["version"] = mismatched_version
         claude_manifest.write_text(json.dumps(claude_data, indent=2) + "\n", encoding="utf-8")
-        shutil.copytree(source, codex_cache_base / "2.0.0")
-        shutil.copytree(source, claude_cache_base / "2.0.0")
+        shutil.copytree(source, codex_cache_base / release_version)
+        shutil.copytree(source, claude_cache_base / release_version)
         (root / "README.md").write_text("clean public README\n", encoding="utf-8")
         write_temp_marketplaces(root)
         evidence = root / "runtime-smoke.md"
@@ -1302,7 +1318,7 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         check(errors, "source manifests: fail" in mismatched_manifest_output, "release readiness checker must report source manifest failures")
         check(
             errors,
-            "Codex source version 2.0.0 does not match Claude source version 2.0.1" in mismatched_manifest_output,
+            f"Codex source version {release_version} does not match Claude source version {mismatched_version}" in mismatched_manifest_output,
             "release readiness checker must explain source manifest version mismatch",
         )
 
@@ -1313,8 +1329,8 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         claude_cache_base = root / "claude-cache"
         copy_plugin_to_cache(source)
         (source / ".codex-plugin" / "plugin.json").write_text('["not", "an", "object"]\n', encoding="utf-8")
-        shutil.copytree(source, codex_cache_base / "2.0.0")
-        shutil.copytree(source, claude_cache_base / "2.0.0")
+        shutil.copytree(source, codex_cache_base / release_version)
+        shutil.copytree(source, claude_cache_base / release_version)
         (root / "README.md").write_text("clean public README\n", encoding="utf-8")
         write_temp_marketplaces(root)
         evidence = root / "runtime-smoke.md"
@@ -1369,11 +1385,11 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         run_git(root, errors, "init")
         run_git(root, errors, "config", "user.email", "arbor@example.invalid")
         run_git(root, errors, "config", "user.name", "Arbor Check")
-        evidence.write_text(complete_runtime_smoke_evidence().replace("2.0.0", "dev"), encoding="utf-8")
+        evidence.write_text(complete_runtime_smoke_evidence().replace(release_version, "dev"), encoding="utf-8")
         run_git(root, errors, "add", ".")
         run_git(root, errors, "commit", "-m", "dev source version")
         head = run_git(root, errors, "rev-parse", "HEAD").strip()
-        evidence.write_text(runtime_smoke_evidence_for_commit(head).replace("2.0.0", "dev"), encoding="utf-8")
+        evidence.write_text(runtime_smoke_evidence_for_commit(head).replace(release_version, "dev"), encoding="utf-8")
         dev_version_code, dev_version_output = run_command_status(
             [
                 sys.executable,
@@ -1405,8 +1421,8 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         codex_cache_base = root / "codex-cache"
         claude_cache_base = root / "claude-cache"
         copy_plugin_to_cache(source)
-        copy_plugin_to_cache(codex_cache_base / "2.0.0")
-        copy_plugin_to_cache(claude_cache_base / "2.0.0")
+        copy_plugin_to_cache(codex_cache_base / release_version)
+        copy_plugin_to_cache(claude_cache_base / release_version)
         (root / "README.md").write_text("clean public README\n", encoding="utf-8")
         write_temp_marketplaces(root)
         evidence = root / "runtime-smoke-wrong-version.md"
@@ -1417,7 +1433,7 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         run_git(root, errors, "add", ".")
         run_git(root, errors, "commit", "-m", "clean release source")
         head = run_git(root, errors, "rev-parse", "HEAD").strip()
-        evidence.write_text(runtime_smoke_evidence_for_commit(head).replace("2.0.0", "1.1.1"), encoding="utf-8")
+        evidence.write_text(runtime_smoke_evidence_for_commit(head).replace(release_version, "1.1.1"), encoding="utf-8")
         wrong_version_code, wrong_version_output = run_command_status(
             [
                 sys.executable,
@@ -1439,7 +1455,7 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         check(errors, "runtime smoke version: fail" in wrong_version_output, "release readiness checker must report runtime smoke version failures")
         check(
             errors,
-            "runtime smoke evidence Version 1.1.1 does not match plugin source version 2.0.0" in wrong_version_output,
+            f"runtime smoke evidence Version 1.1.1 does not match plugin source version {release_version}" in wrong_version_output,
             "release readiness checker must explain source/evidence version mismatch",
         )
 
@@ -1449,8 +1465,8 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         codex_cache_base = repo / "codex-cache"
         claude_cache_base = repo / "claude-cache"
         copy_plugin_to_cache(source)
-        copy_plugin_to_cache(codex_cache_base / "2.0.0")
-        copy_plugin_to_cache(claude_cache_base / "2.0.0")
+        copy_plugin_to_cache(codex_cache_base / release_version)
+        copy_plugin_to_cache(claude_cache_base / release_version)
         (repo / "README.md").write_text("clean public README\n", encoding="utf-8")
         write_temp_marketplaces(repo)
         evidence = repo / "runtime-smoke.md"
@@ -1490,8 +1506,8 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         codex_cache_base = repo / "codex-cache"
         claude_cache_base = repo / "claude-cache"
         copy_plugin_to_cache(source)
-        copy_plugin_to_cache(codex_cache_base / "2.0.0")
-        copy_plugin_to_cache(claude_cache_base / "2.0.0")
+        copy_plugin_to_cache(codex_cache_base / release_version)
+        copy_plugin_to_cache(claude_cache_base / release_version)
         (repo / "README.md").write_text("clean public README\n", encoding="utf-8")
         evidence = repo / "runtime-smoke.md"
         evidence.write_text(complete_runtime_smoke_evidence(), encoding="utf-8")

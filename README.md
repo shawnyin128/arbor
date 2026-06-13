@@ -439,7 +439,7 @@ reporting that migration would succeed.
 Current version:
 
 ```text
-2.0.0
+2.0.1
 ```
 
 Version files:
