@@ -3353,6 +3353,98 @@ def valid_agents_for_smoke() -> str:
     )
 
 
+def agents_for_smoke_with_map_entries(entries: list[str]) -> str:
+    return (
+        "# Agent Guide\n\n"
+        "## Project Goal\n\nSmoke project.\n\n"
+        "## Project Constraints\n\n- Keep checks deterministic.\n\n"
+        "## Project Map\n\n"
+        + "".join(entries)
+    )
+
+
+def validate_project_map_canonical_contract(errors: list[str]) -> None:
+    with tempfile.TemporaryDirectory(prefix="arbor-project-map-canonical-check-") as tmp:
+        root = Path(tmp)
+        (root / "README.md").write_text("# Smoke\n", encoding="utf-8")
+        (root / "src").mkdir()
+        (root / "src" / "main.py").write_text("print('hello')\n", encoding="utf-8")
+        (root / "AGENTS.md").write_text(
+            agents_for_smoke_with_map_entries(
+                [
+                    "- `README.md`: overview.\n",
+                    "- `src/main.py`: source entrypoint.\n",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        nested_code, nested_output = run_command_status(
+            [sys.executable, str(SCRIPTS_ROOT / "check_agents_guide_quality.py"), "--root", str(root)]
+        )
+        check(errors, nested_code != 0, "AGENTS quality must reject nested Project Map entries that stand in for top-level entries")
+        check(errors, "missing_project_map_entry" in nested_output, "AGENTS quality must require the top-level Project Map token")
+        check(errors, "non_top_level_project_map_entry" in nested_output, "AGENTS quality must explain nested Project Map entries")
+
+        (root / "AGENTS.md").write_text(
+            agents_for_smoke_with_map_entries(
+                [
+                    "- `README.md`: overview.\n",
+                    "- `src/`: source tree.\n",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        canonical_code, canonical_output = run_command_status(
+            [sys.executable, str(SCRIPTS_ROOT / "check_agents_guide_quality.py"), "--root", str(root)]
+        )
+        check(
+            errors,
+            canonical_code == 0,
+            "AGENTS quality must accept canonical top-level Project Map entries: " + canonical_output.strip(),
+        )
+
+    env = os.environ.copy()
+    env["ARBOR_PLUGIN_ROOT"] = str(PLUGIN_ROOT)
+    with tempfile.TemporaryDirectory(prefix="arbor-stop-canonical-map-repair-check-") as tmp:
+        root = Path(tmp)
+        run_git(root, errors, "init")
+        run_git(root, errors, "config", "user.email", "arbor@example.invalid")
+        run_git(root, errors, "config", "user.name", "Arbor Check")
+        (root / "README.md").write_text("# Smoke\n", encoding="utf-8")
+        (root / "src").mkdir()
+        (root / "src" / "main.py").write_text("print('hello')\n", encoding="utf-8")
+        (root / "AGENTS.md").write_text(
+            agents_for_smoke_with_map_entries(
+                [
+                    "- `README.md`: overview.\n",
+                    "- `src/main.py`: source entrypoint.\n",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        (root / ".arbor").mkdir()
+        (root / ".arbor" / "memory.md").write_text("# Session Memory\n\n## In-flight\n\n- None.\n", encoding="utf-8")
+        run_git(root, errors, "add", ".")
+        run_git(root, errors, "commit", "-m", "canonicalize generated project map")
+        (root / "AGENTS.md").write_text(
+            agents_for_smoke_with_map_entries(
+                [
+                    "- `README.md`: overview.\n",
+                    "- `src/main.py`: generated non-canonical source entrypoint.\n",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        repair_code, repair_output = run_adapter("stop-memory-hygiene", json.dumps({"cwd": str(root)}), errors, env)
+        repaired_agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+        check(errors, repair_code == 0, "Stop canonical Project Map repair must not surface as a hook failure")
+        check(errors, "- `src/`:" in repaired_agents, "Stop must add the canonical top-level Project Map entry")
+        check(errors, "- `src/main.py`:" not in repaired_agents, "Stop must remove non-canonical nested Project Map entries")
+        check(errors, '"continue": true' in repair_output, "Stop canonical Project Map repair must allow stop")
+
+
 def validate_session_start_and_stop_behavior(errors: list[str]) -> None:
     env = os.environ.copy()
     env["ARBOR_PLUGIN_ROOT"] = str(PLUGIN_ROOT)
@@ -4172,6 +4264,7 @@ def main() -> int:
     validate_project_hook_wrappers_execute(errors)
     validate_initialization_idempotency(errors)
     validate_framework_repair_boundaries(errors)
+    validate_project_map_canonical_contract(errors)
     validate_session_start_and_stop_behavior(errors)
     validate_cross_platform_hook_commands(errors)
     validate_startup_context_resilience(errors)

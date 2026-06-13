@@ -10,7 +10,8 @@ This adapter is the Stop-time maintenance path for both:
   for the next agent to recover from committed history, durable docs, startup
   guidance, and git status alone.
 * conservative ``AGENTS.md`` Project Map drift updates, when durable top-level
-  entrypoints are missing from or stale in the map.
+  entrypoints are missing from the map, stale entries remain, or generated
+  nested primary map entries should be folded into top-level entries.
 
 ``Stop`` output can re-enter the agent loop as a visible continuation. That can
 hide the assistant's real final response in runtimes that display the last
@@ -591,11 +592,12 @@ def candidate_is_mapped(candidate: str, tokens: set[str]) -> bool:
         variants.add(normalized.rstrip("/"))
     else:
         variants.add(f"{normalized}/")
-    if variants & tokens:
-        return True
-    if normalized.endswith("/"):
-        return any(token.startswith(normalized) for token in tokens)
-    return False
+    return bool(variants & tokens)
+
+
+def is_top_level_project_map_token(token: str) -> bool:
+    normalized = normalize_map_token(token).rstrip("/")
+    return bool(normalized) and "/" not in normalized
 
 
 def project_map_token_exists(root: Path, token: str) -> bool:
@@ -687,13 +689,14 @@ def refresh_agents_project_map(root: Path) -> bool:
     tokens = project_map_tokens(body)
     missing = [candidate for candidate in project_map_candidates(root) if not candidate_is_mapped(candidate, tokens)]
     stale = {token for token in tokens if not project_map_token_exists(root, token)}
-    if not missing and not stale:
+    non_top_level = {token for token in tokens if not is_top_level_project_map_token(token)}
+    if not missing and not stale and not non_top_level:
         return False
 
     kept_lines: list[str] = []
     for line in body.splitlines():
         token = map_line_token(line)
-        if token and token in stale:
+        if token and (token in stale or token in non_top_level):
             continue
         kept_lines.append(line.rstrip())
 

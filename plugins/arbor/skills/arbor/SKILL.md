@@ -189,15 +189,19 @@ It should not contain transient session progress, long design history, review
 logs, generic development methodology, copied external docs, or cache notes.
 
 Update `AGENTS.md` only when stable project goals, durable constraints, or
-Project Map pointers should change. Put unresolved current-session state in
-`.arbor/memory.md`, completed outcomes in git history, and deeper durable
-knowledge in project docs.
+Project Map pointers should change. Project Map primary bullets must be
+top-level durable entrypoints only; mention nested modules or files in the
+entry descriptions instead of making them separate primary map entries. Put
+unresolved current-session state in `.arbor/memory.md`, completed outcomes in
+git history, and deeper durable knowledge in project docs.
 
 Use `scripts/run_agents_guide_drift_hook.py --root <project-root>` when
 Project Map drift needs an explicit packet. The Stop hook also applies safe
 Project Map path maintenance when the current git status includes new durable
-top-level entrypoints that are missing from the map, while still ignoring
-artifact directories such as `outputs/`, `tmp/`, caches, and build outputs.
+top-level entrypoints that are missing from the map or non-canonical nested
+primary map entries that should be folded into the top-level map, while still
+ignoring artifact directories such as `outputs/`, `tmp/`, caches, and build
+outputs.
 Clean direct turns should not mutate `AGENTS.md` just because old pre-existing
 map drift exists.
 

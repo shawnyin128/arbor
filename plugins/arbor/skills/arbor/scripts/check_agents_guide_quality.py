@@ -14,7 +14,12 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 from arbor_project_state import PROJECT_GUIDE_PATH, ProjectStateError, resolve_project_root
-from run_agents_guide_drift_hook import project_map_token_exists, project_map_tokens, stale_project_map_entries
+from run_agents_guide_drift_hook import (
+    non_top_level_project_map_entries,
+    project_map_token_exists,
+    project_map_tokens,
+    stale_project_map_entries,
+)
 
 
 REQUIRED_TOP_LEVEL_SECTIONS = (
@@ -118,11 +123,7 @@ def candidate_is_mapped(candidate: str, tokens: set[str]) -> bool:
         variants.add(candidate.rstrip("/"))
     else:
         variants.add(f"{candidate}/")
-    if variants & tokens:
-        return True
-    if candidate.endswith("/"):
-        return any(token.startswith(candidate) for token in tokens)
-    return False
+    return bool(variants & tokens)
 
 
 def missing_project_map_candidates(root: Path, tokens: set[str]) -> list[str]:
@@ -179,6 +180,7 @@ def check_agents_guide_quality(root: Path) -> GuideQualityResult:
     map_items = list_items(project_map)
     tokens = project_map_tokens(project_map)
     missing = missing_project_map_candidates(resolved, tokens)
+    non_top_level = non_top_level_project_map_entries(tokens)
     stale = stale_project_map_entries(resolved, tokens)
     if not map_items:
         issues.append(GuideIssue("thin_project_map", "blocking", "Project Map has no list entries."))
@@ -188,6 +190,16 @@ def check_agents_guide_quality(root: Path) -> GuideQualityResult:
                 "missing_project_map_entry",
                 "blocking",
                 "Project Map omits durable entrypoint candidates: " + ", ".join(f"`{item}`" for item in missing) + ".",
+            )
+        )
+    if non_top_level:
+        issues.append(
+            GuideIssue(
+                "non_top_level_project_map_entry",
+                "blocking",
+                "Project Map primary entries must be top-level paths only; mention nested paths in descriptions instead: "
+                + ", ".join(f"`{item}`" for item in non_top_level)
+                + ".",
             )
         )
     if stale:

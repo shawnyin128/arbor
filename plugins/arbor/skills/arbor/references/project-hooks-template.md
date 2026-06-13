@@ -82,13 +82,15 @@ current repository.
      before handoff when project structure changed.
    - Stop-time mapping: safe Project Map drift is checked by the shared Stop
      context-maintenance adapter when current git status includes new durable
-     top-level entrypoints that are missing from the map. Output artifacts,
-     caches, temporary directories, and build products are ignored. After safe
-     map maintenance, Stop blocks unresolved guide-quality failures so the
-     current agent repairs `AGENTS.md` before ending the active maintenance
-     path. Clean direct turns do not mutate `AGENTS.md` or block stop for
-     pre-existing map drift. Project Goal and Project Constraints remain
-     explicit/manual unless a future design proves a safe automatic rule.
+     top-level entrypoints that are missing from the map, or when generated
+     nested primary map entries should be folded into canonical top-level
+     entries. Output artifacts, caches, temporary directories, and build
+     products are ignored. After safe map maintenance, Stop blocks unresolved
+     guide-quality failures so the current agent repairs `AGENTS.md` before
+     ending the active maintenance path. Clean direct turns do not mutate
+     `AGENTS.md` or block stop for pre-existing map drift. Project Goal and
+     Project Constraints remain explicit/manual unless a future design proves a
+     safe automatic rule.
 
 ## Policy
 

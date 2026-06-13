@@ -163,11 +163,16 @@ def candidate_is_mapped(candidate: str, tokens: set[str]) -> bool:
         variants.add(normalized.rstrip("/"))
     else:
         variants.add(f"{normalized}/")
-    if variants & tokens:
-        return True
-    if normalized.endswith("/"):
-        return any(token.startswith(normalized) for token in tokens)
-    return False
+    return bool(variants & tokens)
+
+
+def is_top_level_project_map_token(token: str) -> bool:
+    normalized = normalize_map_token(token).rstrip("/")
+    return bool(normalized) and "/" not in normalized
+
+
+def non_top_level_project_map_entries(tokens: set[str]) -> list[str]:
+    return sorted((token for token in tokens if not is_top_level_project_map_token(token)), key=str.lower)
 
 
 def project_map_token_exists(root: Path, token: str) -> bool:

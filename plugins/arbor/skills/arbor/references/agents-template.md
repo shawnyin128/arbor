@@ -25,9 +25,10 @@ Arbor has not recorded a durable project map for this repository yet. Inspect
 the repository directly before answering project-structure questions, and keep
 this section as the entrypoint to durable project context once the map is known.
 
-- Add major directories, modules, commands, architecture boundaries, and where
-  to start reading.
-- Add pointers to deeper design and domain docs as the project grows.
-- When durable top-level entrypoints or stable mapped subpaths are added,
-  removed, or renamed, refresh this section before handoff; keep transient
-  current-session progress in `.arbor/memory.md` instead.
+- Add only durable top-level entrypoints as primary map bullets, such as
+  `src/`, `tests/`, `plugins/`, `README.md`, or `pyproject.toml`.
+- Mention important nested modules, commands, architecture boundaries, and
+  deeper docs in the bullet descriptions, not as separate primary map bullets.
+- When durable top-level entrypoints are added, removed, or renamed, refresh
+  this section before handoff; keep transient current-session progress in
+  `.arbor/memory.md` instead.

@@ -150,12 +150,13 @@ Codex initialization writes executable project hooks into target-project
 - `Stop`: quietly maintains `.arbor/memory.md` recovery notes when Arbor
   context would otherwise be hard to resume, and applies conservative
   `AGENTS.md` Project Map drift when current git status shows new durable
-  top-level entrypoints. Output/artifact directories such as `outputs/`, `tmp/`,
-  caches, and build outputs are ignored. A tracked deletion under `.arbor/`
-  still counts as Arbor-managed state so Stop can recreate the recovery file
-  before the session ends. Arbor reads unquoted porcelain status, so spaces or
-  special characters in `.arbor/` paths do not hide Arbor-managed changes from
-  Stop.
+  top-level entrypoints or generated nested primary map entries that should be
+  folded into top-level entries. Output/artifact directories such as
+  `outputs/`, `tmp/`, caches, and build outputs are ignored. A tracked deletion
+  under `.arbor/` still counts as Arbor-managed state so Stop can recreate the
+  recovery file before the session ends. Arbor reads unquoted porcelain status,
+  so spaces or special characters in `.arbor/` paths do not hide Arbor-managed
+  changes from Stop.
 
 Claude Code initialization writes executable project hooks into
 `.claude/settings.json` plus wrappers under `.claude/hooks/` with the same
