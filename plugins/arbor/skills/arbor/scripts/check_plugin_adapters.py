@@ -1676,6 +1676,18 @@ def validate_install_state_checker(errors: list[str]) -> None:
         check(errors, ready.status == "ready", "install-state checker must report matching caches as ready")
         check(errors, ready.selected_cache_version == "2.0.0", "install-state checker must select release caches over ignored dev caches")
 
+        (source / "skills" / "arbor" / "SKILL.md").write_text("---\nname: arbor\n---\n# Arbor\n", encoding="utf-8")
+        (cache / "skills" / "arbor" / "SKILL.md").write_bytes(b"---\r\nname: arbor\r\n---\r\n# Arbor\r\n")
+        line_ending_ready = module.runtime_cache_state(source, codex_base, "codex")
+        check(errors, line_ending_ready.status == "ready", "install-state checker must ignore CRLF/LF-only text differences")
+
+        claude_install_marker = cache / ".in_use" / "session"
+        claude_install_marker.parent.mkdir()
+        claude_install_marker.write_text("official installer marker\n", encoding="utf-8")
+        in_use_ready = module.runtime_cache_state(source, codex_base, "codex")
+        check(errors, in_use_ready.status == "ready", "install-state checker must ignore Claude Code .in_use installer state")
+        shutil.rmtree(cache / ".in_use")
+
         original_digest_tree = module.digest_tree
 
         def raise_source_digest_failure(root_path: Path) -> str:

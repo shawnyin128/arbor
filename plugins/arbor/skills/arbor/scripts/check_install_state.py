@@ -21,6 +21,7 @@ DEFAULT_GIT_TIMEOUT_SECONDS = 10.0
 CODEX_CACHE_BASE = Path.home() / ".codex" / "plugins" / "cache" / "arbor" / "arbor"
 CLAUDE_CACHE_BASE = Path.home() / ".claude" / "plugins" / "cache" / "arbor" / "arbor"
 TRANSIENT_DIR_NAMES = {"__pycache__", ".pytest_cache", ".mypy_cache"}
+IGNORED_RUNTIME_DIR_NAMES = {".in_use"}
 TRANSIENT_SUFFIXES = {".pyc", ".pyo"}
 LEGACY_PLUGIN_HOOK_MANIFEST = Path("hooks") / "hooks.json"
 RELEASE_VERSION_PATTERN = re.compile(r"\d+\.\d+\.\d+")
@@ -86,6 +87,20 @@ def is_transient(path: Path) -> bool:
     return any(part in TRANSIENT_DIR_NAMES for part in path.parts) or path.suffix in TRANSIENT_SUFFIXES
 
 
+def is_ignored_for_digest(path: Path) -> bool:
+    ignored_dirs = TRANSIENT_DIR_NAMES | IGNORED_RUNTIME_DIR_NAMES
+    return any(part in ignored_dirs for part in path.parts) or path.suffix in TRANSIENT_SUFFIXES
+
+
+def digest_bytes(path: Path) -> bytes:
+    data = path.read_bytes()
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    return text.replace("\r\n", "\n").encode("utf-8")
+
+
 def transient_artifacts(root: Path) -> list[str]:
     artifacts: list[str] = []
     if not root.exists():
@@ -102,12 +117,12 @@ def transient_artifacts(root: Path) -> list[str]:
 def digest_tree(root: Path) -> str:
     digest = hashlib.sha256()
     for path in sorted(root.rglob("*")):
-        if path.is_dir() or is_transient(path):
+        if path.is_dir() or is_ignored_for_digest(path):
             continue
         rel = path.relative_to(root).as_posix()
         digest.update(rel.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        digest.update(digest_bytes(path))
         digest.update(b"\0")
     return digest.hexdigest()
 
