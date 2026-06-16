@@ -3288,6 +3288,9 @@ def validate_framework_repair_boundaries(errors: list[str]) -> None:
             "AGENTS.md",
             ".arbor/memory.md",
             "CLAUDE.md",
+        ):
+            check(errors, (root / rel).is_file(), f"repair must create {rel}")
+        for rel in (
             ".codex/hooks.json",
             ".codex/hooks/arbor-session-start",
             ".codex/hooks/arbor-stop-memory-hygiene",
@@ -3295,13 +3298,29 @@ def validate_framework_repair_boundaries(errors: list[str]) -> None:
             ".claude/hooks/arbor-session-start",
             ".claude/hooks/arbor-stop-memory-hygiene",
         ):
-            check(errors, (root / rel).is_file(), f"repair must create {rel}")
+            check(errors, not (root / rel).exists(), f"default hookless repair must not create {rel}")
+
+    with tempfile.TemporaryDirectory(prefix="arbor-framework-legacy-hook-repair-") as tmp:
+        root = Path(tmp)
+        run_framework(root, errors, "--mode", "repair", "--runtime", "both", "--claude-bridge", "on", "--include-hooks")
+        for rel in (
+            "AGENTS.md",
+            ".arbor/memory.md",
+            "CLAUDE.md",
+            ".codex/hooks.json",
+            ".codex/hooks/arbor-session-start",
+            ".codex/hooks/arbor-stop-memory-hygiene",
+            ".claude/settings.json",
+            ".claude/hooks/arbor-session-start",
+            ".claude/hooks/arbor-stop-memory-hygiene",
+        ):
+            check(errors, (root / rel).is_file(), f"legacy hook repair must create {rel}")
 
     with tempfile.TemporaryDirectory(prefix="arbor-invalid-json-check-") as tmp:
         root = Path(tmp)
         (root / ".codex").mkdir()
         (root / ".codex" / "hooks.json").write_text("{not-json", encoding="utf-8")
-        output = run_framework(root, errors, "--mode", "repair", "--runtime", "codex", allow_failure=True)
+        output = run_framework(root, errors, "--mode", "repair", "--runtime", "codex", "--include-hooks", allow_failure=True)
         hooks_json = (root / ".codex" / "hooks.json").read_text(encoding="utf-8")
         check(errors, hooks_json == "{not-json", "repair must not rewrite invalid JSON")
         check(errors, "invalid" in output.lower(), "invalid JSON must be reported visibly")
@@ -4259,10 +4278,31 @@ def validate_framework_check_smoke(errors: list[str]) -> None:
         "AGENTS.md",
         ".arbor/memory.md",
         "CLAUDE.md",
-        "shared hook adapters",
         "Result:",
     ):
         check(errors, term in output, f"framework check smoke output missing {term!r}")
+    check(errors, "shared hook adapters" not in output, "default framework check smoke must stay hookless")
+
+    legacy_output = run_command(
+        [
+            sys.executable,
+            str(SCRIPTS_ROOT / "run_framework_check.py"),
+            "--root",
+            str(REPO_ROOT),
+            "--plugin-root",
+            str(PLUGIN_ROOT),
+            "--runtime",
+            "both",
+            "--include-hooks",
+        ],
+        errors,
+    )
+    for term in (
+        ".codex/hooks.json + .codex/hooks/",
+        ".claude/settings.json + .claude/hooks/",
+        "shared hook adapters",
+    ):
+        check(errors, term in legacy_output, f"legacy framework check smoke output missing {term!r}")
 
 
 def main() -> int:

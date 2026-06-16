@@ -1,6 +1,6 @@
 ---
 name: arbor
-description: "Use when initializing or checking Arbor-created project framework files and runtime hook surfaces: AGENTS.md, .arbor/memory.md, CLAUDE.md, Codex project hooks, Claude project hooks, or shared hook adapters; not for project summaries, resume status, migration advice, or general maintenance."
+description: "Use when initializing or checking Arbor-created project framework files: AGENTS.md, .arbor/memory.md, CLAUDE.md, or explicit legacy hook repair surfaces; not for project summaries, resume status, migration advice, or general maintenance."
 ---
 
 # Arbor
@@ -32,33 +32,30 @@ initialize Arbor or run an Arbor framework check.
 
 When initializing, resuming, or checking Arbor state in a project:
 
-1. Ensure `AGENTS.md`, `.arbor/memory.md`, and the current runtime's bootstrap
-   files exist. Use `scripts/init_project_memory.py --root <project-root>` when
-   useful. Existing `AGENTS.md` and `.arbor/memory.md` must be preserved.
-2. Initialize project hooks through the current runtime's project surface. Use
-   `scripts/diagnose_project_hooks.py --root <project-root> --plugin-root
-   <arbor-plugin-root>` when hook state is unclear. On Codex, use
-   `scripts/register_project_hooks.py --root <project-root> --runtime codex`.
-   On Claude Code, use the same script with `--runtime claude`. Use
-   `--runtime both` only when both project hook surfaces are intentionally
-   requested.
-3. Confirm the project SessionStart hook is the normal startup path. Its
+1. Ensure `AGENTS.md`, `.arbor/memory.md`, and the optional `CLAUDE.md` bridge
+   exist when requested. Use `scripts/init_project_memory.py --root
+   <project-root>` when useful. Existing `AGENTS.md` and `.arbor/memory.md`
+   must be preserved.
+2. Use direct project-local recovery as the normal startup path. Its
    deterministic context packet loads:
    - `AGENTS.md`
    - formatted `git log`
    - `.arbor/memory.md`
    - `git status`
-4. Use `scripts/collect_project_context.py --root <project-root>` when hooks
-   are unavailable or a deterministic ordered context packet is useful.
+3. Use `scripts/collect_project_context.py --root <project-root>` when a
+   deterministic ordered context packet is useful.
+4. Diagnose or repair project hooks only when the user explicitly asks for
+   legacy hook repair. Use `scripts/diagnose_project_hooks.py --root
+   <project-root> --plugin-root <arbor-plugin-root>` when hook state is unclear.
 5. Read additional project files only when the user request requires them.
 
 On Codex, project hooks may be skipped until the user trusts them through
-`/hooks`. `AGENTS.md` remains the durable project guide and fallback map, not
-proof that startup context was injected.
+`/hooks`. `AGENTS.md` remains the durable project guide and primary map; hook
+presence is not proof that startup context was injected.
 
 On Claude Code, `CLAUDE.md` is a short bridge to the canonical Arbor files. A
-project initialized from Codex still needs Claude initialization to create
-`.claude/settings.json`, `.claude/hooks/`, and `CLAUDE.md`.
+project initialized from Codex may still need Claude initialization to create
+`CLAUDE.md`.
 
 ## Visible Output Boundary
 
@@ -87,9 +84,6 @@ Runtime: codex|claude|both
 | AGENTS.md | yes | pass | ... | none |
 | .arbor/memory.md | yes | pass | ... | none |
 | CLAUDE.md | no | not_applicable | ... | none |
-| .codex/hooks.json + .codex/hooks/ | yes | missing | ... | run register_project_hooks.py --runtime codex |
-| .claude/settings.json + .claude/hooks/ | no | not_applicable | ... | none |
-| shared hook adapters | yes | pass | ... | none |
 
 Result: pass|needs_repair|blocked
 ```
@@ -105,9 +99,6 @@ The normal framework check includes only these surfaces:
 - `AGENTS.md`
 - `.arbor/memory.md`
 - `CLAUDE.md`
-- `.codex/hooks.json + .codex/hooks/`
-- `.claude/settings.json + .claude/hooks/`
-- `shared hook adapters`
 
 Do not include normal `$arbor` rows or sections for git history, project
 summary, broad project health, maintenance advice, migration plans, product
@@ -132,10 +123,10 @@ Repair mode may apply only safe, idempotent framework repairs:
 
 - create missing `.arbor/memory.md`;
 - create missing `AGENTS.md` from the Arbor template;
-- create missing `CLAUDE.md` bridge when Claude support is requested;
-- register or refresh Codex `.codex/hooks.json` and `.codex/hooks/` wrappers;
-- register or refresh Claude `.claude/settings.json` and `.claude/hooks/`
-  wrappers.
+- create missing `CLAUDE.md` bridge when Claude support is requested.
+
+Legacy hook diagnosis or repair requires an explicit hook path such as
+`--include-hooks`; it is not part of the default framework check or repair.
 
 Repair mode must not silently apply policy-changing or destructive edits such
 as `.gitignore` changes, deleting files, changing runtime trust, recovering
@@ -333,6 +324,22 @@ values unless they point to a full Arbor plugin root with Codex and Claude
 manifests plus `skills/arbor/SKILL.md`. Hook adapters also soft-skip empty
 probe payloads so hook UIs can validate commands without reporting false
 failures.
+
+## Scenario Gate
+
+Offline hookless scenario checks are the default validation path for Arbor context-core changes:
+
+```bash
+python tests/scenario/check_hookless_scenarios.py
+```
+
+Real Codex scenarios are explicit slow tests and do not run by default:
+
+```bash
+python tests/scenario/check_codex_scenarios.py --run-codex --evidence-dir docs/scenario-evidence/YYYY-MM-DD
+```
+
+Run the real Codex scenarios when a change deletes, replaces, or rewrites the hookless context path; changes `AGENTS.md`, `.arbor/memory.md`, or `CLAUDE.md` protocol; changes `$arbor` visible output or trigger wording; changes init/recover/status/doctor behavior; or changes the scenario harness itself. When a scenario fails, inspect the final rationale JSON and the JSONL evidence before guessing why the agent chose a context chain.
 
 ## Resources
 
