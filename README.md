@@ -369,7 +369,7 @@ reporting that migration would succeed.
 Current version:
 
 ```text
-2.0.2
+2.0.3
 ```
 
 Version files:

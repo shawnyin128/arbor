@@ -13,7 +13,7 @@ sys.dont_write_bytecode = True
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = PLUGIN_ROOT.parents[1]
 SKILLS_ROOT = PLUGIN_ROOT / "skills"
-EXPECTED_VERSION = "2.0.2"
+EXPECTED_VERSION = "2.0.3"
 
 FORBIDDEN_SKILLS = {
     "brainstorm",
