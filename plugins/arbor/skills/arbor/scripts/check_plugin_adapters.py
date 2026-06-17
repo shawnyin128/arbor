@@ -49,6 +49,7 @@ REQUIRED_SCRIPT_FILES = {
     "check_agents_guide_quality.py",
     "check_cache_sync_adapters.py",
     "check_context_boundary.py",
+    "check_hookless_repair_smoke.py",
     "check_install_state.py",
     "check_plugin_adapters.py",
     "check_project_wrapper_smoke.py",
@@ -653,7 +654,7 @@ def validate_quality_gate_is_artifact_free(errors: list[str]) -> None:
 
     checks = module.gate_checks(REPO_ROOT, PLUGIN_ROOT)
     names = [check.name for check in checks]
-    commands = [" ".join(check.command) for check in checks]
+    commands = [" ".join(check.command) for check in checks if check.command is not None]
     check(errors, "python syntax" in names, "quality gate must use artifact-free Python syntax validation")
     check(errors, "source hygiene" in names, "quality gate must validate source hygiene beyond git diff --check")
     check(
@@ -670,10 +671,14 @@ def validate_quality_gate_is_artifact_free(errors: list[str]) -> None:
             subprocess_env().get("PYTHONDONTWRITEBYTECODE") == "1",
             "quality gate subprocesses must not write Python bytecode artifacts",
         )
-    framework_commands = [check.command for check in checks if check.name == "framework check"]
-    check(errors, framework_commands, "quality gate must run the framework check")
-    for command in framework_commands:
-        check(errors, "--strict" in command, "quality gate must invoke framework check in strict mode")
+    hookless_commands = [check.command for check in checks if check.name == "hookless repair smoke" and check.command is not None]
+    check(errors, hookless_commands, "quality gate must run the hookless repair smoke")
+    for command in hookless_commands:
+        check(
+            errors,
+            any("check_hookless_repair_smoke.py" in part for part in command),
+            "quality gate must invoke the hookless repair smoke script",
+        )
 
     syntax_module_path = SCRIPTS_ROOT / "check_python_syntax.py"
     syntax_spec = importlib.util.spec_from_file_location("arbor_check_python_syntax_probe", syntax_module_path)

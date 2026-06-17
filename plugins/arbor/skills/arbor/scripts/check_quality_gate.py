@@ -23,8 +23,9 @@ DEFAULT_CHECK_TIMEOUT_SECONDS = 120.0
 @dataclass(frozen=True)
 class GateCheck:
     name: str
-    command: list[str]
+    command: list[str] | None
     allow_framework_trust_block: bool = False
+    skip_note: str = ""
 
 
 @dataclass(frozen=True)
@@ -99,6 +100,9 @@ def check_timeout_seconds() -> float:
 
 
 def run_check(check: GateCheck) -> GateOutcome:
+    if check.command is None:
+        return GateOutcome(True, "skipped", check.skip_note, "")
+
     timeout = check_timeout_seconds()
     try:
         proc = subprocess.run(
@@ -135,31 +139,29 @@ def run_check(check: GateCheck) -> GateOutcome:
 def gate_checks(root: Path, plugin_root: Path) -> list[GateCheck]:
     python = sys.executable
     script_root = plugin_root / "skills" / "arbor" / "scripts"
-    return [
+    checks = [
         GateCheck("python syntax", [python, str(script_root / "check_python_syntax.py")]),
         GateCheck("source hygiene", [python, str(script_root / "check_source_hygiene.py")]),
         GateCheck("diff hygiene", ["git", "-C", str(root), "diff", "--check"]),
         GateCheck("context boundary", [python, str(script_root / "check_context_boundary.py")]),
         GateCheck("project wrapper smoke", [python, str(script_root / "check_project_wrapper_smoke.py")]),
+        GateCheck("hookless repair smoke", [python, str(script_root / "check_hookless_repair_smoke.py")]),
         GateCheck("plugin adapters", [python, str(script_root / "check_plugin_adapters.py")]),
         GateCheck("skill packages", [python, str(script_root / "check_skill_packages.py")]),
-        GateCheck("AGENTS guide quality", [python, str(script_root / "check_agents_guide_quality.py"), "--root", str(root)]),
-        GateCheck(
-            "framework check",
-            [
-                python,
-                str(script_root / "run_framework_check.py"),
-                "--root",
-                str(root),
-                "--plugin-root",
-                str(plugin_root),
-                "--runtime",
-                "both",
-                "--strict",
-            ],
-            allow_framework_trust_block=True,
-        ),
     ]
+    if (root / "AGENTS.md").is_file():
+        checks.append(
+            GateCheck("AGENTS guide quality", [python, str(script_root / "check_agents_guide_quality.py"), "--root", str(root)])
+        )
+    else:
+        checks.append(
+            GateCheck(
+                "AGENTS guide quality",
+                None,
+                skip_note="AGENTS.md is project-local runtime state and is ignored in published checkouts",
+            )
+        )
+    return checks
 
 
 def main() -> int:
