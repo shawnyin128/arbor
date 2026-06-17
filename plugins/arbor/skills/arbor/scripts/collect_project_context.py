@@ -26,6 +26,8 @@ DEFAULT_GIT_TIMEOUT_SECONDS = 10.0
 HOOK_MEMORY_MARKERS = ("[hook:fallback]", "[hook:resume]")
 PLACEHOLDER_MEMORY_PATTERNS = (
     "no active arbor resume context recorded yet",
+    "no active pending context",
+    "no pending uncommitted context",
     "no unresolved state",
     "none.",
 )

@@ -74,6 +74,7 @@ class FrameworkRow:
 class FrameworkCheck:
     root: Path
     mode: str
+    runtime: str
     sources_checked: list[str]
     rows: list[FrameworkRow]
     repairs_applied: int = 0
@@ -130,7 +131,14 @@ def hook_row(surface: str, state: HookState, *, required: bool) -> FrameworkRow:
     return FrameworkRow(surface, "yes" if required else "no", status, one_line(state.detail), one_line(repair))
 
 
-def build_rows(root: Path, plugin_root: Path | None, *, runtime: str, codex_trusted: bool) -> list[FrameworkRow]:
+def build_rows(
+    root: Path,
+    plugin_root: Path | None,
+    *,
+    runtime: str,
+    codex_trusted: bool,
+    include_hooks: bool,
+) -> list[FrameworkRow]:
     rows: list[FrameworkRow] = []
 
     agents = project_path(root, PROJECT_GUIDE_PATH)
@@ -216,22 +224,23 @@ def build_rows(root: Path, plugin_root: Path | None, *, runtime: str, codex_trus
             )
         )
 
-    hook_state = diagnose(root, plugin_root, codex_trusted=codex_trusted)
-    rows.append(
-        hook_row(
-            ".codex/hooks.json + .codex/hooks/",
-            hook_state.codex,
-            required=runtime_applies(runtime, INSTALL_RUNTIME_CODEX),
+    if include_hooks:
+        hook_state = diagnose(root, plugin_root, codex_trusted=codex_trusted)
+        rows.append(
+            hook_row(
+                ".codex/hooks.json + .codex/hooks/",
+                hook_state.codex,
+                required=runtime_applies(runtime, INSTALL_RUNTIME_CODEX),
+            )
         )
-    )
-    rows.append(
-        hook_row(
-            ".claude/settings.json + .claude/hooks/",
-            hook_state.claude_project,
-            required=runtime_applies(runtime, INSTALL_RUNTIME_CLAUDE),
+        rows.append(
+            hook_row(
+                ".claude/settings.json + .claude/hooks/",
+                hook_state.claude_project,
+                required=runtime_applies(runtime, INSTALL_RUNTIME_CLAUDE),
+            )
         )
-    )
-    rows.append(hook_row("shared hook adapters", hook_state.shared_adapters, required=True))
+        rows.append(hook_row("shared hook adapters", hook_state.shared_adapters, required=True))
     return rows
 
 
@@ -251,6 +260,7 @@ def run_check(
     codex_trusted: bool,
     mode: str,
     claude_bridge: str,
+    include_hooks: bool,
 ) -> FrameworkCheck:
     resolved = resolve_project_root(root)
     selected_runtime = resolve_registration_runtime(runtime)
@@ -258,10 +268,21 @@ def run_check(
         str(project_path(resolved, PROJECT_GUIDE_PATH)),
         str(project_path(resolved, CANONICAL_MEMORY_PATH)),
         str(project_path(resolved, CLAUDE_GUIDE_PATH)),
-        str(project_path(resolved, Path(".codex") / "hooks.json")),
-        str(project_path(resolved, Path(".claude") / "settings.json")),
     ]
-    before_rows = build_rows(resolved, plugin_root, runtime=selected_runtime, codex_trusted=codex_trusted)
+    if include_hooks:
+        sources.extend(
+            [
+                str(project_path(resolved, Path(".codex") / "hooks.json")),
+                str(project_path(resolved, Path(".claude") / "settings.json")),
+            ]
+        )
+    before_rows = build_rows(
+        resolved,
+        plugin_root,
+        runtime=selected_runtime,
+        codex_trusted=codex_trusted,
+        include_hooks=include_hooks,
+    )
     repairs_applied = 0
     rows = before_rows
     if mode == MODE_REPAIR:
@@ -270,12 +291,20 @@ def run_check(
             effective_bridge = CLAUDE_BRIDGE_ON
         init_actions = init_project_memory(resolved, claude_bridge=effective_bridge)
         repairs_applied += count_repairs(init_actions)
-        hook_actions = register_project_hooks(resolved, runtime=selected_runtime)
-        repairs_applied += count_repairs(hook_actions)
-        rows = build_rows(resolved, plugin_root, runtime=selected_runtime, codex_trusted=codex_trusted)
+        if include_hooks:
+            hook_actions = register_project_hooks(resolved, runtime=selected_runtime)
+            repairs_applied += count_repairs(hook_actions)
+        rows = build_rows(
+            resolved,
+            plugin_root,
+            runtime=selected_runtime,
+            codex_trusted=codex_trusted,
+            include_hooks=include_hooks,
+        )
     return FrameworkCheck(
         root=resolved,
         mode=mode,
+        runtime=selected_runtime,
         sources_checked=sources,
         rows=rows,
         repairs_applied=repairs_applied,
@@ -308,7 +337,7 @@ def render_report(check: FrameworkCheck) -> str:
         "**Arbor Framework Check**",
         f"Project root: {check.root}",
         f"Mode: {visible_mode}",
-        "Runtime: " + selected_runtime_label(check.rows),
+        "Runtime: " + check.runtime,
     ]
     if check.mode == MODE_REPAIR:
         assert check.before_rows is not None
@@ -344,6 +373,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runtime", choices=RUNTIME_CHOICES, default="auto", help="Runtime hook surface to check or repair.")
     parser.add_argument("--codex-trusted", action="store_true", help="Assert Codex project hooks are already trusted in /hooks.")
     parser.add_argument("--claude-bridge", choices=CLAUDE_BRIDGE_CHOICES, default="auto", help="Claude bridge mode for repair.")
+    parser.add_argument("--include-hooks", action="store_true", help="Include legacy project hook diagnosis and repair surfaces.")
     parser.add_argument("--strict", action="store_true", help="Exit nonzero unless the final Result is pass.")
     return parser
 
@@ -359,6 +389,7 @@ def main(argv: list[str] | None = None) -> int:
             codex_trusted=args.codex_trusted,
             mode=args.mode,
             claude_bridge=args.claude_bridge,
+            include_hooks=args.include_hooks,
         )
     except (ProjectStateError, HookRegistrationError, OSError, ValueError) as exc:
         print(f"arbor framework check failed: {exc}", file=sys.stderr)
