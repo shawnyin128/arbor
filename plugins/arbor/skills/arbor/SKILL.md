@@ -8,25 +8,26 @@ description: "Use when initializing or checking Arbor-created project framework 
 ## Core Rule
 
 Arbor is a context reliability layer. It initializes and checks only
-Arbor-created or Arbor-managed project files and hook registration surfaces.
+Arbor-created or Arbor-managed project files, the hookless runtime contract,
+and explicit legacy hook repair surfaces.
 
 Use Arbor for:
 
 - project initialization;
 - framework checks;
 - safe explicit framework repair;
-- project hook diagnosis;
 - startup context loading;
-- short-term memory hygiene;
+- hookless finalization and short-term memory hygiene;
 - conservative `AGENTS.md` Project Map support.
+- legacy project hook diagnosis only when explicitly requested.
 
 Do not use Arbor as a project-summary command, project-status command,
 subjective health report, migration advisor, broad maintenance report, planning
 method, implementation method, review method, or branch-finishing policy.
 Ordinary questions such as "what does this repo do?", "where were we?", or
-"what should I do next?" should use injected SessionStart context when present,
-then answer directly from project sources unless the user also asks to
-initialize Arbor or run an Arbor framework check.
+"what should I do next?" should use the hookless startup packet when the
+project AGENTS guide requires it, then answer directly from project sources
+unless the user also asks to initialize Arbor or run an Arbor framework check.
 
 ## Startup Workflow
 
@@ -35,27 +36,37 @@ When initializing, resuming, or checking Arbor state in a project:
 1. Ensure `AGENTS.md`, `.arbor/memory.md`, and the optional `CLAUDE.md` bridge
    exist when requested. Use `scripts/init_project_memory.py --root
    <project-root>` when useful. Existing `AGENTS.md` and `.arbor/memory.md`
-   must be preserved.
-2. Use direct project-local recovery as the normal startup path. Its
-   deterministic context packet loads:
+   must be preserved. Existing `AGENTS.md` must receive the Arbor hookless
+   runtime contract if it is missing.
+2. Use direct project-local recovery as the normal startup path. Run
+   `python <arbor-skill-root>/scripts/run_session_startup_hook.py --root
+   <project-root>` at the start of a non-trivial Arbor-managed project task or
+   resume. The helper is a package resource under `skills/arbor/scripts`; do
+   not look for it under `<project-root>/scripts` or `<plugin-root>/scripts`.
+   Its deterministic context packet loads:
    - `AGENTS.md`
    - formatted `git log`
    - `.arbor/memory.md`
    - `git status`
-3. Use `scripts/collect_project_context.py --root <project-root>` when a
-   deterministic ordered context packet is useful.
-4. Diagnose or repair project hooks only when the user explicitly asks for
+3. Use `scripts/collect_project_context.py --root <project-root>` only when a
+   lower-level deterministic ordered packet is useful.
+4. Before finishing a non-trivial task, handoff, or dirty-worktree turn, run
+   `python <arbor-skill-root>/scripts/run_hookless_finalization.py --root
+   <project-root>`. This first executes the same quiet maintenance adapter used
+   by the legacy Stop hook, then emits memory hygiene and AGENTS Project Map
+   drift context.
+5. Diagnose or repair project hooks only when the user explicitly asks for
    legacy hook repair. Use `scripts/diagnose_project_hooks.py --root
    <project-root> --plugin-root <arbor-plugin-root>` when hook state is unclear.
-5. Read additional project files only when the user request requires them.
+6. Read additional project files only when the user request requires them.
 
-On Codex, project hooks may be skipped until the user trusts them through
-`/hooks`. `AGENTS.md` remains the durable project guide and primary map; hook
-presence is not proof that startup context was injected.
+On Codex, the default path is hookless. `AGENTS.md` remains the durable project
+guide and primary map; `.codex/hooks.json` presence is not proof that startup
+context was loaded.
 
-On Claude Code, `CLAUDE.md` is a short bridge to the canonical Arbor files. A
-project initialized from Codex may still need Claude initialization to create
-`CLAUDE.md`.
+On Claude Code, `CLAUDE.md` is a short bridge to the canonical Arbor files and
+the hookless contract in `AGENTS.md`. A project initialized from Codex may still
+need Claude initialization to create `CLAUDE.md`.
 
 ## Visible Output Boundary
 
@@ -123,6 +134,8 @@ Repair mode may apply only safe, idempotent framework repairs:
 
 - create missing `.arbor/memory.md`;
 - create missing `AGENTS.md` from the Arbor template;
+- append the Arbor hookless runtime contract to an existing `AGENTS.md` when
+  it is missing;
 - create missing `CLAUDE.md` bridge when Claude support is requested.
 
 Legacy hook diagnosis or repair requires an explicit hook path such as
@@ -156,12 +169,13 @@ decisions, or the first resume action. Remove or shrink items once they are
 committed or moved to a durable home. Keep the file short enough to read during
 startup.
 
-The Stop hook is a quiet safety net. It may preserve a concise resume pointer
-when dirty Arbor-managed state or conversation-only context would otherwise be
-lost. It should not create memory churn for clean direct answers, read-only
-inspection, or already durable state. A tracked deletion under `.arbor/` still
-counts as Arbor-managed state so Stop can recreate `.arbor/memory.md` instead of
-silently losing the recovery file. Stop status parsing must use unquoted
+Hookless finalization is the replacement for the old Stop-time safety net. It
+may preserve a concise resume pointer when dirty Arbor-managed state or
+conversation-only context would otherwise be lost. It should not create memory
+churn for clean direct answers, read-only inspection, or already durable state.
+A tracked deletion under `.arbor/` still counts as Arbor-managed state so
+finalization can recreate `.arbor/memory.md` instead of silently losing the
+recovery file. The underlying Stop-equivalent status parsing must use unquoted
 porcelain status so spaces or special characters in `.arbor/` paths do not hide
 Arbor-managed changes.
 
@@ -187,35 +201,38 @@ unresolved current-session state in `.arbor/memory.md`, completed outcomes in
 git history, and deeper durable knowledge in project docs.
 
 Use `scripts/run_agents_guide_drift_hook.py --root <project-root>` when
-Project Map drift needs an explicit packet. The Stop hook also applies safe
-Project Map path maintenance when the current git status includes new durable
-top-level entrypoints that are missing from the map or non-canonical nested
-primary map entries that should be folded into the top-level map, while still
-ignoring artifact directories such as `outputs/`, `tmp/`, caches, and build
-outputs.
+Project Map drift needs an explicit packet. Hookless finalization also applies
+the same safe Project Map path maintenance that the old Stop hook used when the
+current git status includes new durable top-level entrypoints that are missing
+from the map or non-canonical nested primary map entries that should be folded
+into the top-level map, while still ignoring artifact directories such as
+`outputs/`, `tmp/`, caches, and build outputs.
 Clean direct turns should not mutate `AGENTS.md` just because old pre-existing
 map drift exists.
 
 ## Runtime Entrypoints
 
-Arbor runs the same context layer on Codex and Claude Code, but each runtime has
-its own project-local hook surface.
+Arbor's default runtime path is hookless and shared across Codex and Claude
+Code:
 
-- **Codex** uses project-level executable hooks registered in
-  `.codex/hooks.json` with wrappers under `.codex/hooks/` for Arbor startup
-  context. Codex may skip untrusted hooks until the user reviews them in
-  `/hooks`; `AGENTS.md` remains a project guide and fallback map.
-- **Claude Code** reads `CLAUDE.md` natively. Project-level executable hooks
-  are registered in `.claude/settings.json` with wrappers under `.claude/hooks/`.
-  The bridge points Claude Code back to `AGENTS.md` and `.arbor/memory.md`.
+- `AGENTS.md` carries the durable project guide plus the Arbor hookless runtime
+  contract.
+- `<arbor-skill-root>/scripts/run_session_startup_hook.py` loads the
+  SessionStart-equivalent startup packet in the required order.
+- `<arbor-skill-root>/scripts/run_hookless_finalization.py` runs the
+  Stop-equivalent quiet maintenance path and then renders memory hygiene plus
+  AGENTS drift context.
+- `CLAUDE.md` is only a short bridge back to `AGENTS.md` and
+  `.arbor/memory.md`.
 
-Arbor does not ship plugin-level hook registrations. Uninitialized projects do
-not have project-local `.arbor/` state to maintain, and project-level wrappers
-are the surface that `$arbor` can diagnose and repair.
+Arbor does not ship plugin-level hook registrations. Normal initialization,
+framework checks, and repair must not create `.codex/` or `.claude/` hook
+surfaces. Project-level hooks remain a legacy compatibility surface that Arbor
+can diagnose or repair only when explicitly requested.
 
-## Project Hooks
+## Legacy Project Hooks
 
-Project hooks delegate to shared adapter scripts:
+Legacy project hooks delegate to shared adapter scripts:
 
 - `hooks/session-start` calls `run_session_startup_hook.py` and applies a
   conservative runtime injection budget.
@@ -330,13 +347,13 @@ failures.
 Offline hookless scenario checks are the default validation path for Arbor context-core changes:
 
 ```bash
-python tests/scenario/check_hookless_scenarios.py
+python scripts/check_hookless_trigger_contract.py
 ```
 
 Real Codex scenarios are explicit slow tests and do not run by default:
 
 ```bash
-python tests/scenario/check_codex_scenarios.py --run-codex --evidence-dir docs/scenario-evidence/YYYY-MM-DD
+python scripts/check_codex_hookless_trigger_scenarios.py --run-codex --repeat 2 --evidence-dir docs/scenario-evidence/YYYY-MM-DD
 ```
 
 Run the real Codex scenarios when a change deletes, replaces, or rewrites the hookless context path; changes `AGENTS.md`, `.arbor/memory.md`, or `CLAUDE.md` protocol; changes `$arbor` visible output or trigger wording; changes init/recover/status/doctor behavior; or changes the scenario harness itself. When a scenario fails, inspect the final rationale JSON and the JSONL evidence before guessing why the agent chose a context chain.
@@ -356,6 +373,8 @@ Run the real Codex scenarios when a change deletes, replaces, or rewrites the ho
 - `scripts/run_session_startup_hook.py`: execute startup context loading
 - `scripts/run_memory_hygiene_hook.py`: emit memory hygiene context
 - `scripts/run_agents_guide_drift_hook.py`: emit `AGENTS.md` drift context
+- `scripts/run_hookless_finalization.py`: execute Stop-equivalent maintenance
+  and render finalization context
 - `scripts/run_framework_check.py`: render the deterministic Arbor framework
   check and apply explicit safe repair mode
 - `scripts/sync_local_plugin_cache.py`: sync committed plugin source to local
@@ -373,7 +392,11 @@ Run the real Codex scenarios when a change deletes, replaces, or rewrites the ho
   Project Map usefulness
 - `scripts/diagnose_project_hooks.py`: classify Codex and Claude hook surfaces
 - `scripts/register_project_hooks.py`: create or update Codex and Claude project
-  hook wrappers
+  hook wrappers for explicit legacy hook repair
+- `scripts/check_hookless_trigger_contract.py`: validate the hookless startup
+  and finalization contract, including Stop-equivalent maintenance behavior
+- `scripts/check_codex_hookless_trigger_scenarios.py`: explicit slow real
+  `codex exec` scenario gate; skipped unless `--run-codex` is passed
 - `scripts/check_context_boundary.py`: ensure only the context layer is
   published
 - `scripts/check_install_state.py`: report whether local Arbor plugin caches

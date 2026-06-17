@@ -1,7 +1,7 @@
 {
   "name": "arbor",
   "version": "2.0.2",
-  "description": "Initialize Arbor state and run minimal framework checks for AGENTS.md, project memory, Claude bridge files, and project-level hooks.",
+  "description": "Initialize Arbor state and run hookless framework checks for AGENTS.md, project memory, and Claude bridge files.",
   "author": {
     "name": "Shawn",
     "url": "https://github.com/shawnyin128"
@@ -12,15 +12,15 @@
   "keywords": [
     "codex",
     "memory",
-    "hooks",
+    "context",
     "project-context",
     "agents"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Arbor",
-    "shortDescription": "Project context, memory, and hooks",
-    "longDescription": "Arbor is a lightweight context layer for Codex and Claude Code. It initializes AGENTS.md, .arbor/memory.md, CLAUDE.md, and project-level hook wrappers, then checks those surfaces with one deterministic framework report. It does not provide planning, coding, review, release, project-summary, health, or maintenance workflows.",
+    "shortDescription": "Hookless project context and memory",
+    "longDescription": "Arbor is a lightweight hookless context layer for Codex and Claude Code. It initializes AGENTS.md, .arbor/memory.md, and CLAUDE.md, appends a runtime contract for startup and finalization, and checks those surfaces with one deterministic framework report. It does not provide planning, coding, review, release, project-summary, health, or maintenance workflows.",
     "developerName": "Shawn",
     "category": "Coding",
     "capabilities": [
@@ -30,8 +30,8 @@
     ],
     "defaultPrompt": [
       "Initialize Arbor in this project",
-      "Run a minimal Arbor framework check for managed files and project hooks",
-      "Repair missing Arbor framework files and project hook wrappers"
+      "Run a minimal Arbor framework check for hookless managed files",
+      "Repair missing Arbor framework files and hookless runtime contract"
     ],
     "brandColor": "#2F6F4E",
     "composerIcon": "./assets/icon.png",

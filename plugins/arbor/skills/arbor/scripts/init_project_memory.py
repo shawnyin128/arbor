@@ -13,14 +13,12 @@ sys.dont_write_bytecode = True
 
 from arbor_project_state import (
     INSTALL_RUNTIME_CLAUDE,
-    PROJECT_GUIDE_PATH,
     ProjectFileAction,
     ProjectStateError,
     detect_install_runtime,
     ensure_claude_bridge,
-    ensure_file,
     ensure_memory_file,
-    project_path,
+    ensure_project_guide_file,
     resolve_project_root,
 )
 
@@ -63,15 +61,14 @@ def init_project_memory(
     ``.arbor/memory.md`` without a Claude bridge. A later Claude Code
     initialization must still create ``CLAUDE.md`` when the bridge is enabled.
     Existing canonical files therefore do not short-circuit adapter setup.
-    Hook setup is runtime-specific and separate: Codex uses project-local
-    ``.codex/hooks.json`` registered by ``register_project_hooks.py``; Claude
-    Code uses project-local ``.claude/settings.json`` plus wrappers under
-    ``.claude/hooks`` registered by the same script.
+    Hookless startup and finalization are governed by the protected runtime
+    contract in ``AGENTS.md``. Legacy hook setup is separate and requires an
+    explicit repair path.
     """
     root = resolve_project_root(root)
     actions: list[ProjectFileAction] = [
         *ensure_memory_file(root, read_template("memory-template.md"), dry_run),
-        ensure_file(project_path(root, PROJECT_GUIDE_PATH), read_template("agents-template.md"), dry_run),
+        ensure_project_guide_file(root, read_template("agents-template.md"), dry_run),
     ]
     if resolve_claude_bridge(claude_bridge):
         actions.append(ensure_claude_bridge(root, read_template("claude-template.md"), dry_run))

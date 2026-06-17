@@ -8,7 +8,7 @@
     {
       "name": "arbor",
       "source": "./plugins/arbor",
-      "description": "Project-local memory, startup context, AGENTS.md guidance, and project-level hooks for Codex and Claude Code.",
+      "description": "Project-local memory, startup context, AGENTS.md guidance, and hookless finalization for Codex and Claude Code.",
       "category": "Coding"
     }
   ]

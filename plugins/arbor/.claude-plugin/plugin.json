@@ -1,7 +1,7 @@
 {
   "name": "arbor",
   "version": "2.0.2",
-  "description": "Initialize Arbor state and run minimal framework checks for AGENTS.md, project memory, Claude bridge files, and project-level hooks.",
+  "description": "Initialize Arbor state and run hookless framework checks for AGENTS.md, project memory, and Claude bridge files.",
   "author": {
     "name": "Shawn",
     "url": "https://github.com/shawnyin128"
@@ -12,7 +12,7 @@
   "keywords": [
     "claude-code",
     "memory",
-    "hooks",
+    "context",
     "project-context",
     "agents"
   ]

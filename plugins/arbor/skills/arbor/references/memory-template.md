@@ -18,10 +18,10 @@ Each In-flight note should briefly answer:
   - What should the next agent do first?
 
 Good:
-  - memory-resume-boundary: user wants Stop hooks to maintain memory and
-    AGENTS drift automatically. Relevant files are `hooks/stop-memory-hygiene`
-    and `docs/review/memory-resume-boundary.md`. Next: verify Codex/Claude Stop
-    replay before release.
+  - hookless-finalization: user wants Arbor finalization to preserve the old
+    Stop maintenance behavior without requiring runtime hooks. Relevant files
+    are `scripts/run_hookless_finalization.py` and `hooks/stop-memory-hygiene`.
+    Next: verify real Codex scenarios before release.
 
 Bad:
   - work in progress

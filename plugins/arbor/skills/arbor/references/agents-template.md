@@ -8,10 +8,10 @@ this section once the durable goal is known.
 
 ## Project Constraints
 
-- Normal Arbor startup context is loaded by the project SessionStart hook when
-  the runtime fires trusted project hooks. If hooks are unavailable, use this
-  guide as the durable map and inspect `.arbor/memory.md` plus git status
-  before answering resume questions.
+- Normal Arbor startup context is loaded through the Arbor hookless runtime
+  contract in this guide. Use this guide as the durable map and inspect
+  `.arbor/memory.md` plus git status before answering resume questions if the
+  startup packet cannot be run.
 - Keep this file concise; record only durable repository-wide guidance that is
   useful for project orientation.
 - Keep transient current-session progress in `.arbor/memory.md`.

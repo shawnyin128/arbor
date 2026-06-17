@@ -7,9 +7,10 @@ natively; the canonical Arbor state lives in the files this bridge points to.
 - `.arbor/memory.md` holds short-term, undecided observations. Read it after
   `AGENTS.md` and before deeper code or doc reads.
 
-Arbor startup context is normally injected by the project SessionStart hook.
-If hooks are unavailable, use `AGENTS.md` as the durable project map and inspect
-`.arbor/memory.md` plus git status before answering resume questions.
+Arbor startup context is normally loaded through the hookless runtime contract
+in `AGENTS.md`. Run the startup packet when available; if it is unavailable,
+use `AGENTS.md` as the durable project map and inspect `.arbor/memory.md` plus
+git status before answering resume questions.
 
 Keep this file as a short bridge: do not duplicate long-term project knowledge
 here. Durable goals, constraints, and project-map pointers belong in

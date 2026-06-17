@@ -7,6 +7,8 @@ It helps agents enter a repository with the same dependable context each time:
 - `AGENTS.md`: durable project guide and map.
 - `.arbor/memory.md`: short-term unresolved session memory.
 - `CLAUDE.md`: Claude Code bridge to `AGENTS.md` and `.arbor/memory.md`.
+- hookless runtime contract: startup and finalization instructions appended to
+  `AGENTS.md`.
 - optional project hooks: explicit legacy repair and diagnosis surface only.
 
 Arbor does not provide a development methodology. Planning, debugging, review,
@@ -59,21 +61,22 @@ Arbor publishes one skill:
 
 ```text
 Codex   Claude Code      Purpose
-$arbor  /arbor:arbor     initialize, hookless framework checks, safe repair
+$arbor  /arbor:arbor     initialize, hookless startup/finalization, checks
 ```
 
 Use it for:
 
 - initializing `AGENTS.md` and `.arbor/memory.md`;
+- appending the Arbor hookless runtime contract to an existing `AGENTS.md`;
 - creating the `CLAUDE.md` bridge for Claude Code;
 - running hookless framework checks for project-local Arbor files;
 - running explicit safe repairs for missing Arbor framework files.
 
 `$arbor` is not a project summary, project status report, resume summary, health
 assessment, migration report, or maintenance advisor. For ordinary questions
-such as "what does this project do?" or "where were we?", use injected startup
-context when present; otherwise read `AGENTS.md`, `.arbor/memory.md`, and git
-status directly from project sources.
+such as "what does this project do?" or "where were we?", use the hookless
+startup packet when the project contract requires it; otherwise read
+`AGENTS.md`, `.arbor/memory.md`, and git status directly from project sources.
 
 The normal `$arbor` output is detect-only and comes from
 `plugins/arbor/skills/arbor/scripts/run_framework_check.py` when available. It
@@ -86,29 +89,59 @@ The framework check only covers Arbor-created or Arbor-managed surfaces:
 - `.arbor/memory.md`
 - `CLAUDE.md`
 
-Safe repair mode is explicit and limited to creating missing Arbor state files
-and creating the Claude bridge when requested. Legacy hook diagnosis or repair
-requires an explicit hook path and is not part of the default check. Arbor does
-not silently delete files, change repository policy, repair invalid JSON,
-assert runtime trust, or rewrite user-authored project guidance.
+Safe repair mode is explicit and limited to creating missing Arbor state files,
+appending the missing hookless runtime contract, and creating the Claude bridge
+when requested. Legacy hook diagnosis or repair requires an explicit hook path
+and is not part of the default check. Arbor does not silently delete files,
+change repository policy, repair invalid JSON, assert runtime trust, or rewrite
+user-authored project guidance.
 
 ## Startup Context
 
 Fresh and resumed sessions should recover Arbor context from project-local
-files. The deterministic recovery order is:
+files by running:
+
+```bash
+python3 <arbor-skill-root>/scripts/run_session_startup_hook.py --root /path/to/project
+```
+
+The deterministic recovery order is:
 
 1. `AGENTS.md`
 2. recent formatted git history
 3. `.arbor/memory.md`
 4. `git status --short`
 
-`AGENTS.md` is the durable project guide and Project Map. Do not treat
-`.codex/hooks.json` as proof that startup context has already been injected,
-because Codex hooks still require runtime trust. Use `AGENTS.md` as the map and
-inspect `.arbor/memory.md` plus git status before answering resume questions.
+`AGENTS.md` is the durable project guide and Project Map. Arbor initialization
+preserves existing user content and appends a protected hookless runtime
+contract so future agents know to run the startup packet. Do not treat
+`.codex/hooks.json` as proof that startup context has already been loaded,
+because legacy Codex hooks still require runtime trust.
+
+`<arbor-skill-root>` is the installed Arbor skill package directory, such as
+`~/.codex/plugins/cache/arbor/arbor/<version>/skills/arbor` on Codex. The
+runtime helpers are package resources; they are not expected under the target
+project's `scripts/` directory.
 
 `CLAUDE.md` is the native Claude Code bridge. It should stay short and point to
 the canonical Arbor files instead of duplicating the full project guide.
+
+## Finalization
+
+Before the final response for a non-trivial task, handoff, or dirty-worktree
+turn, run:
+
+```bash
+python3 <arbor-skill-root>/scripts/run_hookless_finalization.py --root /path/to/project
+```
+
+This is the hookless replacement for Arbor's old Stop hook. It first executes
+the same quiet maintenance adapter used by the legacy Stop wrapper, so dirty
+Arbor-managed state can still refresh `.arbor/memory.md` and newly added durable
+top-level entrypoints can still repair the `AGENTS.md` Project Map. It then
+renders memory hygiene and AGENTS drift context so the agent can explain or
+complete any remaining update. Clean direct turns should not create memory
+churn.
 
 ## Memory
 
@@ -191,21 +224,24 @@ Offline hookless scenario checks are the default validation path for Arbor
 context-core changes:
 
 ```bash
-python tests/scenario/check_hookless_scenarios.py
+python3 plugins/arbor/skills/arbor/scripts/check_hookless_trigger_contract.py
 ```
 
 Real Codex scenarios are explicit slow tests and do not run by default:
 
 ```bash
-python tests/scenario/check_codex_scenarios.py --run-codex --evidence-dir docs/scenario-evidence/YYYY-MM-DD
+python3 plugins/arbor/skills/arbor/scripts/check_codex_hookless_trigger_scenarios.py \
+  --run-codex \
+  --repeat 2 \
+  --evidence-dir docs/scenario-evidence/YYYY-MM-DD
 ```
 
 Run the real Codex scenarios when a change deletes, replaces, or rewrites the
 hookless context path; changes the `AGENTS.md`, `.arbor/memory.md`, or
 `CLAUDE.md` protocol; changes `$arbor` visible output or trigger wording;
 changes init, recover, status, or doctor behavior; or changes the scenario
-harness. Use the final rationale JSON and JSONL evidence to debug why the
-agent chose a context chain.
+harness. Use the final rationale JSON, project side effects, and JSONL evidence
+to debug why the agent chose a context chain.
 
 ### Source Gate
 

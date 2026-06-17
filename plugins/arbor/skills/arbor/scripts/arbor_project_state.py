@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +22,40 @@ CLAUDE_HOOKS_DIR = Path(".claude") / "hooks"
 
 INSTALL_RUNTIME_CODEX = "codex"
 INSTALL_RUNTIME_CLAUDE = "claude"
+HOOKLESS_CONTRACT_START = "<!-- ARBOR HOOKLESS RUNTIME CONTRACT START -->"
+HOOKLESS_CONTRACT_END = "<!-- ARBOR HOOKLESS RUNTIME CONTRACT END -->"
+
+
+def hookless_runtime_contract() -> str:
+    """Return the durable AGENTS.md bootstrap block for hookless Arbor."""
+    return "\n".join(
+        [
+            HOOKLESS_CONTRACT_START,
+            "Arbor hookless runtime contract:",
+            "",
+            "Arbor package scripts live under the installed Arbor skill root at skills/arbor/scripts.",
+            "Resolve the newest installed Arbor skill root from the runtime cache, for example",
+            "%USERPROFILE%/.codex/plugins/cache/arbor/arbor/*/skills/arbor on Codex or",
+            "~/.claude/plugins/cache/arbor/arbor/*/skills/arbor on Claude Code.",
+            "Do not look for these scripts under <project-root>/scripts or <plugin-root>/scripts.",
+            "",
+            "Arbor startup: before answering a non-trivial project task or resume question, run",
+            "python <arbor-skill-root>/scripts/run_session_startup_hook.py --root <project-root>.",
+            "If that script is unavailable, manually read in this order: AGENTS.md; recent formatted git log;",
+            ".arbor/memory.md; git status --short.",
+            "",
+            "Arbor finalization: before the final response for a non-trivial task, handoff, or dirty-worktree turn, run",
+            "python <arbor-skill-root>/scripts/run_hookless_finalization.py --root <project-root>.",
+            "That command runs the Stop-equivalent maintenance path first, then emits memory hygiene and AGENTS",
+            "Project Map drift context.",
+            "Use its output to decide whether any additional .arbor/memory.md or AGENTS.md edit is needed.",
+            "",
+            "Do not register or repair project hooks unless the user explicitly asks for legacy hook repair.",
+            "Arbor context is orientation and recovery only; it must not choose planning, debugging, review, or",
+            "branch-finishing methodology by itself.",
+            HOOKLESS_CONTRACT_END,
+        ]
+    )
 
 
 @dataclass(frozen=True)
@@ -32,6 +67,32 @@ class ProjectFileAction:
 
 class ProjectStateError(ValueError):
     """Raised when Arbor project-state files cannot be handled safely."""
+
+
+def has_hookless_runtime_contract(text: str) -> bool:
+    return HOOKLESS_CONTRACT_START in text and HOOKLESS_CONTRACT_END in text
+
+
+def append_hookless_runtime_contract(text: str) -> str:
+    contract = hookless_runtime_contract()
+    body = text.rstrip()
+    if not body:
+        return contract + "\n"
+
+    constraints_match = re.search(r"(?m)^##\s+Project Constraints\s*$", body)
+    if constraints_match:
+        body_start = constraints_match.end()
+        if body_start < len(body) and body[body_start] == "\n":
+            body_start += 1
+        next_heading = re.search(r"(?m)^##\s+", body[body_start:])
+        insert_at = body_start + next_heading.start() if next_heading else len(body)
+        before = body[:insert_at].rstrip()
+        after = body[insert_at:].lstrip("\n")
+        if after:
+            return before + "\n\n" + contract + "\n\n" + after + "\n"
+        return before + "\n\n" + contract + "\n"
+
+    return body + "\n\n" + contract + "\n"
 
 
 def resolve_project_root(root: Path) -> Path:
@@ -66,6 +127,29 @@ def ensure_file(path: Path, content: str, dry_run: bool) -> ProjectFileAction:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     return ProjectFileAction(path=path, status="would_create" if dry_run else "created")
+
+
+def ensure_project_guide_file(root: Path, template: str, dry_run: bool) -> ProjectFileAction:
+    target = project_path(resolve_project_root(root), PROJECT_GUIDE_PATH)
+    content = append_hookless_runtime_contract(template)
+    if not target.exists():
+        return ensure_file(target, content, dry_run)
+    if not target.is_file():
+        raise ProjectStateError(f"cannot initialize {target}: expected a file but found a directory")
+    try:
+        existing = target.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ProjectStateError(f"cannot inspect {target}: could not read UTF-8 project guide: {exc}") from exc
+    if has_hookless_runtime_contract(existing):
+        return ProjectFileAction(path=target, status="exists")
+    updated = append_hookless_runtime_contract(existing)
+    if not dry_run:
+        target.write_text(updated, encoding="utf-8")
+    return ProjectFileAction(
+        path=target,
+        status="would_update" if dry_run else "updated",
+        detail="appended Arbor hookless runtime contract",
+    )
 
 
 def ensure_memory_file(root: Path, template: str, dry_run: bool) -> list[ProjectFileAction]:

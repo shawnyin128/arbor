@@ -146,6 +146,7 @@ def gate_checks(root: Path, plugin_root: Path) -> list[GateCheck]:
         GateCheck("context boundary", [python, str(script_root / "check_context_boundary.py")]),
         GateCheck("project wrapper smoke", [python, str(script_root / "check_project_wrapper_smoke.py")]),
         GateCheck("hookless repair smoke", [python, str(script_root / "check_hookless_repair_smoke.py")]),
+        GateCheck("hookless trigger contract", [python, str(script_root / "check_hookless_trigger_contract.py")]),
         GateCheck("plugin adapters", [python, str(script_root / "check_plugin_adapters.py")]),
         GateCheck("skill packages", [python, str(script_root / "check_skill_packages.py")]),
     ]

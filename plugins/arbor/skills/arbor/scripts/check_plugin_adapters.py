@@ -48,8 +48,10 @@ REQUIRED_SCRIPT_FILES = {
     "arbor_project_state.py",
     "check_agents_guide_quality.py",
     "check_cache_sync_adapters.py",
+    "check_codex_hookless_trigger_scenarios.py",
     "check_context_boundary.py",
     "check_hookless_repair_smoke.py",
+    "check_hookless_trigger_contract.py",
     "check_install_state.py",
     "check_plugin_adapters.py",
     "check_project_wrapper_smoke.py",
@@ -67,6 +69,7 @@ REQUIRED_SCRIPT_FILES = {
     "register_project_hooks.py",
     "run_agents_guide_drift_hook.py",
     "run_framework_check.py",
+    "run_hookless_finalization.py",
     "run_memory_hygiene_hook.py",
     "run_session_startup_hook.py",
     "sync_local_plugin_cache.py",
@@ -195,6 +198,9 @@ def validate_single_skill(errors: list[str]) -> None:
     check(errors, "## Framework Repair Mode" in skill, "arbor skill must document repair mode")
     check(errors, "## Session Memory" in skill, "arbor skill must document session memory")
     check(errors, "## AGENTS.md Management" in skill, "arbor skill must document AGENTS management")
+    check(errors, "run_session_startup_hook.py" in skill, "arbor skill must name the hookless startup entrypoint")
+    check(errors, "run_hookless_finalization.py" in skill, "arbor skill must name the hookless finalization entrypoint")
+    check(errors, "default runtime path is hookless" in skill, "arbor skill must make hookless runtime the default")
 
 
 def validate_manifests(errors: list[str]) -> None:
@@ -220,6 +226,8 @@ def validate_manifests(errors: list[str]) -> None:
         joined_prompt = "\n".join(str(item) for item in prompts or [])
         check(errors, "Initialize Arbor in this project" in joined_prompt, "defaultPrompt must include init prompt")
         check(errors, "framework check" in joined_prompt, "defaultPrompt must include framework check prompt")
+        check(errors, "project hook" not in joined_prompt.lower(), "defaultPrompt must not steer default usage toward project hooks")
+        check(errors, "hookless runtime contract" in joined_prompt, "defaultPrompt must include hookless runtime contract repair")
         long_description = str(interface.get("longDescription", ""))
         check(errors, len(long_description) <= 700, "Codex longDescription must stay concise")
 
@@ -296,9 +304,11 @@ def validate_reference_and_script_inventory(errors: list[str]) -> None:
     check(errors, "check_real_workflow_chains.py" not in scripts, "old real-chain checker must not be published")
     check(errors, "real-workflow-chain-review.md" not in references, "old real-chain reference must not be published")
     agents_template = load_text(REFERENCES_ROOT / "agents-template.md", errors)
+    normalized_agents_template = " ".join(agents_template.split()).lower()
     check(errors, "## Startup Protocol" not in agents_template, "AGENTS template must not publish a full Startup Protocol section")
     check(errors, "## Project Map" in agents_template, "AGENTS template must keep Project Map as the durable orientation surface")
-    check(errors, "SessionStart hook" in agents_template, "AGENTS template must name the SessionStart hook as the normal startup path")
+    check(errors, "hookless runtime contract" in normalized_agents_template, "AGENTS template must name the hookless runtime contract as the normal startup path")
+    check(errors, "SessionStart hook" not in agents_template, "AGENTS template must not name the legacy SessionStart hook as the normal startup path")
     for script in sorted(SCRIPTS_ROOT.glob("*.py")):
         text = load_text(script, errors)
         marker = "sys.dont_write_bytecode = True"
@@ -358,10 +368,14 @@ def validate_skill_resource_links(errors: list[str]) -> None:
         "references/project-hooks-template.md",
         "references/runtime-smoke-template.md",
         "scripts/check_quality_gate.py",
+        "scripts/check_codex_hookless_trigger_scenarios.py",
+        "scripts/check_hookless_trigger_contract.py",
         "scripts/check_cache_sync_adapters.py",
         "scripts/check_install_state.py",
         "scripts/check_project_wrapper_smoke.py",
         "scripts/check_runtime_smoke_evidence.py",
+        "scripts/run_session_startup_hook.py",
+        "scripts/run_hookless_finalization.py",
         "scripts/run_framework_check.py",
         "scripts/register_project_hooks.py",
         "scripts/diagnose_project_hooks.py",
@@ -678,6 +692,14 @@ def validate_quality_gate_is_artifact_free(errors: list[str]) -> None:
             errors,
             any("check_hookless_repair_smoke.py" in part for part in command),
             "quality gate must invoke the hookless repair smoke script",
+        )
+    trigger_commands = [check.command for check in checks if check.name == "hookless trigger contract" and check.command is not None]
+    check(errors, trigger_commands, "quality gate must run the hookless trigger contract")
+    for command in trigger_commands:
+        check(
+            errors,
+            any("check_hookless_trigger_contract.py" in part for part in command),
+            "quality gate must invoke the hookless trigger contract script",
         )
 
     syntax_module_path = SCRIPTS_ROOT / "check_python_syntax.py"
@@ -3213,7 +3235,11 @@ def validate_initialization_idempotency(errors: list[str]) -> None:
         before = snapshot_files(root, ("AGENTS.md", ".arbor/memory.md"))
         run_init(root, errors, "--claude-bridge", "off")
         after = snapshot_files(root, ("AGENTS.md", ".arbor/memory.md"))
-        check(errors, before == after, "init must preserve existing AGENTS.md and .arbor/memory.md")
+        before_agents = before["AGENTS.md"] or ""
+        after_agents = after["AGENTS.md"] or ""
+        check(errors, after[".arbor/memory.md"] == before[".arbor/memory.md"], "init must preserve existing .arbor/memory.md")
+        check(errors, after_agents.startswith(before_agents.rstrip()), "init must preserve existing AGENTS.md user content")
+        check(errors, after_agents.count("<!-- ARBOR HOOKLESS RUNTIME CONTRACT START -->") == 1, "init must append one Arbor hookless runtime contract to existing AGENTS.md")
 
     with tempfile.TemporaryDirectory(prefix="arbor-legacy-memory-check-") as tmp:
         root = Path(tmp)

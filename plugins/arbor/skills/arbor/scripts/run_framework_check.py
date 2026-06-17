@@ -19,6 +19,7 @@ from arbor_project_state import (
     INSTALL_RUNTIME_CODEX,
     PROJECT_GUIDE_PATH,
     ProjectStateError,
+    has_hookless_runtime_contract,
     project_path,
     resolve_project_root,
 )
@@ -143,7 +144,31 @@ def build_rows(
 
     agents = project_path(root, PROJECT_GUIDE_PATH)
     if agents.is_file():
-        rows.append(FrameworkRow("AGENTS.md", "yes", "pass", rel(root, agents), "none"))
+        try:
+            agents_text = agents.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            rows.append(
+                FrameworkRow(
+                    "AGENTS.md",
+                    "yes",
+                    "fail",
+                    f"{rel(root, agents)} cannot be read as UTF-8: {one_line(str(exc))}",
+                    "repair project guide encoding before running Arbor",
+                )
+            )
+        else:
+            if has_hookless_runtime_contract(agents_text):
+                rows.append(FrameworkRow("AGENTS.md", "yes", "pass", rel(root, agents), "none"))
+            else:
+                rows.append(
+                    FrameworkRow(
+                        "AGENTS.md",
+                        "yes",
+                        "drift",
+                        f"{rel(root, agents)} lacks Arbor hookless runtime contract",
+                        "run init_project_memory.py to append hookless runtime contract",
+                    )
+                )
     elif agents.exists():
         rows.append(
             FrameworkRow(
