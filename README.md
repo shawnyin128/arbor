@@ -21,46 +21,37 @@ preferred tools, such as Superpowers.
 
 ```bash
 codex plugin marketplace add shawnyin128/arbor
+codex plugin add arbor@arbor
 ```
 
 If `codex` is not on your macOS `PATH`:
 
 ```bash
 /Applications/Codex.app/Contents/Resources/codex plugin marketplace add shawnyin128/arbor
+/Applications/Codex.app/Contents/Resources/codex plugin add arbor@arbor
 ```
 
 SSH:
 
 ```bash
 codex plugin marketplace add git@github.com:shawnyin128/arbor.git
+codex plugin add arbor@arbor
 ```
 
 Upgrade or remove:
 
 ```bash
 codex plugin marketplace upgrade arbor
+codex plugin add arbor@arbor
+codex plugin remove arbor@arbor
 codex plugin marketplace remove arbor
 ```
 
-After upgrade, restart or reload the Codex surface that will run Arbor
-including VS Code windows. A successful upgrade must leave the current Arbor
-version under the local Codex cache, for example:
-
-```text
-~/.codex/plugins/cache/arbor/arbor/<version>
-```
-
-On Windows, an upgrade can update the marketplace snapshot but fail to refresh
-the local plugin cache if Codex or VS Code is holding plugin files open. If
-Arbor still reports an older cache version, close Codex and VS Code, rerun the
-upgrade command, and confirm the expected `<version>` cache directory exists.
-
-When working from a local Arbor source checkout, verify the installed Codex
-cache before claiming the local runtime is updated:
-
-```bash
-python3 plugins/arbor/skills/arbor/scripts/check_install_state.py --runtime codex --strict
-```
+`codex plugin marketplace add` and `codex plugin marketplace upgrade` manage
+the marketplace snapshot only. `codex plugin add arbor@arbor` installs or
+refreshes the Arbor plugin from that snapshot into Codex's plugin cache. Restart
+or reload Codex surfaces such as VS Code after installing or upgrading so new
+sessions load the refreshed skill package.
 
 ### Claude Code
 
