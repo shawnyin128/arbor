@@ -42,6 +42,26 @@ codex plugin marketplace upgrade arbor
 codex plugin marketplace remove arbor
 ```
 
+After upgrade, restart or reload the Codex surface that will run Arbor
+including VS Code windows. A successful upgrade must leave the current Arbor
+version under the local Codex cache, for example:
+
+```text
+~/.codex/plugins/cache/arbor/arbor/<version>
+```
+
+On Windows, an upgrade can update the marketplace snapshot but fail to refresh
+the local plugin cache if Codex or VS Code is holding plugin files open. If
+Arbor still reports an older cache version, close Codex and VS Code, rerun the
+upgrade command, and confirm the expected `<version>` cache directory exists.
+
+When working from a local Arbor source checkout, verify the installed Codex
+cache before claiming the local runtime is updated:
+
+```bash
+python3 plugins/arbor/skills/arbor/scripts/check_install_state.py --runtime codex --strict
+```
+
 ### Claude Code
 
 Inside Claude Code:
