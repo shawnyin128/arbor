@@ -863,6 +863,8 @@ def emit_success_output(stdout: str) -> None:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     try:
         root, adapter = resolve_adapter()
     except (RuntimeError, OSError):
@@ -874,11 +876,14 @@ def main() -> int:
     env["PLUGIN_ROOT"] = str(root)
     env["CODEX_PLUGIN_ROOT"] = str(root)
     env["CLAUDE_PLUGIN_ROOT"] = str(root)
+    env["PYTHONIOENCODING"] = "utf-8:replace"
     try:
         proc = subprocess.run(
             [sys.executable, str(adapter)],
             input=sys.stdin.read(),
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env,

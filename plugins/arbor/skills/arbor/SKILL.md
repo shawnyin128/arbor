@@ -43,6 +43,10 @@ When initializing, resuming, or checking Arbor state in a project:
    <project-root>` at the start of a non-trivial Arbor-managed project task or
    resume. The helper is a package resource under `skills/arbor/scripts`; do
    not look for it under `<project-root>/scripts` or `<plugin-root>/scripts`.
+   Use a direct Python executable for Arbor context helpers. On Windows, do
+   not wrap these commands in `conda run`; it can recode captured stdout and
+   corrupt large UTF-8 context packets. If `python` is not on PATH, call the
+   absolute interpreter directly, such as `<conda-base>/python.exe`.
    Its deterministic context packet loads:
    - `AGENTS.md`
    - formatted `git log`
@@ -224,6 +228,10 @@ Code:
   AGENTS drift context.
 - `CLAUDE.md` is only a short bridge back to `AGENTS.md` and
   `.arbor/memory.md`.
+
+Run Arbor context helper scripts with a direct Python executable. On Windows,
+do not wrap them in `conda run`; use an absolute interpreter path when PATH
+does not expose `python`.
 
 Arbor does not ship plugin-level hook registrations. Normal initialization,
 framework checks, and repair must not create `.codex/` or `.claude/` hook

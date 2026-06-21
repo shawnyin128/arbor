@@ -116,6 +116,11 @@ files by running:
 python3 <arbor-skill-root>/scripts/run_session_startup_hook.py --root /path/to/project
 ```
 
+Use a direct Python executable for Arbor context helpers. On Windows, do not
+wrap these commands in `conda run`; it can recode captured stdout and corrupt
+large UTF-8 context packets. If `python` is not on PATH, call the absolute
+interpreter directly, such as `<conda-base>/python.exe`.
+
 The deterministic recovery order is:
 
 1. `AGENTS.md`
@@ -380,7 +385,7 @@ reporting that migration would succeed.
 Current version:
 
 ```text
-2.0.3
+2.0.4
 ```
 
 Version files:

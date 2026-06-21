@@ -187,6 +187,8 @@ def git_status_lines(root: Path) -> list[str]:
         proc = subprocess.run(
             ["git", "-C", str(root), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
@@ -720,11 +722,16 @@ def run_agents_guide_quality_check(project_root: Path, plugin_root: Path) -> tup
     if not script.is_file():
         return True, ""
     try:
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8:replace"
         proc = subprocess.run(
             [sys.executable, str(script), "--root", str(project_root)],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env=env,
             check=False,
             timeout=internal_subprocess_timeout_seconds(),
         )
@@ -737,6 +744,8 @@ def run_agents_guide_quality_check(project_root: Path, plugin_root: Path) -> tup
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     raw_payload = sys.stdin.read()
     if not raw_payload.strip():
         return 0
@@ -802,11 +811,16 @@ def main() -> int:
         return 1
 
     try:
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8:replace"
         proc = subprocess.run(
             [sys.executable, str(script), "--root", cwd],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env=env,
             check=False,
             timeout=internal_subprocess_timeout_seconds(),
         )

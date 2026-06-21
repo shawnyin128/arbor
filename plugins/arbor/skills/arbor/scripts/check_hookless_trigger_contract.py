@@ -130,6 +130,11 @@ def check_init_appends_hookless_contract(failures: list[str]) -> None:
             "<project-root>/scripts" in agents,
             "hookless contract must warn agents not to search project-local scripts for Arbor package helpers",
         )
+        record(
+            failures,
+            "conda run" in agents and "<conda-base>/python.exe" in agents,
+            "hookless contract must steer Windows agents away from conda run wrapper encoding failures",
+        )
         record(failures, "register_project_hooks.py" not in agents, "hookless contract must not instruct default hook registration")
         record(failures, not (project / ".codex").exists(), "hookless initialization must not create .codex")
         record(failures, not (project / ".claude").exists(), "hookless initialization must not create .claude")

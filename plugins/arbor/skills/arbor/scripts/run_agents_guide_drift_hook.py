@@ -72,6 +72,8 @@ def run_git(root: Path, args: list[str]) -> tuple[str, str, int]:
     proc = subprocess.run(
         ["git", "-C", str(root), *args],
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
@@ -336,6 +338,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     parser = build_parser()
     args = parser.parse_args()
     try:

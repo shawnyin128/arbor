@@ -62,13 +62,18 @@ def run_stop_equivalent_maintenance(root: Path, transcript_path: Path | None = N
         payload["no_write"] = True
 
     timeout = maintenance_timeout_seconds()
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8:replace"
     try:
         proc = subprocess.run(
             [sys.executable, str(STOP_ADAPTER)],
             input=json.dumps(payload),
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            env=env,
             check=False,
             timeout=timeout,
         )
@@ -154,6 +159,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     parser = build_parser()
     args = parser.parse_args()
     try:

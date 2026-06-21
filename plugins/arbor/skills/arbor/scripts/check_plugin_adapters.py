@@ -144,6 +144,8 @@ def run_command(
             args,
             input=input_text,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=bytecode_suppressed_env(env),
@@ -176,6 +178,8 @@ def run_command_status(
         args,
         input=input_text,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         env=bytecode_suppressed_env(env),
@@ -4256,6 +4260,43 @@ def validate_startup_context_resilience(errors: list[str]) -> None:
         check(errors, "## 1. AGENTS.md" in launch_output, "startup collector must keep file context when git commands fail to start")
         check(errors, "Status: git-launch-error" in launch_output, "startup collector must report git launch failures as section status")
         check(errors, "simulated startup git launch failure" in launch_output, "startup collector must explain git launch failures")
+
+    def assert_startup_git_utf8_decode(command: list[str], *_args: Any, **kwargs: Any) -> Any:
+        if command and command[0] == "git":
+            if kwargs.get("encoding") != "utf-8" or kwargs.get("errors") != "replace":
+                raise AssertionError(f"startup git probe missing UTF-8 decode options: {kwargs!r}")
+            return subprocess.CompletedProcess(command, 0, stdout="utf8 git output\n", stderr="")
+        return original_subprocess_run(command, *_args, **kwargs)
+
+    with tempfile.TemporaryDirectory(prefix="arbor-startup-git-encoding-check-") as tmp:
+        root = Path(tmp)
+        (root / "AGENTS.md").write_text(valid_agents_for_smoke(), encoding="utf-8")
+        module.subprocess.run = assert_startup_git_utf8_decode
+        try:
+            try:
+                utf8_output = module.render_context(module.collect_startup_context(root))
+            except AssertionError as exc:
+                add_error(errors, str(exc))
+                utf8_output = ""
+        finally:
+            module.subprocess.run = original_subprocess_run
+        check(errors, "utf8 git output" in utf8_output, "startup collector must decode git probes with explicit UTF-8 replacement")
+
+    with tempfile.TemporaryDirectory(prefix="arbor-startup-stdout-encoding-check-") as tmp:
+        root = Path(tmp)
+        (root / "AGENTS.md").write_text("# Agent Guide\n\nreplacement \ufffd marker\n", encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS_ROOT / "run_session_startup_hook.py"), "--root", str(root)],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=bytecode_suppressed_env({"PYTHONIOENCODING": "cp936:strict"}),
+            check=False,
+        )
+        check(errors, proc.returncode == 0, f"startup hook stdout must not fail under cp936 strict stdout: {proc.stdout.strip()}")
+        check(errors, "replacement" in proc.stdout and "marker" in proc.stdout, "startup hook stdout must preserve startup context under cp936 strict stdout")
 
     with tempfile.TemporaryDirectory(prefix="arbor-cross-memory-check-") as tmp:
         root = Path(tmp)

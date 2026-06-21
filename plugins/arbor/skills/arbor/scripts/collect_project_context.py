@@ -23,6 +23,7 @@ from arbor_project_state import (
 
 DEFAULT_GIT_LOG_ARGS = ["--date=iso", "--pretty=format:%H%x09%ad%x09%s"]
 DEFAULT_GIT_TIMEOUT_SECONDS = 10.0
+GIT_OUTPUT_ENCODING = "utf-8"
 HOOK_MEMORY_MARKERS = ("[hook:fallback]", "[hook:resume]")
 PLACEHOLDER_MEMORY_PATTERNS = (
     "no active arbor resume context recorded yet",
@@ -81,6 +82,8 @@ def run_git_section(title: str, root: Path, args: list[str]) -> ContextSection:
         proc = subprocess.run(
             ["git", "-C", str(root), *args],
             text=True,
+            encoding=GIT_OUTPUT_ENCODING,
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
@@ -118,6 +121,8 @@ def git_output(root: Path, args: list[str]) -> str:
         proc = subprocess.run(
             ["git", "-C", str(root), *args],
             text=True,
+            encoding=GIT_OUTPUT_ENCODING,
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
@@ -314,6 +319,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     parser = build_parser()
     args = parser.parse_args()
     try:
