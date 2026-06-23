@@ -38,20 +38,27 @@ codex plugin marketplace add git@github.com:shawnyin128/arbor.git
 codex plugin add arbor@arbor
 ```
 
-Upgrade or remove:
+Upgrade:
 
 ```bash
 codex plugin marketplace upgrade arbor
+codex plugin remove arbor@arbor
 codex plugin add arbor@arbor
+```
+
+Remove:
+
+```bash
 codex plugin remove arbor@arbor
 codex plugin marketplace remove arbor
 ```
 
 `codex plugin marketplace add` and `codex plugin marketplace upgrade` manage
-the marketplace snapshot only. `codex plugin add arbor@arbor` installs or
-refreshes the Arbor plugin from that snapshot into Codex's plugin cache. Restart
-or reload Codex surfaces such as VS Code after installing or upgrading so new
-sessions load the refreshed skill package.
+the marketplace snapshot only. `codex plugin remove arbor@arbor` clears the
+old installed plugin state and versioned cache entry. `codex plugin add
+arbor@arbor` then installs Arbor from the refreshed marketplace snapshot.
+Restart or reload Codex surfaces such as VS Code after installing or upgrading
+so new sessions load the refreshed skill package.
 
 ### Claude Code
 
