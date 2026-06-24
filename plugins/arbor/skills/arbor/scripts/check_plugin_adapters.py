@@ -50,6 +50,7 @@ REQUIRED_SCRIPT_FILES = {
     "check_cache_sync_adapters.py",
     "check_codex_hookless_trigger_scenarios.py",
     "check_context_boundary.py",
+    "check_git_commit_convention.py",
     "check_hookless_repair_smoke.py",
     "check_hookless_trigger_contract.py",
     "check_install_state.py",
@@ -374,6 +375,7 @@ def validate_skill_resource_links(errors: list[str]) -> None:
         "scripts/check_quality_gate.py",
         "scripts/check_codex_hookless_trigger_scenarios.py",
         "scripts/check_hookless_trigger_contract.py",
+        "scripts/check_git_commit_convention.py",
         "scripts/check_cache_sync_adapters.py",
         "scripts/check_install_state.py",
         "scripts/check_project_wrapper_smoke.py",
@@ -704,6 +706,14 @@ def validate_quality_gate_is_artifact_free(errors: list[str]) -> None:
             errors,
             any("check_hookless_trigger_contract.py" in part for part in command),
             "quality gate must invoke the hookless trigger contract script",
+        )
+    convention_commands = [check.command for check in checks if check.name == "git commit convention" and check.command is not None]
+    check(errors, convention_commands, "quality gate must run the git commit convention check")
+    for command in convention_commands:
+        check(
+            errors,
+            any("check_git_commit_convention.py" in part for part in command),
+            "quality gate must invoke the git commit convention checker",
         )
 
     syntax_module_path = SCRIPTS_ROOT / "check_python_syntax.py"
@@ -4329,6 +4339,80 @@ def validate_startup_context_resilience(errors: list[str]) -> None:
         check(errors, "memory_state=explicit" not in output, "startup collector must not classify unreadable memory diagnostics as explicit memory")
 
 
+def validate_git_commit_convention_contract(errors: list[str]) -> None:
+    checker = SCRIPTS_ROOT / "check_git_commit_convention.py"
+
+    valid_messages = [
+        "feat: add commit convention gate",
+        "fix(arbor): keep startup context ordered",
+        "docs!: document a breaking install contract",
+        "revert: restore previous context behavior",
+        "FEAT(api)!: allow case-insensitive type parsing",
+        "feat: drop legacy behavior\n\nBREAKING CHANGE: hook registration is no longer default",
+        "feat: drop legacy behavior\n\nBREAKING-CHANGE: hook registration is no longer default",
+    ]
+    for message in valid_messages:
+        code, output = run_command_status([sys.executable, str(checker), "--message", message])
+        check(errors, code == 0, f"Conventional Commit message should pass: {message!r}\n{output}")
+        check(errors, "pass" in output.lower(), "message convention success output must be readable")
+
+    invalid_messages = [
+        "Update README",
+        "feat:add missing space",
+        "feat: ",
+        "feat(scope: missing close parenthesis",
+        "feat: lower breaking footer\n\nbreaking change: not uppercase",
+    ]
+    for message in invalid_messages:
+        code, output = run_command_status([sys.executable, str(checker), "--message", message])
+        check(errors, code == 1, f"non-conventional message should fail: {message!r}\n{output}")
+        check(errors, "fail" in output.lower() or "invalid" in output.lower(), "message convention failure output must be readable")
+
+    with tempfile.TemporaryDirectory(prefix="arbor-commit-convention-history-") as tmp:
+        root = Path(tmp)
+        run_git(root, errors, "init")
+        run_git(root, errors, "config", "user.email", "arbor@example.invalid")
+        run_git(root, errors, "config", "user.name", "Arbor Check")
+        (root / "README.md").write_text("# Smoke\n", encoding="utf-8")
+        run_git(root, errors, "add", ".")
+        run_git(root, errors, "commit", "-m", "Update README")
+        (root / "README.md").write_text("# Smoke\n\nMore.\n", encoding="utf-8")
+        run_git(root, errors, "add", ".")
+        run_git(root, errors, "commit", "-m", "feat(arbor): add conventional head")
+
+        head_code, head_output = run_command_status([sys.executable, str(checker), "--root", str(root), "--last", "1"])
+        check(errors, head_code == 0, f"HEAD-only convention check must not fail old history: {head_output}")
+        two_code, two_output = run_command_status([sys.executable, str(checker), "--root", str(root), "--last", "2"])
+        check(errors, two_code == 1, "explicit --last 2 convention check must find the older invalid commit")
+        check(errors, "Update README" in two_output, "history convention failure must name the invalid subject")
+
+        startup = run_command(
+            [sys.executable, str(SCRIPTS_ROOT / "run_session_startup_hook.py"), "--root", str(root)],
+            errors,
+        )
+        check(errors, "## 5. git commit convention" in startup, "startup context must include a git commit convention section")
+        check(errors, "Status: pass" in startup, "startup convention section must pass for a conventional HEAD")
+
+        (root / "src.py").write_text("print('dirty')\n", encoding="utf-8")
+        finalization = run_command(
+            [
+                sys.executable,
+                str(SCRIPTS_ROOT / "run_hookless_finalization.py"),
+                "--root",
+                str(root),
+                "--no-write",
+            ],
+            errors,
+        )
+        check(errors, "## Git Commit Convention Context" in finalization, "hookless finalization must include commit convention context")
+        check(errors, "Status: action-needed" in finalization, "dirty finalization must remind agents to check the candidate commit message")
+        check(
+            errors,
+            "check_git_commit_convention.py --message" in finalization,
+            "finalization convention context must name the pre-commit message gate",
+        )
+
+
 def validate_framework_check_smoke(errors: list[str]) -> None:
     output = run_command(
         [
@@ -4408,6 +4492,7 @@ def main() -> int:
     validate_session_start_and_stop_behavior(errors)
     validate_cross_platform_hook_commands(errors)
     validate_startup_context_resilience(errors)
+    validate_git_commit_convention_contract(errors)
     validate_framework_check_smoke(errors)
 
     if errors:

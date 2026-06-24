@@ -124,6 +124,7 @@ def check_init_appends_hookless_contract(failures: list[str]) -> None:
         record(failures, START_MARKER in agents and END_MARKER in agents, "initialization must append the Arbor hookless runtime contract")
         record(failures, "run_session_startup_hook.py" in agents, "hookless contract must name the SessionStart-equivalent startup packet")
         record(failures, "run_hookless_finalization.py" in agents, "hookless contract must name the Stop-equivalent finalization packet")
+        record(failures, "check_git_commit_convention.py --message" in agents, "hookless contract must name the pre-commit Conventional Commits message gate")
         record(failures, "skills/arbor/scripts" in agents, "hookless contract must identify installed skill script location")
         record(
             failures,

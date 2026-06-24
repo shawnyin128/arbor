@@ -1,6 +1,6 @@
 {
   "name": "arbor",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Initialize Arbor state and run hookless framework checks for AGENTS.md, project memory, and Claude bridge files.",
   "author": {
     "name": "Shawn",

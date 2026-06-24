@@ -20,6 +20,7 @@ from run_agents_guide_drift_hook import (
     parse_doc_paths,
     run_agents_guide_drift_hook,
 )
+from check_git_commit_convention import render_finalization_context
 from run_memory_hygiene_hook import parse_optional_git_args, run_memory_hygiene_hook
 
 
@@ -119,6 +120,7 @@ def run_hookless_finalization(
 ) -> str:
     resolved = resolve_project_root(root)
     stop_result = run_stop_equivalent_maintenance(resolved, transcript_path, no_write)
+    commit_packet = render_finalization_context(resolved)
     memory_packet = run_memory_hygiene_hook(resolved, diff_args)
     guide_packet = run_agents_guide_drift_hook(resolved, doc_paths)
     lines = [
@@ -129,11 +131,14 @@ def run_hookless_finalization(
         "- Treat this as Arbor's Stop-equivalent path when runtime hooks are not installed.",
         "- The Stop-Equivalent Maintenance section has already run the same quiet maintenance adapter used by the old Stop hook.",
         "- Use the Memory Hygiene Context to decide whether `.arbor/memory.md` needs a concise resume update.",
+        "- Use the Git Commit Convention Context before creating any commit from this work.",
         "- Use the AGENTS Guide Drift Context to decide whether durable Project Map drift needs an `AGENTS.md` edit.",
         "- Do not edit memory or AGENTS.md when the packet shows no resume-relevant or durable-guide change.",
         "- Do not register hooks from this packet.",
         "",
         render_stop_maintenance_result(stop_result).rstrip(),
+        "",
+        commit_packet.rstrip(),
         "",
         memory_packet.rstrip(),
         "",

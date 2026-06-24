@@ -20,6 +20,7 @@ from arbor_project_state import (
     LEGACY_CODEX_MEMORY_PATH,
     PROJECT_GUIDE_PATH,
 )
+from check_git_commit_convention import check_recent_commits, render_startup_context
 
 DEFAULT_GIT_LOG_ARGS = ["--date=iso", "--pretty=format:%H%x09%ad%x09%s"]
 DEFAULT_GIT_TIMEOUT_SECONDS = 10.0
@@ -277,12 +278,20 @@ def parse_git_log_args(raw: str | list[str] | None) -> list[str]:
 def collect_startup_context(root: Path, git_log_args: list[str] | None = None) -> list[ContextSection]:
     root = root.resolve()
     log_args = git_log_args if git_log_args is not None else list(DEFAULT_GIT_LOG_ARGS)
+    convention_report = check_recent_commits(root, last=1)
     return [
         collect_identity_section(root),
         read_file_section("1. AGENTS.md", root / PROJECT_GUIDE_PATH),
         run_git_section("2. formatted git log", root, ["log", *log_args]),
         read_memory_section("3. .arbor/memory.md", root),
         run_git_section("4. git status", root, ["status", "--short"]),
+        ContextSection(
+            "5. git commit convention",
+            render_startup_context(convention_report),
+            convention_report.status,
+            convention_report.source,
+            convention_report.detail,
+        ),
     ]
 
 

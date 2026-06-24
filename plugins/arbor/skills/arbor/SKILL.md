@@ -52,13 +52,14 @@ When initializing, resuming, or checking Arbor state in a project:
    - formatted `git log`
    - `.arbor/memory.md`
    - `git status`
+   - latest non-merge commit convention status
 3. Use `scripts/collect_project_context.py --root <project-root>` only when a
    lower-level deterministic ordered packet is useful.
 4. Before finishing a non-trivial task, handoff, or dirty-worktree turn, run
    `python <arbor-skill-root>/scripts/run_hookless_finalization.py --root
    <project-root>`. This first executes the same quiet maintenance adapter used
-   by the legacy Stop hook, then emits memory hygiene and AGENTS Project Map
-   drift context.
+   by the legacy Stop hook, then emits Git commit convention, memory hygiene,
+   and AGENTS Project Map drift context.
 5. Diagnose or repair project hooks only when the user explicitly asks for
    legacy hook repair. Use `scripts/diagnose_project_hooks.py --root
    <project-root> --plugin-root <arbor-plugin-root>` when hook state is unclear.
@@ -214,6 +215,29 @@ into the top-level map, while still ignoring artifact directories such as
 Clean direct turns should not mutate `AGENTS.md` just because old pre-existing
 map drift exists.
 
+## Git Commit Convention
+
+Arbor protects Git history quality because startup recovery reads formatted
+`git log` as durable context. Use Conventional Commits 1.0.0 subjects:
+
+```text
+<type>[optional scope]: <description>
+```
+
+Types other than `feat` and `fix` are allowed by the specification. Breaking
+changes may use `!` before the colon or a `BREAKING CHANGE:` footer. Before an
+agent creates a commit, draft the subject and run:
+
+```bash
+python <arbor-skill-root>/scripts/check_git_commit_convention.py --message "<subject>"
+```
+
+The hookless startup and finalization packets check only the latest non-merge
+commit by default, so Arbor catches new history quality drift without repeatedly
+warning about old repository history. Use `--last N` or `--range A..B` only for
+explicit audits, release checks, or debugging. Do not install native git hooks
+unless the user explicitly asks for that separate integration.
+
 ## Runtime Entrypoints
 
 Arbor's default runtime path is hookless and shared across Codex and Claude
@@ -224,8 +248,11 @@ Code:
 - `<arbor-skill-root>/scripts/run_session_startup_hook.py` loads the
   SessionStart-equivalent startup packet in the required order.
 - `<arbor-skill-root>/scripts/run_hookless_finalization.py` runs the
-  Stop-equivalent quiet maintenance path and then renders memory hygiene plus
-  AGENTS drift context.
+  Stop-equivalent quiet maintenance path and then renders Git commit
+  convention, memory hygiene, and AGENTS drift context.
+- `<arbor-skill-root>/scripts/check_git_commit_convention.py` validates
+  Conventional Commits 1.0.0 subjects before commit creation and can audit the
+  latest non-merge commit or an explicit revision range.
 - `CLAUDE.md` is only a short bridge back to `AGENTS.md` and
   `.arbor/memory.md`.
 
@@ -403,6 +430,8 @@ Run the real Codex scenarios when a change deletes, replaces, or rewrites the ho
   hook wrappers for explicit legacy hook repair
 - `scripts/check_hookless_trigger_contract.py`: validate the hookless startup
   and finalization contract, including Stop-equivalent maintenance behavior
+- `scripts/check_git_commit_convention.py`: validate Conventional Commits
+  1.0.0 messages, latest non-merge commits, or explicit revision ranges
 - `scripts/check_codex_hookless_trigger_scenarios.py`: explicit slow real
   `codex exec` scenario gate; skipped unless `--run-codex` is passed
 - `scripts/check_context_boundary.py`: ensure only the context layer is

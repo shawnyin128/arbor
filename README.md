@@ -134,6 +134,7 @@ The deterministic recovery order is:
 2. recent formatted git history
 3. `.arbor/memory.md`
 4. `git status --short`
+5. latest non-merge commit convention status
 
 `AGENTS.md` is the durable project guide and Project Map. Arbor initialization
 preserves existing user content and appends a protected hookless runtime
@@ -162,9 +163,29 @@ This is the hookless replacement for Arbor's old Stop hook. It first executes
 the same quiet maintenance adapter used by the legacy Stop wrapper, so dirty
 Arbor-managed state can still refresh `.arbor/memory.md` and newly added durable
 top-level entrypoints can still repair the `AGENTS.md` Project Map. It then
-renders memory hygiene and AGENTS drift context so the agent can explain or
-complete any remaining update. Clean direct turns should not create memory
-churn.
+renders Git commit convention, memory hygiene, and AGENTS drift context so the
+agent can explain or complete any remaining update. Clean direct turns should
+not create memory churn.
+
+## Git Commit Convention
+
+Arbor uses [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)
+for commit subjects because startup recovery reads formatted `git log` as
+durable context:
+
+```text
+<type>[optional scope]: <description>
+```
+
+Before an agent creates a commit, draft the subject and run:
+
+```bash
+python3 <arbor-skill-root>/scripts/check_git_commit_convention.py --message "<subject>"
+```
+
+Startup and finalization check only the latest non-merge commit by default, so
+old history does not create repeated noise. Use `--last N` or `--range A..B`
+for explicit audits. Arbor does not install native git hooks by default.
 
 ## Memory
 
@@ -287,6 +308,7 @@ hook changes:
 
 ```bash
 python3 plugins/arbor/skills/arbor/scripts/check_context_boundary.py
+python3 plugins/arbor/skills/arbor/scripts/check_git_commit_convention.py --last 1
 python3 plugins/arbor/skills/arbor/scripts/check_project_wrapper_smoke.py
 python3 plugins/arbor/skills/arbor/scripts/check_project_wrapper_smoke_adapters.py
 python3 plugins/arbor/skills/arbor/scripts/check_runtime_smoke_evidence_adapters.py
@@ -392,7 +414,7 @@ reporting that migration would succeed.
 Current version:
 
 ```text
-2.0.4
+2.0.5
 ```
 
 Version files:

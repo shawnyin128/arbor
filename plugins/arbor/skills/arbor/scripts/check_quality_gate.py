@@ -143,6 +143,7 @@ def gate_checks(root: Path, plugin_root: Path) -> list[GateCheck]:
         GateCheck("python syntax", [python, str(script_root / "check_python_syntax.py")]),
         GateCheck("source hygiene", [python, str(script_root / "check_source_hygiene.py")]),
         GateCheck("diff hygiene", ["git", "-C", str(root), "diff", "--check"]),
+        GateCheck("git commit convention", [python, str(script_root / "check_git_commit_convention.py"), "--root", str(root), "--last", "1"]),
         GateCheck("context boundary", [python, str(script_root / "check_context_boundary.py")]),
         GateCheck("project wrapper smoke", [python, str(script_root / "check_project_wrapper_smoke.py")]),
         GateCheck("hookless repair smoke", [python, str(script_root / "check_hookless_repair_smoke.py")]),
