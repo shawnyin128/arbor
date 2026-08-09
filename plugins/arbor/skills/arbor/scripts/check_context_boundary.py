@@ -13,7 +13,7 @@ sys.dont_write_bytecode = True
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = PLUGIN_ROOT.parents[1]
 SKILLS_ROOT = PLUGIN_ROOT / "skills"
-EXPECTED_VERSION = "2.0.5"
+EXPECTED_VERSION = "2.1.0"
 
 FORBIDDEN_SKILLS = {
     "brainstorm",
@@ -26,6 +26,7 @@ FORBIDDEN_SKILLS = {
 
 PUBLISHED_TEXT_FILES = [
     REPO_ROOT / "README.md",
+    PLUGIN_ROOT / "plugin.json",
     PLUGIN_ROOT / ".codex-plugin" / "plugin.json",
     PLUGIN_ROOT / ".claude-plugin" / "plugin.json",
     REPO_ROOT / ".agents" / "plugins" / "marketplace.json",
@@ -90,10 +91,11 @@ def validate_json(path: Path, failures: list[str]) -> None:
 
 
 def validate_version(failures: list[str]) -> None:
+    portable_manifest = load_json_object(PLUGIN_ROOT / "plugin.json", failures)
     codex_manifest = load_json_object(PLUGIN_ROOT / ".codex-plugin" / "plugin.json", failures)
     claude_manifest = load_json_object(PLUGIN_ROOT / ".claude-plugin" / "plugin.json", failures)
     readme = load_text(REPO_ROOT / "README.md", failures)
-    for label, manifest in (("Codex", codex_manifest), ("Claude", claude_manifest)):
+    for label, manifest in (("Agent Plugins", portable_manifest), ("Codex", codex_manifest), ("Claude", claude_manifest)):
         actual = manifest.get("version")
         if actual != EXPECTED_VERSION:
             failures.append(f"{label} manifest version must be {EXPECTED_VERSION}, got {actual!r}")

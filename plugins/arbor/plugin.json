@@ -1,4 +1,5 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "arbor",
   "version": "2.1.0",
   "description": "Initialize Arbor state and run hookless framework checks for AGENTS.md, project memory, and Claude bridge files.",
@@ -10,10 +11,10 @@
   "repository": "https://github.com/shawnyin128/arbor",
   "license": "MIT",
   "keywords": [
-    "claude-code",
     "memory",
     "context",
     "project-context",
-    "agents"
+    "agents",
+    "hookless"
   ]
 }

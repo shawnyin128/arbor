@@ -430,6 +430,9 @@ Run the real Codex scenarios when a change deletes, replaces, or rewrites the ho
   hook wrappers for explicit legacy hook repair
 - `scripts/check_hookless_trigger_contract.py`: validate the hookless startup
   and finalization contract, including Stop-equivalent maintenance behavior
+- `scripts/check_agent_plugins_contract.py`: validate the portable Agent
+  Plugins root manifest, skill-discovery boundary, and Codex/Claude metadata
+  adapter parity
 - `scripts/check_git_commit_convention.py`: validate Conventional Commits
   1.0.0 messages, latest non-merge commits, or explicit revision ranges
 - `scripts/check_codex_hookless_trigger_scenarios.py`: explicit slow real

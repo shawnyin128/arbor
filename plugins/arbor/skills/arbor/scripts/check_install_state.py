@@ -70,17 +70,21 @@ def load_json(path: Path) -> dict[str, object]:
 
 
 def source_version(source: Path) -> str:
+    portable = load_json(source / "plugin.json")
     codex = load_json(source / ".codex-plugin" / "plugin.json")
     claude_path = source / ".claude-plugin" / "plugin.json"
+    portable_version = portable.get("version")
+    if not isinstance(portable_version, str) or not portable_version:
+        raise ValueError(f"missing version in {source / 'plugin.json'}")
     codex_version = codex.get("version")
-    if not isinstance(codex_version, str) or not codex_version:
-        raise ValueError(f"missing version in {source / '.codex-plugin/plugin.json'}")
+    if codex_version != portable_version:
+        raise ValueError("Agent Plugins and Codex plugin manifest versions differ")
     if claude_path.is_file():
         claude = load_json(claude_path)
         claude_version = claude.get("version")
-        if claude_version != codex_version:
-            raise ValueError("Codex and Claude plugin manifest versions differ")
-    return codex_version
+        if claude_version != portable_version:
+            raise ValueError("Agent Plugins and Claude plugin manifest versions differ")
+    return portable_version
 
 
 def is_transient(path: Path) -> bool:
@@ -144,7 +148,8 @@ def selected_cache_version(cache_base: Path) -> str | None:
 
 def looks_like_arbor_plugin_root(root: Path) -> bool:
     return (
-        (root / ".codex-plugin" / "plugin.json").is_file()
+        (root / "plugin.json").is_file()
+        and (root / ".codex-plugin" / "plugin.json").is_file()
         and (root / ".claude-plugin" / "plugin.json").is_file()
         and (root / "skills" / "arbor" / "SKILL.md").is_file()
     )

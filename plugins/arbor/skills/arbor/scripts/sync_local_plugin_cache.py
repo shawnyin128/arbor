@@ -66,18 +66,24 @@ def load_manifest(path: Path) -> dict[str, object]:
 
 
 def version_from_manifest(plugin_root: Path) -> str:
+    portable_manifest = plugin_root / "plugin.json"
     codex_manifest = plugin_root / ".codex-plugin" / "plugin.json"
-    data = load_manifest(codex_manifest)
-    version = data.get("version")
+    version = load_manifest(portable_manifest).get("version")
     if not isinstance(version, str) or not version.strip():
-        raise RuntimeError(f"missing plugin version in {codex_manifest}")
+        raise RuntimeError(f"missing plugin version in {portable_manifest}")
+    codex_version = load_manifest(codex_manifest).get("version")
+    if codex_version != version:
+        raise RuntimeError(
+            "Agent Plugins and Codex plugin manifest versions differ: "
+            f"{portable_manifest} has {version!r}, {codex_manifest} has {codex_version!r}"
+        )
     claude_manifest = plugin_root / ".claude-plugin" / "plugin.json"
     if claude_manifest.is_file():
         claude_version = load_manifest(claude_manifest).get("version")
         if claude_version != version:
             raise RuntimeError(
-                "Codex and Claude plugin manifest versions differ: "
-                f"{codex_manifest} has {version!r}, {claude_manifest} has {claude_version!r}"
+                "Agent Plugins and Claude plugin manifest versions differ: "
+                f"{portable_manifest} has {version!r}, {claude_manifest} has {claude_version!r}"
             )
     if RELEASE_VERSION_PATTERN.fullmatch(version) is None:
         raise RuntimeError(f"plugin manifest version must be a release version like X.Y.Z: {version!r}")

@@ -81,6 +81,10 @@ def validate_cache_sync_copy_and_registry_behavior(errors: list[str]) -> None:
         (source / ".pytest_cache").mkdir()
         (source / ".pytest_cache" / "README.md").write_text("stale\n", encoding="utf-8")
         (source / ".codex-plugin").mkdir()
+        (source / "plugin.json").write_text(
+            '{"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", "name": "arbor", "version": "2.0.0"}\n',
+            encoding="utf-8-sig",
+        )
         (source / ".codex-plugin" / "plugin.json").write_text(
             '{"name": "arbor", "version": "2.0.0"}\n',
             encoding="utf-8-sig",
@@ -121,6 +125,10 @@ def validate_cache_sync_copy_and_registry_behavior(errors: list[str]) -> None:
             '{"name": "arbor", "version": "dev"}\n',
             encoding="utf-8",
         )
+        (source / "plugin.json").write_text(
+            '{"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", "name": "arbor", "version": "dev"}\n',
+            encoding="utf-8",
+        )
         (source / ".claude-plugin" / "plugin.json").write_text(
             '{"name": "arbor", "version": "dev"}\n',
             encoding="utf-8",
@@ -154,6 +162,10 @@ def validate_cache_sync_copy_and_registry_behavior(errors: list[str]) -> None:
         )
         (source / ".codex-plugin" / "plugin.json").write_text(
             '{"name": "arbor", "version": "2.0.0"}\n',
+            encoding="utf-8",
+        )
+        (source / "plugin.json").write_text(
+            '{"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", "name": "arbor", "version": "2.0.0"}\n',
             encoding="utf-8",
         )
 
@@ -408,6 +420,10 @@ def validate_cache_sync_clean_source_behavior(errors: list[str]) -> None:
         external = repo.parent / f"{repo.name}-external-source"
         source.mkdir(parents=True)
         external.mkdir()
+        (source / "plugin.json").write_text(
+            '{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"arbor","version":"2.0.0"}\n',
+            encoding="utf-8",
+        )
         (source / ".codex-plugin").mkdir()
         (source / ".codex-plugin" / "plugin.json").write_text('{"name":"arbor","version":"2.0.0"}\n', encoding="utf-8")
         run_git(repo, errors, "init")
@@ -526,7 +542,11 @@ def validate_cache_sync_clean_source_behavior(errors: list[str]) -> None:
                     add_error(errors, f"cache sync CLI must not traceback for git commit timeouts: {exc}")
                     commit_timeout_code = 99
             check(errors, commit_timeout_code == 1, "cache sync CLI must fail cleanly when git commit inspection times out")
-            check(errors, "timed out" in stderr.getvalue(), "cache sync CLI must explain git commit inspection timeouts")
+            check(
+                errors,
+                "timed out" in stderr.getvalue(),
+                f"cache sync CLI must explain git commit inspection timeouts: {stderr.getvalue().strip() or 'no stderr'}",
+            )
         finally:
             module.source_within_repo = original_source_within_repo
             module.git_source_dirty = original_git_source_dirty

@@ -1359,7 +1359,7 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         check(errors, "source manifests: fail" in mismatched_manifest_output, "release readiness checker must report source manifest failures")
         check(
             errors,
-            f"Codex source version {release_version} does not match Claude source version {mismatched_version}" in mismatched_manifest_output,
+            f"Claude source version {mismatched_version} does not match Agent Plugins source version {release_version}" in mismatched_manifest_output,
             "release readiness checker must explain source manifest version mismatch",
         )
 
@@ -1412,6 +1412,7 @@ def validate_release_readiness_check(errors: list[str]) -> None:
         claude_cache_base = root / "claude-cache"
         copy_plugin_to_cache(source)
         for manifest in (
+            source / "plugin.json",
             source / ".codex-plugin" / "plugin.json",
             source / ".claude-plugin" / "plugin.json",
         ):
@@ -1587,6 +1588,11 @@ def write_install_state_source(root: Path) -> None:
     (root / "hooks").mkdir()
     (root / "skills" / "arbor").mkdir(parents=True)
     manifest = '{"name": "arbor", "version": "2.0.0"}\n'
+    portable_manifest = (
+        '{"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", '
+        '"name": "arbor", "version": "2.0.0"}\n'
+    )
+    (root / "plugin.json").write_text(portable_manifest, encoding="utf-8")
     (root / ".codex-plugin" / "plugin.json").write_text(manifest, encoding="utf-8")
     (root / ".claude-plugin" / "plugin.json").write_text(manifest, encoding="utf-8")
     (root / "hooks" / "session-start").write_text("#!/usr/bin/env python3\nprint('session')\n", encoding="utf-8")
@@ -1695,6 +1701,10 @@ def validate_install_state_checker(errors: list[str]) -> None:
         source = root / "source"
         source.mkdir()
         write_install_state_source(source)
+        (source / "plugin.json").write_text(
+            '{"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", "name": "arbor", "version": "2.0.0"}\n',
+            encoding="utf-8-sig",
+        )
         (source / ".codex-plugin" / "plugin.json").write_text('{"name": "arbor", "version": "2.0.0"}\n', encoding="utf-8-sig")
         (source / ".claude-plugin" / "plugin.json").write_text('{"name": "arbor", "version": "2.0.0"}\n', encoding="utf-8-sig")
         codex_base = root / "codex-cache"
@@ -1992,6 +2002,10 @@ def validate_install_state_checker(errors: list[str]) -> None:
         source.mkdir(parents=True)
         write_install_state_source(source)
         dev_manifest = '{"name": "arbor", "version": "dev"}\n'
+        (source / "plugin.json").write_text(
+            '{"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", "name": "arbor", "version": "dev"}\n',
+            encoding="utf-8",
+        )
         (source / ".codex-plugin" / "plugin.json").write_text(dev_manifest, encoding="utf-8")
         (source / ".claude-plugin" / "plugin.json").write_text(dev_manifest, encoding="utf-8")
         run_git(repo, errors, "init")

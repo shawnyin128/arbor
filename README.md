@@ -15,9 +15,23 @@ Arbor does not provide a development methodology. Planning, debugging, review,
 branch finishing, and implementation workflows should be handled by the user's
 preferred tools, such as Superpowers.
 
+## Packaging
+
+Arbor 2.1 has a portable Agent Plugins core at `plugins/arbor/plugin.json`.
+Its shared behavior is the single `skills/arbor/` skill and its package
+resources. The existing Codex and Claude Code manifests remain compatibility
+adapters while their installers use their native package formats. Arbor does
+not publish a plugin-level hook manifest; the `hooks/` resources are used only
+by explicitly requested legacy project-hook repair.
+
 ## Install
 
 ### Codex
+
+Run installation and upgrade commands from a directory outside an Arbor source
+checkout, such as your home directory. Current Codex marketplace installation
+can resolve Arbor's relative marketplace source against an Arbor checkout's
+working directory and accidentally reinstall its local, stale package.
 
 ```bash
 codex plugin marketplace add shawnyin128/arbor
@@ -308,6 +322,7 @@ hook changes:
 
 ```bash
 python3 plugins/arbor/skills/arbor/scripts/check_context_boundary.py
+python3 plugins/arbor/skills/arbor/scripts/check_agent_plugins_contract.py
 python3 plugins/arbor/skills/arbor/scripts/check_git_commit_convention.py --last 1
 python3 plugins/arbor/skills/arbor/scripts/check_project_wrapper_smoke.py
 python3 plugins/arbor/skills/arbor/scripts/check_project_wrapper_smoke_adapters.py
@@ -414,7 +429,7 @@ reporting that migration would succeed.
 Current version:
 
 ```text
-2.0.5
+2.1.0
 ```
 
 Version files:
@@ -422,6 +437,7 @@ Version files:
 ```text
 plugins/arbor/.codex-plugin/plugin.json
 plugins/arbor/.claude-plugin/plugin.json
+plugins/arbor/plugin.json
 ```
 
 Marketplace files:

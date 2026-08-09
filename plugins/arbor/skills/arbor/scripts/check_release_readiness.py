@@ -24,6 +24,7 @@ PUBLISHED_SOURCE_PATHS = (
     Path(".claude-plugin") / "marketplace.json",
 )
 SOURCE_MANIFEST_PATHS = {
+    "Agent Plugins": Path("plugin.json"),
     "Codex": Path(".codex-plugin") / "plugin.json",
     "Claude": Path(".claude-plugin") / "plugin.json",
 }
@@ -189,7 +190,7 @@ def manifest_version(manifest: Path) -> str:
 
 
 def plugin_source_version(plugin_root: Path) -> str:
-    return manifest_version(plugin_root / SOURCE_MANIFEST_PATHS["Codex"])
+    return manifest_version(plugin_root / SOURCE_MANIFEST_PATHS["Agent Plugins"])
 
 
 def run_source_manifests_check(plugin_root: Path) -> ReadinessOutcome:
@@ -200,17 +201,19 @@ def run_source_manifests_check(plugin_root: Path) -> ReadinessOutcome:
         }
     except (OSError, UnicodeError, json.JSONDecodeError, RuntimeError) as exc:
         return ReadinessOutcome("source manifests", "fail", str(exc))
-    if versions["Codex"] != versions["Claude"]:
+    expected_version = versions["Agent Plugins"]
+    mismatches = [
+        f"{runtime} source version {version} does not match Agent Plugins source version {expected_version}"
+        for runtime, version in versions.items()
+        if version != expected_version
+    ]
+    if mismatches:
+        return ReadinessOutcome("source manifests", "fail", "\n".join(mismatches))
+    if RELEASE_VERSION_PATTERN.fullmatch(expected_version) is None:
         return ReadinessOutcome(
             "source manifests",
             "fail",
-            f"Codex source version {versions['Codex']} does not match Claude source version {versions['Claude']}",
-        )
-    if RELEASE_VERSION_PATTERN.fullmatch(versions["Codex"]) is None:
-        return ReadinessOutcome(
-            "source manifests",
-            "fail",
-            f"plugin source version must be a release version like X.Y.Z: {versions['Codex']}",
+            f"plugin source version must be a release version like X.Y.Z: {expected_version}",
         )
     return ReadinessOutcome("source manifests", "pass")
 

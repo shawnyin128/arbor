@@ -8,6 +8,7 @@ rewrites Arbor's hookless context path, trigger wording, or scenario harness.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -116,6 +117,38 @@ def codex_base_command() -> list[str]:
     if not codex:
         raise RuntimeError("codex executable not found on PATH")
     return [codex]
+
+
+def source_plugin_version() -> str:
+    manifest = json.loads((PLUGIN_ROOT / "plugin.json").read_text(encoding="utf-8"))
+    version = manifest.get("version") if isinstance(manifest, dict) else None
+    if not isinstance(version, str) or not version:
+        raise RuntimeError(f"portable Arbor manifest has no version: {PLUGIN_ROOT / 'plugin.json'}")
+    return version
+
+
+def installed_arbor_version() -> str:
+    code, output = run_command([*codex_base_command(), "plugin", "list", "--json"])
+    if code != 0:
+        raise RuntimeError(f"could not inspect installed Codex plugins: {output.strip()}")
+    json_start = output.find("{")
+    json_end = output.rfind("}")
+    if json_start < 0 or json_end < json_start:
+        raise RuntimeError("Codex plugin list did not include a JSON object")
+    try:
+        payload = json.loads(output[json_start : json_end + 1])
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Codex plugin list did not return JSON: {exc}") from exc
+    installed = payload.get("installed") if isinstance(payload, dict) else None
+    if not isinstance(installed, list):
+        raise RuntimeError("Codex plugin list has no installed plugin list")
+    for plugin in installed:
+        if not isinstance(plugin, dict) or plugin.get("pluginId") != "arbor@arbor":
+            continue
+        version = plugin.get("version")
+        if isinstance(version, str) and version:
+            return version
+    raise RuntimeError("Codex does not have arbor@arbor installed")
 
 
 def valid_agents_text() -> str:
@@ -274,6 +307,21 @@ def main() -> int:
     if not args.run_codex:
         print("real Codex hookless trigger scenarios skipped; pass --run-codex to execute")
         return 0
+
+    try:
+        source_version = source_plugin_version()
+        installed_version = installed_arbor_version()
+    except (OSError, UnicodeError, RuntimeError) as exc:
+        print(f"real Codex hookless trigger scenarios failed: {exc}", file=sys.stderr)
+        return 1
+    if installed_version != source_version:
+        print(
+            "real Codex hookless trigger scenarios failed: "
+            f"installed arbor@arbor version {installed_version} does not match source {source_version}; "
+            "publish or install this exact package before treating scenarios as source evidence",
+            file=sys.stderr,
+        )
+        return 1
 
     root = args.evidence_dir
     if root is None:
