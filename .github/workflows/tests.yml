@@ -36,6 +36,32 @@ jobs:
           git config --global user.name "Arbor CI"
           git config --global init.defaultBranch master
 
+      - name: Report what the launcher will find
+        # The launcher picks an interpreter by running candidates under whichever
+        # shell the host uses. Recording what those candidates actually are makes a
+        # launcher failure readable from the log instead of guesswork.
+        continue-on-error: true
+        shell: bash
+        run: |
+          echo "bash: $(bash --version | head -1)"
+          for candidate in python python3 py; do
+            printf 'candidate %s -> ' "$candidate"
+            if command -v "$candidate" >/dev/null 2>&1; then
+              printf 'at %s; ' "$(command -v "$candidate")"
+              if "$candidate" -c "" >/dev/null 2>&1; then
+                echo "probe ok, $("$candidate" -V 2>&1 | head -1)"
+              else
+                echo "probe FAILED (exit $?)"
+              fi
+            else
+              echo "not on PATH"
+            fi
+          done
+          echo "--- launcher, run directly ---"
+          printf '{"cwd":"%s","source":"startup"}' "$PWD" | bash plugins/arbor/hooks/arbor-hook.cmd session-start | head -c 400
+          echo
+          echo "launcher exit: $?"
+
       - name: Run the suite
         run: python -m pytest
 

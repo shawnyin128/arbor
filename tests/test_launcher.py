@@ -18,6 +18,17 @@ import pytest
 from conftest import LAUNCHER
 
 
+def detail(result) -> str:
+    """Format a launcher result so a CI failure is diagnosable from the log alone."""
+    return "\n".join(
+        [
+            f"exit={result.returncode}",
+            f"stdout={result.stdout!r}",
+            f"stderr={result.stderr!r}",
+        ]
+    )
+
+
 def run_launcher(event: str, payload: str, *, shell: str, env: dict[str, str] | None = None):
     base = dict(os.environ)
     base.pop("CLAUDE_PROJECT_DIR", None)
@@ -71,15 +82,15 @@ class TestFileForm:
 class TestShellBranch:
     def test_injects_context_for_an_arbor_project(self, project) -> None:
         result = run_launcher("session-start", project.payload(source="startup"), shell="bash")
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, detail(result)
         data = json.loads(result.stdout)
         assert data["hookSpecificOutput"]["additionalContext"].startswith("# Arbor Session Context")
 
     def test_silent_for_a_project_without_arbor(self, make_project) -> None:
         plain = make_project(arbor=False)
         result = run_launcher("session-start", plain.payload(source="startup"), shell="bash")
-        assert result.returncode == 0
-        assert result.stdout == ""
+        assert result.returncode == 0, detail(result)
+        assert result.stdout == "", detail(result)
 
     def test_honors_an_explicit_interpreter(self, project) -> None:
         result = run_launcher(
@@ -88,20 +99,33 @@ class TestShellBranch:
             shell="bash",
             env={"ARBOR_PYTHON": sys.executable},
         )
-        assert result.returncode == 0
+        assert result.returncode == 0, detail(result)
         assert json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
 
-    def test_exits_quietly_when_no_interpreter_works(self, project, tmp_path) -> None:
-        empty = tmp_path / "emptybin"
-        empty.mkdir()
+    def test_rejects_an_interpreter_that_fails_to_run(self, project, tmp_path) -> None:
+        """The Microsoft Store stub case: a name that resolves and then fails.
+
+        PATH keeps its real entries so bash and its utilities still work; the
+        interpreters are shadowed by stubs that exit nonzero. Emptying PATH instead
+        would hide bash from Python and test nothing about the launcher.
+        """
+        shims = tmp_path / "shims"
+        shims.mkdir()
+        for name in ("python", "python3"):
+            stub = shims / name
+            stub.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8", newline="\n")
+            stub.chmod(0o755)
         result = run_launcher(
             "session-start",
             project.payload(source="startup"),
             shell="bash",
-            env={"PATH": str(empty), "ARBOR_PYTHON": str(tmp_path / "no-such-python")},
+            env={
+                "PATH": str(shims) + os.pathsep + os.environ.get("PATH", ""),
+                "ARBOR_PYTHON": str(tmp_path / "no-such-python"),
+            },
         )
-        assert result.returncode == 0
-        assert result.stdout == ""
+        assert result.returncode == 0, detail(result)
+        assert result.stdout == "", detail(result)
 
     def test_snapshots_todos_through_the_launcher(self, project) -> None:
         payload = project.payload(
@@ -109,13 +133,13 @@ class TestShellBranch:
             tool_input={"todos": [{"content": "Via launcher", "status": "in_progress"}]},
         )
         result = run_launcher("todo-snapshot", payload, shell="bash")
-        assert result.returncode == 0
+        assert result.returncode == 0, detail(result)
         items = project.session_state()["todos"]["items"]
         assert items[0]["content"] == "Via launcher"
 
     def test_records_handoff_through_the_launcher(self, project) -> None:
         result = run_launcher("session-end", project.payload(reason="logout"), shell="bash")
-        assert result.returncode == 0
+        assert result.returncode == 0, detail(result)
         assert project.session_state()["handoff"]["reason"] == "logout"
 
 
@@ -123,12 +147,12 @@ class TestShellBranch:
 class TestBatchBranch:
     def test_injects_context_for_an_arbor_project(self, project) -> None:
         result = run_launcher("session-start", project.payload(source="startup"), shell="cmd")
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, detail(result)
         data = json.loads(result.stdout)
         assert data["hookSpecificOutput"]["additionalContext"].startswith("# Arbor Session Context")
 
     def test_silent_for_a_project_without_arbor(self, make_project) -> None:
         plain = make_project(arbor=False)
         result = run_launcher("session-start", plain.payload(source="startup"), shell="cmd")
-        assert result.returncode == 0
-        assert result.stdout.strip() == ""
+        assert result.returncode == 0, detail(result)
+        assert result.stdout.strip() == "", detail(result)
