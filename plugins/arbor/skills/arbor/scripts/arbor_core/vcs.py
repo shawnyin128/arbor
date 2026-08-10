@@ -112,3 +112,15 @@ def head(root: Path) -> str:
     """Return the short HEAD hash, or ``""`` when unavailable."""
     output = _run(root, ["rev-parse", "--short", "HEAD"])
     return output.strip() if output else ""
+
+
+def knows_path(root: Path, relative: str) -> bool:
+    """Report whether any commit reachable from HEAD touched ``relative``.
+
+    This is what separates a note that names a real file from a note that
+    happens to contain a slash. A branch name like ``feature/parser`` or a
+    directory that was never committed is unknown to git, so it is not treated
+    as a path claim at all; a tracked file that has since been deleted is.
+    """
+    output = _run(root, ["rev-list", "-1", "HEAD", "--", relative])
+    return bool(output and output.strip())

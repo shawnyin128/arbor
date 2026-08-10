@@ -192,6 +192,13 @@ def _memory_row(root: Path) -> Row:
     if not memory.readable:
         return Row(label, FAIL, "not decodable as UTF-8")
     problems = []
+    outdated = {
+        anchor
+        for entry in memory.entries
+        for anchor in notes.missing_anchors(root, entry)
+    }
+    if outdated:
+        problems.append(f"names {plural(len(outdated), 'path')} that no longer exist: {', '.join(sorted(outdated))}")
     if memory.line_count > MEMORY_LINE_BUDGET:
         problems.append(f"{memory.line_count} lines exceeds the {MEMORY_LINE_BUDGET}-line budget")
     if memory.stale:

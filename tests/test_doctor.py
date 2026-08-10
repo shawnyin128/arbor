@@ -205,3 +205,22 @@ class TestResultAndCli:
         (project.root / ".arbor" / "memory.md").write_bytes(b"\xff\xfe")
         result = run_cli("doctor", "--root", str(project.root))
         assert "Traceback" not in result.stdout + result.stderr
+
+
+class TestOutdatedMemoryAnchors:
+    def test_reports_a_deleted_path_named_by_a_note(self, project) -> None:
+        project.write("src/parser.py", "x = 1\n")
+        project.commit("feat: add parser")
+        (project.root / "src" / "parser.py").unlink()
+        project.commit("refactor: drop parser")
+        project.memory("Finish the rework in `src/parser.py`")
+        entry = row(doctor.collect(project.root), ".arbor/memory.md")
+        assert entry.status == doctor.WARN
+        assert "no longer exist" in entry.detail
+        assert "src/parser.py" in entry.detail
+
+    def test_quiet_when_every_named_path_resolves(self, project) -> None:
+        project.write("src/parser.py", "x = 1\n")
+        project.commit("feat: add parser")
+        project.memory("Finish the rework in `src/parser.py`")
+        assert row(doctor.collect(project.root), ".arbor/memory.md").status == doctor.OK

@@ -142,7 +142,7 @@ def _todo_section(state: dict, head: str) -> Section | None:
     return Section("todos", "In flight", 2, "\n".join(lines), f"read `{SESSION_FILE.as_posix()}`")
 
 
-def _memory_section(memory: notes.Notes) -> Section | None:
+def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
     if not memory.readable:
         return Section(
             "memory",
@@ -153,7 +153,16 @@ def _memory_section(memory: notes.Notes) -> Section | None:
         )
     if not memory.entries:
         return None
-    lines = [f"- {entry}" for entry in memory.entries]
+    lines = []
+    for entry in memory.entries:
+        gone = notes.missing_anchors(root, entry)
+        if gone:
+            # The note is still shown: it may hold the only record of why the
+            # path was removed. What changes is that it no longer reads as a
+            # current description of the tree.
+            lines.append(f"- {entry.text} [outdated: {', '.join(f'`{path}`' for path in gone)} no longer exists]")
+        else:
+            lines.append(f"- {entry.text}")
     if memory.stale:
         ignored = plural(len(memory.stale), "legacy hook-written entry", "legacy hook-written entries")
         lines.append(f"- ({ignored} ignored; prune them)")
@@ -176,7 +185,7 @@ def _ideas_section(ideas: notes.Notes) -> Section | None:
         return None
     recent = ideas.entries[-MAX_IDEAS:]
     lines = [f"{len(ideas.entries)} parked; most recent:"]
-    lines.extend(f"- {entry}" for entry in reversed(recent))
+    lines.extend(f"- {entry.text}" for entry in reversed(recent))
     return Section("ideas", "Parked ideas", 5, "\n".join(lines), "read `.arbor/ideas.md`")
 
 
@@ -200,7 +209,7 @@ def build_sections(root: Path) -> list[Section]:
     candidates = [
         _position_section(status, head),
         _todo_section(state, head),
-        _memory_section(notes.read_memory(root)),
+        _memory_section(notes.read_memory(root), root),
         _tree_section(status),
         _ideas_section(notes.read_ideas(root)),
         _commits_section(root),

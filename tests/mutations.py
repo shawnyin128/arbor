@@ -127,6 +127,27 @@ MUTATIONS = [
         ["tests/test_doctor.py", "-k", "never_ran"],
     ),
     Mutation(
+        "staleness check trusts paths git never tracked, creating false alarms",
+        CORE / "notes.py",
+        "        if vcs.knows_path(root, anchor):\n            gone.append(anchor)",
+        "        gone.append(anchor)",
+        ["tests/test_notes.py", "-k", "never_tracked"],
+    ),
+    Mutation(
+        "entry parsing goes back to indentation-blind",
+        CORE / "notes.py",
+        r'_ENTRY_START = re.compile(r"^[-*]\s+(?P<body>.*)$")',
+        r'_ENTRY_START = re.compile(r"^\s*[-*]\s+(?P<body>.*)$")',
+        ["tests/test_notes.py", "-k", "sub_bullet or continuation"],
+    ),
+    Mutation(
+        "an outdated note is rendered as if it were current",
+        CORE / "packet.py",
+        '            lines.append(f"- {entry.text} [outdated: ',
+        '            lines.append(f"- {entry.text}")  # ',
+        ["tests/test_packet.py", "-k", "path_is_gone"],
+    ),
+    Mutation(
         "the launcher gains carriage returns",
         LAUNCHER,
         "\n",

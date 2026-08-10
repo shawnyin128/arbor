@@ -235,3 +235,28 @@ class TestReceipt:
         packet.render(project.root, sections, 1200)
         receipt = packet.summary(sections, 1200)
         assert "omitted" in receipt
+
+
+class TestOutdatedNotes:
+    """A note naming a deleted file is shown but marked, never shown as current."""
+
+    def test_marks_an_entry_whose_path_is_gone(self, project) -> None:
+        project.write("src/parser.py", "x = 1\n")
+        project.commit("feat: add parser")
+        (project.root / "src" / "parser.py").unlink()
+        project.commit("refactor: drop parser")
+        project.memory("Finish the rework in `src/parser.py`")
+        rendered = build(project)
+        assert "Finish the rework" in rendered, "the note itself must still be shown"
+        assert "outdated" in rendered
+        assert "`src/parser.py` no longer exists" in rendered
+
+    def test_does_not_mark_a_live_path(self, project) -> None:
+        project.write("src/parser.py", "x = 1\n")
+        project.commit("feat: add parser")
+        project.memory("Finish the rework in `src/parser.py`")
+        assert "outdated" not in build(project)
+
+    def test_does_not_mark_a_branch_name(self, project) -> None:
+        project.memory("Work continues on `feature/streaming-reader`")
+        assert "outdated" not in build(project)
