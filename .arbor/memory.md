@@ -19,7 +19,4 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- The full hook lifecycle is verified live on 2.1.9, but the non-ASCII fix in
-  2.1.10 is not. Open a session, have it create a task list with Chinese titles,
-  then open another session and expect the `## In flight` section to show the
-  characters rather than replacement marks. That is the last open item.
+- No unresolved decisions recorded yet.

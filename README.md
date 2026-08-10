@@ -155,6 +155,12 @@ a branch name looks exactly like a path and a false alarm is itself a distractor
 An unresolved merge conflict in a notes file is reported rather than silently
 presented as a settled list.
 
+**Losing the last hook costs little.** The task list is written when it changes, not
+at the end, so closing a window or killing the process keeps it. Only the
+end-of-session summary line is lost, and the "since last session" range falls back
+to the commit recorded with the task snapshot, so a resumed session still reports
+what landed while it was away.
+
 **Receipts.** Every hook stamps `session.json` with the event, time, and plugin
 version. Whether a hook fired is then a fact `doctor` can report rather than an
 assumption. This was the one real advantage of abandoning hooks for an
