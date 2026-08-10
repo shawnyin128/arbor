@@ -143,8 +143,19 @@ python -m pytest
 The suite builds real temporary git repositories and covers hook payload
 robustness, the opt-in gate, budget enforcement and drop order, atomic state
 writes, initialization idempotence, doctor reporting, and the launcher under both
-`cmd.exe` and POSIX shells. It is checked by mutation: each contract is verified
-to fail when the corresponding implementation is deliberately broken.
+`cmd.exe` and POSIX shells.
+
+The suite is itself checked, because a test that also passes against a broken
+implementation is not testing anything:
+
+```bash
+python tests/mutations.py
+```
+
+That breaks the implementation thirteen ways — removing the opt-in gate,
+inverting the budget drop order, reintroducing a timestamp into injected context,
+letting `init` overwrite user files, adding carriage returns to the launcher —
+and requires the covering tests to fail each time.
 
 ## Version
 
