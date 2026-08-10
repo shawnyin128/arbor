@@ -34,9 +34,7 @@ class TestMemory:
     )
     def test_placeholders_are_not_content(self, project, line: str) -> None:
         project.write(".arbor/memory.md", f"# M\n\n## Unresolved\n\n- {line}\n")
-        result = notes.read_memory(project.root)
-        assert result.entries == []
-        assert not result.has_content
+        assert notes.read_memory(project.root).entries == []
 
     def test_legacy_hook_entries_are_reported_as_stale(self, project) -> None:
         project.write(
@@ -211,32 +209,3 @@ class TestConflictDetection:
     def test_prose_mentioning_markers_is_not_flagged(self, project) -> None:
         project.memory("The diff had a `=======` separator in it")
         assert not notes.read_memory(project.root).conflicted
-
-
-class TestNearDuplicates:
-    """Advisory only: it surfaces candidates, it never decides they are the same."""
-
-    def test_flags_a_restatement(self) -> None:
-        entries = [
-            notes.Entry(text="Decide whether the Stop hook keeps writing resume pointers"),
-            notes.Entry(text="Decide whether the Stop hook keeps writing resume pointers every turn"),
-        ]
-        assert notes.near_duplicates(entries) == [(0, 1)]
-
-    def test_flags_two_entries_that_contradict_on_a_value(self) -> None:
-        """Worth a human look, and exactly why this must not auto-merge."""
-        entries = [
-            notes.Entry(text="The injection budget is 8000 characters"),
-            notes.Entry(text="The injection budget is 9500 characters"),
-        ]
-        assert notes.near_duplicates(entries) == [(0, 1)]
-
-    def test_quiet_on_unrelated_entries(self) -> None:
-        entries = [
-            notes.Entry(text="No CI yet; pytest and mutations are manual"),
-            notes.Entry(text="Four obsolete tags still exist on the remote"),
-        ]
-        assert notes.near_duplicates(entries) == []
-
-    def test_quiet_on_a_single_entry(self) -> None:
-        assert notes.near_duplicates([notes.Entry(text="only one")]) == []

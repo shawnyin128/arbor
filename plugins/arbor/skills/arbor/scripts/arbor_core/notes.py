@@ -15,7 +15,6 @@ note is worse than injecting nothing.
 
 from __future__ import annotations
 
-import difflib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -76,10 +75,6 @@ class Notes:
     entries: list[Entry] = field(default_factory=list)
     stale: list[str] = field(default_factory=list)
     line_count: int = 0
-
-    @property
-    def has_content(self) -> bool:
-        return bool(self.entries)
 
     @property
     def texts(self) -> list[str]:
@@ -199,27 +194,3 @@ def read_memory(root: Path) -> Notes:
 def read_ideas(root: Path) -> Notes:
     """Parse ``.arbor/ideas.md``."""
     return _parse(root / IDEAS_FILE, (IDEAS_HEADING,))
-
-
-# Lexical similarity above which two entries are worth a second look. It is
-# deliberately advisory: an independently phrased restatement of the same fact
-# scores near the unrelated floor, so this can surface obvious near-duplicates
-# but must never be trusted to decide that two notes are the same.
-NEAR_DUPLICATE_RATIO = 0.6
-
-
-def _normalize(text: str) -> list[str]:
-    return re.sub(r"[^a-z0-9 ]+", " ", text.lower()).split()
-
-
-def near_duplicates(entries: list[Entry], ratio: float = NEAR_DUPLICATE_RATIO) -> list[tuple[int, int]]:
-    """Return index pairs of entries similar enough to be worth merging."""
-    pairs: list[tuple[int, int]] = []
-    tokens = [_normalize(entry.text) for entry in entries]
-    for left in range(len(entries)):
-        for right in range(left + 1, len(entries)):
-            if not tokens[left] or not tokens[right]:
-                continue
-            if difflib.SequenceMatcher(None, tokens[left], tokens[right]).ratio() >= ratio:
-                pairs.append((left, right))
-    return pairs

@@ -203,9 +203,6 @@ def _memory_row(root: Path) -> Row:
         problems.append(f"{memory.line_count} lines exceeds the {notes.LINE_BUDGET}-line budget")
     if memory.stale:
         problems.append(f"{plural(len(memory.stale), 'legacy hook-written entry', 'legacy hook-written entries')} to prune")
-    duplicates = notes.near_duplicates(memory.entries)
-    if duplicates:
-        problems.append(f"{plural(len(duplicates), 'possible near-duplicate pair')} worth merging")
     detail = (
         f"{plural(len(memory.entries), 'unresolved entry', 'unresolved entries')}, "
         f"{memory.line_count} of {notes.LINE_BUDGET} lines"

@@ -141,6 +141,14 @@ instead of computing a diff against it, because that fact matters more than any
 diff derived from it. When this section renders, `Recent commits` is dropped: the
 range subsumes it.
 
+**Notes are checked, not just repeated.** A note that names a path in backticks is
+making a claim about the tree. If that path is gone from disk and git has a commit
+for it, the note is still shown but marked `outdated`, because it may hold the only
+record of why the path was removed. A path git never tracked is not checked, since
+a branch name looks exactly like a path and a false alarm is itself a distractor.
+An unresolved merge conflict in a notes file is reported rather than silently
+presented as a settled list.
+
 **Receipts.** Every hook stamps `session.json` with the event, time, and plugin
 version. Whether a hook fired is then a fact `doctor` can report rather than an
 assumption. This was the one real advantage of abandoning hooks for an
@@ -168,7 +176,7 @@ implementation is not testing anything:
 python tests/mutations.py
 ```
 
-That breaks the implementation thirteen ways — removing the opt-in gate,
+That breaks the implementation nineteen ways — removing the opt-in gate,
 inverting the budget drop order, reintroducing a timestamp into injected context,
 letting `init` overwrite user files, adding carriage returns to the launcher —
 and requires the covering tests to fail each time.
@@ -176,5 +184,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.1.5
+2.1.6
 ```

@@ -30,7 +30,3 @@ entry was written, so a later session must confirm it still exists.
   regression can reach a release unnoticed. An OS matrix is the highest-value
   first workflow, because the launcher's CRLF failure mode is silent and only a
   non-Windows runner would catch its inverse.
-- Near-duplicate reporting shipped in 2.1.4 with no real-world hit yet: it is
-  validated on constructed cases and stays quiet on this repository's actual
-  notes. Revisit whether it earns its place after it has seen real use; it is the
-  weakest of the four changes in 2.1.2 through 2.1.5.

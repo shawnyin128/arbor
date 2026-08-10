@@ -162,13 +162,6 @@ MUTATIONS = [
         ["tests/test_packet.py", "-k", "still_room_to_act"],
     ),
     Mutation(
-        "near-duplicate detection stops flagging restatements",
-        CORE / "notes.py",
-        "            if difflib.SequenceMatcher(None, tokens[left], tokens[right]).ratio() >= ratio:",
-        "            if False:",
-        ["tests/test_notes.py", "-k", "restatement"],
-    ),
-    Mutation(
         "a rewritten history produces a diff instead of a warning",
         CORE / "packet.py",
         "    if not vcs.is_ancestor(root, last):",

@@ -67,17 +67,6 @@ def project_root(payload: dict[str, Any]) -> Path | None:
     return None
 
 
-def _managed_root(raw: str) -> Path | None:
-    """Return the project root only when this project has opted into Arbor."""
-    payload = parse_payload(raw)
-    if payload is None:
-        return None
-    root = project_root(payload)
-    if root is None or not is_arbor_project(root):
-        return None
-    return root
-
-
 def session_start(raw: str) -> tuple[int, str]:
     """Render the context packet for a starting or resuming session."""
     from . import packet
