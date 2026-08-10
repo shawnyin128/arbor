@@ -1,0 +1,43 @@
+{
+  "description": "Arbor keeps a Claude Code session oriented in a local repository. SessionStart injects volatile handoff state, PostToolUse snapshots the todo list, and SessionEnd records a handoff summary. Every hook is silent in projects without a .arbor directory.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/arbor-hook.cmd\" session-start",
+            "shell": "bash",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "TodoWrite",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/arbor-hook.cmd\" todo-snapshot",
+            "shell": "bash",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/arbor-hook.cmd\" session-end",
+            "shell": "bash",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,18 +1,15 @@
-# Claude Guide
+@AGENTS.md
 
-This project uses Arbor for shared project context. Claude Code reads this file
-natively; the canonical Arbor state lives in the files this bridge points to.
+## Arbor
 
-- `AGENTS.md` is the canonical Arbor project guide and map. Read it first.
-- `.arbor/memory.md` holds short-term, undecided observations. Read it after
-  `AGENTS.md` and before deeper code or doc reads.
+`AGENTS.md` above is the durable project guide, imported so it loads every
+session and survives compaction. Volatile state is injected separately by
+Arbor's SessionStart hook.
 
-Arbor startup context is normally injected by the project SessionStart hook.
-If hooks are unavailable, use `AGENTS.md` as the durable project map and inspect
-`.arbor/memory.md` plus git status before answering resume questions.
+- `.arbor/memory.md` holds what is still unresolved. Update it when a decision
+  is left open, and remove entries once they are settled or committed.
+- `.arbor/ideas.md` holds ideas raised in passing. Append one line rather than
+  acting on them mid-task.
+- `.arbor/session.json` is written by hooks. Do not edit it by hand.
 
-Keep this file as a short bridge: do not duplicate long-term project knowledge
-here. Durable goals, constraints, and project-map pointers belong in
-`AGENTS.md`. Short-term unresolved state belongs in `.arbor/memory.md`.
-Task-specific workflows, examples, and longer design notes belong in Arbor
-skills or referenced project docs, not in this bridge.
+Keep this file short. Durable knowledge belongs in `AGENTS.md`.

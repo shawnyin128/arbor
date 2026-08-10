@@ -1,38 +1,22 @@
 # Session Memory
 
 <!--
-Use this file to help the next agent resume current Arbor work.
+What is still unresolved. This file answers the question a hook cannot: not what
+changed, but why the work stopped and what is still open.
 
-Update it when closing the session would otherwise lose Arbor-relevant context
-that is not already recoverable from committed history, durable docs, stable
-project guidance, and git status.
+Do not record what the repository already records — code structure, past fixes,
+git history, or anything already in AGENTS.md — and do not record what only
+mattered to one conversation. If asked to remember one of those, work out what
+was non-obvious about it and record that instead.
 
-Do not add direct one-off answers, stable project rules, detailed review
-evidence, release history, cache/scratch notes, or anything already committed or
-durable elsewhere.
+Update an entry rather than adding a near-duplicate. Delete an entry once it is
+committed, documented, or decided. A short file gets read; a long one does not.
 
-Each In-flight note should briefly answer:
-  - What are we discussing?
-  - What local files or artifacts matter?
-  - What is not decided or not finished?
-  - What should the next agent do first?
-
-Good:
-  - memory-resume-boundary: user wants Stop hooks to maintain memory and
-    AGENTS drift automatically. Relevant files are `hooks/stop-memory-hygiene`
-    and `docs/review/memory-resume-boundary.md`. Next: verify Codex/Claude Stop
-    replay before release.
-
-Bad:
-  - work in progress
-  - memory needs update
-  - continue previous task
+Each entry should say what is unresolved and what the next session should do
+first. Naming a file or symbol makes a claim about how the code looked when the
+entry was written, so a later session must confirm it still exists.
 -->
 
-## Observations
+## Unresolved
 
-<!-- Confirmed and already documented findings do not need to live here. -->
-
-## In-flight
-
-- No active Arbor resume context recorded yet.
+- No unresolved decisions recorded yet.

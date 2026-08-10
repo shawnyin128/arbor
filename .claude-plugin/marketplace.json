@@ -3,12 +3,12 @@
   "owner": {
     "name": "Shawn"
   },
-  "description": "Initialize, resume, and maintain project-local Arbor context across Codex and Claude Code.",
+  "description": "Project context continuity for Claude Code: session handoff state, in-flight tasks, unresolved decisions, and parked ideas, kept in plain files in the repository.",
   "plugins": [
     {
       "name": "arbor",
       "source": "./plugins/arbor",
-      "description": "Project-local memory, startup context, AGENTS.md guidance, and project-level hooks for Codex and Claude Code.",
+      "description": "Restores what a new session cannot re-derive: git position, the task list that was in flight, what is still unresolved, and ideas raised in passing.",
       "category": "Coding"
     }
   ]

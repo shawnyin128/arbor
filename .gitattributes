@@ -1,0 +1,6 @@
+# The hook launcher is read by both cmd.exe and POSIX shells. A stray CR makes
+# the shell branch fail its interpreter probe and exit 0 without doing anything,
+# which is a silent failure, so its line endings must never be rewritten.
+plugins/arbor/hooks/arbor-hook.cmd text eol=lf
+
+*.png binary
