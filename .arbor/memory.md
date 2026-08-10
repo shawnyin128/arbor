@@ -19,10 +19,9 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- Task capture was broken until 2.1.9 and needs re-verifying in a real session.
-  This host has no TodoWrite tool, so the old matcher never fired; 2.1.9 matches
-  TaskCreate and TaskUpdate and reads the host's task files instead. The installed
-  copy captures correctly when driven by hand, but a real session has only ever
-  been observed firing SessionStart. To finish: start a session, have it create a
-  three-item task list, end it, and expect `arbor doctor` to show all three hook
-  rows `ok` with the task-capture row naming TaskCreate or TaskUpdate.
+- Only SessionEnd is left to verify live. SessionStart and task capture are both
+  confirmed from a real session on 2.1.9: receipts show PostToolUse:TaskCreate and
+  PostToolUse:TaskUpdate, and three tasks were captured from the host's task files.
+  End that session and run `arbor doctor`, expecting all three hook rows `ok` and
+  Result `ok`. Then open one more session and expect the `## In flight` section to
+  carry those three tasks forward, which is the end-to-end payoff.
