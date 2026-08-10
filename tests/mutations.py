@@ -169,6 +169,13 @@ MUTATIONS = [
         ["tests/test_notes.py", "-k", "restatement"],
     ),
     Mutation(
+        "a rewritten history produces a diff instead of a warning",
+        CORE / "packet.py",
+        "    if not vcs.is_ancestor(root, last):",
+        "    if False:",
+        ["tests/test_packet.py", "-k", "rewritten"],
+    ),
+    Mutation(
         "the launcher gains carriage returns",
         LAUNCHER,
         "\n",

@@ -114,6 +114,70 @@ def head(root: Path) -> str:
     return output.strip() if output else ""
 
 
+def is_ancestor(root: Path, commit: str) -> bool:
+    """Report whether ``commit`` is still reachable from HEAD.
+
+    A stored commit can vanish from the current history through a rebase or a
+    force-push. Checking first is what separates "here is what changed" from a
+    confidently wrong diff against a commit that is no longer on this branch.
+    """
+    if not commit:
+        return False
+    # `--is-ancestor` answers through its exit status and prints nothing, so an
+    # empty string means yes and None (nonzero exit) means no.
+    return _run(root, ["merge-base", "--is-ancestor", commit, "HEAD"]) == ""
+
+
+def commits_since(root: Path, commit: str, limit: int) -> list[str]:
+    """Return commits added since ``commit``, newest first.
+
+    Two dots, not three. Three dots asks "what is on this branch since it
+    forked", which is the right question for a pull request and the wrong one
+    here. Callers gate on :func:`is_ancestor` first, and once that holds the two
+    forms are provably equivalent, so this is a choice about saying what is meant
+    rather than a behavioural difference.
+    """
+    output = _run(root, ["log", f"-{limit}", "--no-merges", "--pretty=format:%h %s", f"{commit}..HEAD"])
+    if not output:
+        return []
+    return [line for line in output.splitlines() if line.strip()]
+
+
+def count_commits_since(root: Path, commit: str) -> int:
+    """Count commits added since ``commit``."""
+    output = _run(root, ["rev-list", "--count", f"{commit}..HEAD"])
+    try:
+        return int(output.strip()) if output else 0
+    except ValueError:
+        return 0
+
+
+def changed_paths_since(root: Path, commit: str, limit: int) -> tuple[list[str], int]:
+    """Summarize files changed since ``commit`` as ``(lines, total)``.
+
+    ``--compact-summary`` is used because a created, deleted, or renamed file is
+    the highest-signal fact per character: those are the changes that invalidate
+    a project map or a note, unlike a line-count delta inside a file that still
+    exists.
+    """
+    output = _run(root, ["diff", "--compact-summary", f"{commit}..HEAD"])
+    if not output:
+        return [], 0
+    rows = [line for line in output.splitlines() if "|" in line]
+    total = len(rows)
+    lines = []
+    for row in rows[:limit]:
+        name, _, rest = row.partition("|")
+        marker = ""
+        if "(new)" in name:
+            marker = " (new)"
+        elif "(gone)" in name:
+            marker = " (gone)"
+        cleaned = name.replace("(new)", "").replace("(gone)", "").strip()
+        lines.append(f"{cleaned}{marker}")
+    return lines, total
+
+
 def knows_path(root: Path, relative: str) -> bool:
     """Report whether any commit reachable from HEAD touched ``relative``.
 

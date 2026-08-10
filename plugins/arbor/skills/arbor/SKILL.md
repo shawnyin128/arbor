@@ -97,7 +97,8 @@ registration is needed.
 - `SessionEnd` records the handoff summary.
 
 Each writes a receipt into `session.json`, which is how `doctor` can say whether a
-hook actually fired rather than assuming it did.
+hook actually fired rather than assuming it did. The recorded commit is also what
+lets the next session's packet report what landed while it was away.
 
 If hooks appear not to run, check that the plugin is enabled and that a Python
 interpreter is on `PATH`; `ARBOR_PYTHON` overrides interpreter selection. A

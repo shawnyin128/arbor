@@ -289,3 +289,103 @@ class TestMemoryBudgetHeadroom:
     def test_silent_when_well_under_budget(self, project) -> None:
         project.memory("One short note")
         assert "prune a resolved entry" not in build(project)
+
+
+class TestSinceLastSession:
+    """The one section nobody else ships: what landed while you were away."""
+
+    def _record_last_head(self, project) -> str:
+        from arbor_core import session, vcs
+
+        head = vcs.head(project.root)
+        session.record_handoff(project.root, "clear", "main", head, 0)
+        return head
+
+    def test_absent_when_nothing_landed(self, project) -> None:
+        self._record_last_head(project)
+        assert "## Since last session" not in build(project)
+
+    def test_absent_without_a_recorded_head(self, project) -> None:
+        project.write("later.txt", "x\n")
+        project.commit("feat: something")
+        assert "## Since last session" not in build(project)
+
+    def test_lists_commits_added_since(self, project) -> None:
+        self._record_last_head(project)
+        project.write("alpha.txt", "x\n")
+        project.commit("feat: add alpha")
+        project.write("beta.txt", "x\n")
+        project.commit("fix: adjust beta")
+        rendered = build(project)
+        assert "## Since last session" in rendered
+        assert "2 commits since" in rendered
+        assert "feat: add alpha" in rendered
+        assert "fix: adjust beta" in rendered
+
+    def test_marks_created_and_deleted_files(self, project) -> None:
+        project.write("doomed.txt", "content that goes away\n")
+        project.commit("feat: add doomed")
+        self._record_last_head(project)
+        (project.root / "doomed.txt").unlink()
+        project.write("fresh.txt", "entirely different content\n")
+        project.commit("refactor: swap files")
+        rendered = build(project)
+        assert "fresh.txt (new)" in rendered
+        assert "doomed.txt (gone)" in rendered
+
+    def test_shows_a_rename_as_a_rename(self, project) -> None:
+        """Reporting a rename as a delete plus an unrelated new file misleads."""
+        project.write("before.txt", "identical content here\n")
+        project.commit("feat: add before")
+        self._record_last_head(project)
+        (project.root / "before.txt").rename(project.root / "after.txt")
+        project.commit("refactor: rename it")
+        rendered = build(project)
+        assert "before.txt => after.txt" in rendered
+
+    def test_reports_rewritten_history_instead_of_a_bogus_diff(self, project) -> None:
+        from arbor_core import session
+
+        session.record_handoff(project.root, "clear", "main", "deadbee", 0)
+        rendered = build(project)
+        assert "History was rewritten" in rendered
+        assert "deadbee" in rendered
+
+    def test_falls_back_to_the_todo_snapshot_head(self, project) -> None:
+        from arbor_core import session, vcs
+
+        head = vcs.head(project.root)
+        session.snapshot_todos(project.root, [{"content": "A", "status": "pending"}], head=head)
+        project.write("later.txt", "x\n")
+        project.commit("feat: later work")
+        assert "1 commit since" in build(project)
+
+    def test_caps_the_listed_commits(self, project) -> None:
+        self._record_last_head(project)
+        for index in range(packet.MAX_SINCE_COMMITS + 3):
+            project.write(f"file{index}.txt", "x\n")
+            project.commit(f"feat: commit {index}")
+        assert "(+3 more)" in build(project)
+
+
+class TestSinceSubsumesRecentCommits:
+    def test_recent_commits_is_dropped_when_the_range_is_known(self, project) -> None:
+        from arbor_core import session, vcs
+
+        session.record_handoff(project.root, "clear", "main", vcs.head(project.root), 0)
+        project.write("later.txt", "x\n")
+        project.commit("feat: later work")
+        rendered = build(project)
+        assert "## Since last session" in rendered
+        assert "## Recent commits" not in rendered
+
+    def test_recent_commits_survives_when_history_was_rewritten(self, project) -> None:
+        from arbor_core import session
+
+        session.record_handoff(project.root, "clear", "main", "deadbee", 0)
+        rendered = build(project)
+        assert "History was rewritten" in rendered
+        assert "## Recent commits" in rendered
+
+    def test_recent_commits_survives_without_a_recorded_head(self, project) -> None:
+        assert "## Recent commits" in build(project)

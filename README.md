@@ -61,6 +61,14 @@ branch feature/parser, HEAD a1b2c3d, 2 ahead of origin/feature/parser
 1 unfinished, 4 done
 - [>] Wire the streaming reader into the CLI
 
+## Since last session
+3 commits since a1b2c3d
+- 9f2e1aa refactor: split the tokenizer
+- 4c8d0b1 fix: handle empty input
+5 files changed:
+  src/tokenizer.py (new)
+  src/lexer.py (gone)
+
 ## Unresolved
 - Whether to keep the legacy adapter; depends on the parser decision
 
@@ -125,6 +133,14 @@ still would invalidate the prompt prefix cache every session for no gain, so the
 packet carries none. Staleness is expressed as commit distance instead: a todo
 snapshot taken before the latest commit says so.
 
+**What you missed.** Because the todo snapshot and the handoff both record the
+commit they were taken at, Arbor can report what landed while you were away —
+commit count, subjects, and which files were created, deleted, or renamed. If
+that recorded commit is no longer reachable, it says history was rewritten
+instead of computing a diff against it, because that fact matters more than any
+diff derived from it. When this section renders, `Recent commits` is dropped: the
+range subsumes it.
+
 **Receipts.** Every hook stamps `session.json` with the event, time, and plugin
 version. Whether a hook fired is then a fact `doctor` can report rather than an
 assumption. This was the one real advantage of abandoning hooks for an
@@ -160,5 +176,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.1.4
+2.1.5
 ```

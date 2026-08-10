@@ -30,6 +30,8 @@ DEFAULT_BUDGET = 9500
 _BUDGET_ENV = "ARBOR_CONTEXT_BUDGET"
 
 MAX_TODOS = 12
+MAX_SINCE_COMMITS = 5
+MAX_SINCE_PATHS = 8
 MAX_TREE_ENTRIES = 12
 MAX_IDEAS = 3
 MAX_COMMITS = 5
@@ -147,7 +149,7 @@ def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
         return Section(
             "memory",
             "Unresolved",
-            3,
+            4,
             "`.arbor/memory.md` could not be decoded as UTF-8; treat it as damaged, not as resume context.",
             "repair `.arbor/memory.md`",
         )
@@ -178,7 +180,7 @@ def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
             f"- (`.arbor/memory.md` is at {memory.line_count} of {notes.LINE_BUDGET} lines; "
             "prune a resolved entry before adding another)"
         )
-    return Section("memory", "Unresolved", 3, "\n".join(lines), "read `.arbor/memory.md`")
+    return Section("memory", "Unresolved", 4, "\n".join(lines), "read `.arbor/memory.md`")
 
 
 def _tree_section(status: vcs.Status) -> Section | None:
@@ -189,7 +191,7 @@ def _tree_section(status: vcs.Status) -> Section | None:
         lines.append(f"{code} {path}")
     if status.dirty_count > MAX_TREE_ENTRIES:
         lines.append(f"(+{status.dirty_count - MAX_TREE_ENTRIES} more)")
-    return Section("tree", "Working tree", 4, "\n".join(lines), "run `git status --short`")
+    return Section("tree", "Working tree", 5, "\n".join(lines), "run `git status --short`")
 
 
 def _ideas_section(ideas: notes.Notes) -> Section | None:
@@ -198,14 +200,54 @@ def _ideas_section(ideas: notes.Notes) -> Section | None:
     recent = ideas.entries[-MAX_IDEAS:]
     lines = [f"{len(ideas.entries)} parked; most recent:"]
     lines.extend(f"- {entry.text}" for entry in reversed(recent))
-    return Section("ideas", "Parked ideas", 5, "\n".join(lines), "read `.arbor/ideas.md`")
+    return Section("ideas", "Parked ideas", 6, "\n".join(lines), "read `.arbor/ideas.md`")
+
+
+def _since_section(root: Path, state: dict, head: str) -> Section | None:
+    """Report what landed since the last session's recorded HEAD.
+
+    Nobody else ships this, and the only reason Arbor can is that it already
+    stamps the commit alongside its todo snapshot and handoff.
+    """
+    if not head:
+        return None
+    last = state.get("handoff", {}).get("head") or state.get("todos", {}).get("captured_head") or ""
+    if not last or last == head:
+        return None
+
+    if not vcs.is_ancestor(root, last):
+        # A rewritten history is more important than any diff computed from it,
+        # and it is exactly when a resumed session's assumptions are stale.
+        return Section(
+            "since",
+            "Since last session",
+            3,
+            f"History was rewritten: the commit recorded last session ({last}) is no longer "
+            "reachable from HEAD, so anything remembered about the tree may not apply.",
+            "run `git log --oneline -10`",
+        )
+
+    count = vcs.count_commits_since(root, last)
+    if not count:
+        return None
+    lines = [f"{plural(count, 'commit')} since {last}"]
+    lines.extend(f"- {entry}" for entry in vcs.commits_since(root, last, MAX_SINCE_COMMITS))
+    if count > MAX_SINCE_COMMITS:
+        lines.append(f"- (+{count - MAX_SINCE_COMMITS} more)")
+    changed, total = vcs.changed_paths_since(root, last, MAX_SINCE_PATHS)
+    if changed:
+        lines.append(f"{plural(total, 'file')} changed:")
+        lines.extend(f"  {entry}" for entry in changed)
+        if total > MAX_SINCE_PATHS:
+            lines.append(f"  (+{total - MAX_SINCE_PATHS} more)")
+    return Section("since", "Since last session", 3, "\n".join(lines), f"run `git log {last}..HEAD --oneline`")
 
 
 def _commits_section(root: Path) -> Section | None:
     commits = vcs.recent_commits(root, MAX_COMMITS)
     if not commits:
         return None
-    return Section("commits", "Recent commits", 6, "\n".join(commits), "run `git log -10 --oneline`")
+    return Section("commits", "Recent commits", 7, "\n".join(commits), "run `git log -10 --oneline`")
 
 
 def build_sections(root: Path) -> list[Section]:
@@ -218,13 +260,21 @@ def build_sections(root: Path) -> list[Section]:
     status = vcs.status(root)
     head = vcs.head(root) if status.is_repo else ""
     state = session.load(root)
+    since = _since_section(root, state, head)
+
+    # A "since last session" range subsumes a fixed-size recent-commit list and
+    # additionally says how much was missed, so rendering both would spend budget
+    # twice on the same commit subjects. The rewritten-history variant carries no
+    # commit list, so the recent-commit fallback still applies there.
+    lists_commits = since is not None and " since " in since.body
     candidates = [
         _position_section(status, head),
         _todo_section(state, head),
+        since,
         _memory_section(notes.read_memory(root), root),
         _tree_section(status),
         _ideas_section(notes.read_ideas(root)),
-        _commits_section(root),
+        None if lists_commits else _commits_section(root),
     ]
     return [section for section in candidates if section is not None]
 
