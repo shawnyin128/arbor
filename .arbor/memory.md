@@ -19,13 +19,15 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- Two decisions left open on the remote. The `v2.1.0` tag still points at
-  `fee8d5e`, the superseded hookless-runtime work, and `v2.0.3` through `v2.0.5`
-  tag Codex-line releases; all four are reachable from master through the
-  supersede merge `27b99c8`, so nothing is lost if they stay. Also still present:
-  the `codex/verifiable-hookless-runtime` branch and its worktree at
-  `.worktrees/hookless-stable-triggers`, plus the local `2.0.5` and stale `2.1.0`
-  plugin cache directories.
+- Four obsolete tags still exist on the remote and cannot be removed from this
+  session: the permission classifier blocks `git push origin --delete` on tags.
+  Deleting them locally does nothing, because `git fetch` restores them from the
+  remote. `v2.1.0` is the one that matters, since it sits inside the 2.1 line but
+  points at the superseded hookless architecture. Run this to finish:
+  `git push origin --delete v2.1.0 v2.0.3 v2.0.4 v2.0.5`
+  Every one of those commits stays reachable through the supersede merge
+  `27b99c8`, so the tags can be recreated exactly:
+  v2.0.3 49ddc35, v2.0.4 277e703, v2.0.5 0cdcb2c, v2.1.0 fee8d5e.
 - Hooks have not yet been observed firing from a real session. The receipts in a
   temporary project confirm all three run from the installed cache, but this
   repository's own `session.json` will stay absent until a new session starts.
