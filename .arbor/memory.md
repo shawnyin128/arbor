@@ -19,9 +19,10 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- Hook verification is partly done. SessionStart is confirmed firing from a real
-  session: the receipt in `.arbor/session.json` reads plugin 2.1.8 with
-  source=startup, and the host displayed the systemMessage. Still unverified are
-  PostToolUse on TodoWrite and SessionEnd. To finish, ask a session to build a
-  three-item todo list with TodoWrite, then end that session and run
-  `arbor doctor` expecting all three hook rows to read `ok`.
+- Task capture was broken until 2.1.9 and needs re-verifying in a real session.
+  This host has no TodoWrite tool, so the old matcher never fired; 2.1.9 matches
+  TaskCreate and TaskUpdate and reads the host's task files instead. The installed
+  copy captures correctly when driven by hand, but a real session has only ever
+  been observed firing SessionStart. To finish: start a session, have it create a
+  three-item task list, end it, and expect `arbor doctor` to show all three hook
+  rows `ok` with the task-capture row naming TaskCreate or TaskUpdate.
