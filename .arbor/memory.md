@@ -19,17 +19,17 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- 2.1.1 is committed on master and installed locally, but nothing is pushed. The
-  marketplace clone at `~/.claude/plugins/marketplaces/arbor` was reset to a local
-  commit, so a plugin auto-update will fetch origin and silently revert the local
-  install to 2.0.x. Push master before relying on it on another machine.
-- The remote already has a `v2.1.0` tag pointing at `fee8d5e`, the abandoned
-  hookless-runtime experiment on `codex/verifiable-hookless-runtime`. That is why
-  this release is 2.1.1. Decide whether to delete or move that tag, and whether to
-  delete the superseded branch and its worktree at
-  `.worktrees/hookless-stable-triggers`; `v2.0.3` through `v2.0.5` are also tagged
-  on the remote but absent from master.
-- Hooks were verified by invoking the installed cache with the exact command
-  strings from its `hooks.json`, and the receipts in `session.json` confirm all
-  three ran. They have not yet been observed firing from a real new session, which
-  needs `/reload-plugins` or a fresh session to confirm.
+- Two decisions left open on the remote. The `v2.1.0` tag still points at
+  `fee8d5e`, the superseded hookless-runtime work, and `v2.0.3` through `v2.0.5`
+  tag Codex-line releases; all four are reachable from master through the
+  supersede merge `27b99c8`, so nothing is lost if they stay. Also still present:
+  the `codex/verifiable-hookless-runtime` branch and its worktree at
+  `.worktrees/hookless-stable-triggers`, plus the local `2.0.5` and stale `2.1.0`
+  plugin cache directories.
+- Hooks have not yet been observed firing from a real session. The receipts in a
+  temporary project confirm all three run from the installed cache, but this
+  repository's own `session.json` will stay absent until a new session starts.
+  Run `arbor doctor` then to confirm the three hook rows turn `ok`.
+- No CI. `python -m pytest` and `python tests/mutations.py` are manual, so a
+  regression can reach a release unnoticed. A GitHub Actions workflow running both
+  is the obvious next step.
