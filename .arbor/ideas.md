@@ -22,3 +22,10 @@ earned a real home: an issue, a design note, or a project doc.
   `.arbor/memory.md` visible mid-session without a re-injection.
 - Consider a `PostCompact` hook: compaction is exactly when volatile context is
   lost, and SessionStart only covers it if the host reports source `compact`.
+- Investigate whether `shell: bash` in hooks.json is the right choice on Windows.
+  CI showed that `bash` on PATH can be WSL's own bash.exe under System32, which
+  on a machine with no distribution prints an installation notice and exits 1
+  without reading the script. If Claude Code resolves it that way, Arbor's hooks
+  break before the launcher runs, and the polyglot's cmd branch never gets a
+  chance. Dropping `shell: bash` would let cmd.exe run the .cmd on Windows, but
+  needs checking that a POSIX shell still executes it on macOS and Linux.

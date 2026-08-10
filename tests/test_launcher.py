@@ -13,6 +13,7 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from conftest import LAUNCHER
@@ -29,6 +30,43 @@ def detail(result) -> str:
     )
 
 
+def find_posix_bash() -> str | None:
+    """Locate a bash that can actually run a POSIX script.
+
+    Selected by running it, for the same reason the launcher selects its
+    interpreter that way. On Windows, ``bash`` on PATH is often
+    ``System32\\bash.exe``, the WSL launcher: it resolves, and on a machine with no
+    distribution installed it prints an installation notice and exits 1 without
+    ever reading the script it was handed.
+    """
+    candidates = [
+        os.environ.get("ARBOR_TEST_BASH"),
+        shutil.which("bash"),
+        r"C:\Program Files\Git\bin\bash.exe",
+        r"C:\Program Files (x86)\Git\bin\bash.exe",
+    ]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        if not Path(candidate).exists() and shutil.which(candidate) is None:
+            continue
+        try:
+            probe = subprocess.run(
+                [candidate, "-c", "printf posix"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if probe.returncode == 0 and probe.stdout.strip() == "posix":
+            return candidate
+    return None
+
+
+POSIX_BASH = find_posix_bash()
+
+
 def run_launcher(event: str, payload: str, *, shell: str, env: dict[str, str] | None = None):
     base = dict(os.environ)
     base.pop("CLAUDE_PROJECT_DIR", None)
@@ -36,8 +74,9 @@ def run_launcher(event: str, payload: str, *, shell: str, env: dict[str, str] | 
     if env:
         base.update(env)
     if shell == "bash":
+        assert POSIX_BASH is not None
         return subprocess.run(
-            ["bash", str(LAUNCHER), event],
+            [POSIX_BASH, str(LAUNCHER), event],
             input=payload,
             text=True,
             capture_output=True,
@@ -78,7 +117,7 @@ class TestFileForm:
         assert '-c ""' in text
 
 
-@pytest.mark.skipif(shutil.which("bash") is None, reason="bash unavailable")
+@pytest.mark.skipif(POSIX_BASH is None, reason="no POSIX bash available")
 class TestShellBranch:
     def test_injects_context_for_an_arbor_project(self, project) -> None:
         result = run_launcher("session-start", project.payload(source="startup"), shell="bash")
