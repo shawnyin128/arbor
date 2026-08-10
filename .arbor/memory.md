@@ -19,9 +19,7 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- Only SessionEnd is left to verify live. SessionStart and task capture are both
-  confirmed from a real session on 2.1.9: receipts show PostToolUse:TaskCreate and
-  PostToolUse:TaskUpdate, and three tasks were captured from the host's task files.
-  End that session and run `arbor doctor`, expecting all three hook rows `ok` and
-  Result `ok`. Then open one more session and expect the `## In flight` section to
-  carry those three tasks forward, which is the end-to-end payoff.
+- The full hook lifecycle is verified live on 2.1.9, but the non-ASCII fix in
+  2.1.10 is not. Open a session, have it create a task list with Chinese titles,
+  then open another session and expect the `## In flight` section to show the
+  characters rather than replacement marks. That is the last open item.
