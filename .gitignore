@@ -6,11 +6,9 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 
-# Arbor's own machine-written session state. Arbor generates this in whichever
-# project it runs in; it is never published from this repository. The committed
-# AGENTS.md and CLAUDE.md beside it are deliberate: this repository is expected to
-# use the pattern it ships.
-/.arbor/
+# This repository uses the pattern it ships, so AGENTS.md, CLAUDE.md, and the
+# agent-written notes under .arbor/ are committed. The machine-written
+# .arbor/session.json is excluded by .arbor/.gitignore, which `arbor init` writes.
 
 # Local design notes and validation evidence.
 /docs/

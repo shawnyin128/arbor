@@ -1,0 +1,3 @@
+# Machine-written session state. Arbor rewrites this file on every
+# todo change and at session end; it is not useful in review.
+session.json
