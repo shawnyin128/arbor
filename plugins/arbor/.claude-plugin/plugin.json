@@ -1,6 +1,6 @@
 {
   "name": "arbor",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "description": "Restores the volatile half of project context at session start: where git is, which tasks were in flight, what is still unresolved, and which ideas were parked. Hook-driven, file-first, no daemon.",
   "author": {
     "name": "Shawn",

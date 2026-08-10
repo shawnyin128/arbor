@@ -135,8 +135,14 @@ class TestAnchors:
             "tests/test_parser.py",
         )
 
-    def test_ignores_bare_filenames_as_too_ambiguous(self) -> None:
-        assert notes.anchors("check `README.md` again") == ()
+    def test_includes_bare_filenames(self) -> None:
+        assert notes.anchors("check `README.md` again") == ("README.md",)
+
+    def test_ignores_a_version_string(self) -> None:
+        assert notes.anchors("the tag `v2.1.0` points at the old work") == ()
+
+    def test_ignores_a_token_with_no_extension_and_no_slash(self) -> None:
+        assert notes.anchors("the `master` branch") == ()
 
     def test_ignores_commands(self) -> None:
         assert notes.anchors("run `git push origin --delete v1.0`") == ()
@@ -209,3 +215,25 @@ class TestConflictDetection:
     def test_prose_mentioning_markers_is_not_flagged(self, project) -> None:
         project.memory("The diff had a `=======` separator in it")
         assert not notes.read_memory(project.root).conflicted
+
+
+class TestBareFilenameAnchors:
+    """Bare names are resolved from the repository root, which disambiguates them."""
+
+    def test_reports_a_root_file_that_was_deleted(self, project) -> None:
+        project.write("loader.py", "x = 1\n")
+        project.commit("feat: add loader")
+        (project.root / "loader.py").unlink()
+        project.commit("refactor: drop loader")
+        entry = notes.Entry(text="rework `loader.py`", anchors=("loader.py",))
+        assert notes.missing_anchors(project.root, entry) == ["loader.py"]
+
+    def test_silent_for_a_name_that_only_ever_lived_in_a_subdirectory(self, project) -> None:
+        project.write("src/helper.py", "x = 1\n")
+        project.commit("feat: add helper")
+        (project.root / "src" / "helper.py").unlink()
+        project.commit("refactor: drop helper")
+        # The note names it without its directory, so the root-relative lookup
+        # finds no record and the claim is left alone rather than misreported.
+        entry = notes.Entry(text="rework `helper.py`", anchors=("helper.py",))
+        assert notes.missing_anchors(project.root, entry) == []

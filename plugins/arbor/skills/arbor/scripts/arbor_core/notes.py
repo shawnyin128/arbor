@@ -51,6 +51,9 @@ _PLACEHOLDERS = frozenset(
 # entry, so a nested sub-bullet is not mistaken for a separate note.
 _ENTRY_START = re.compile(r"^[-*]\s+(?P<body>.*)$")
 _BACKTICK = re.compile(r"`([^`\n]+)`")
+# A trailing alphabetic extension, which is what separates a filename from a
+# version string such as v2.1.0.
+_FILE_SUFFIX = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,7}$")
 # Unresolved merge markers. The entry parser skips them, which means both sides
 # of a conflict read as ordinary notes and the conflicted state is invisible
 # unless it is reported explicitly.
@@ -99,18 +102,23 @@ def _section_body(text: str, headings: tuple[str, ...]) -> str:
 def anchors(text: str) -> tuple[str, ...]:
     """Extract the path-like tokens an entry claims exist.
 
-    Only backticked tokens containing a slash qualify. A bare filename is too
-    ambiguous to check — it may be written relative to a subdirectory — and a
-    token containing whitespace is a command, not a path.
+    A backticked token qualifies if it contains a slash, or if it ends in a file
+    extension. A token containing whitespace is a command, not a path.
+
+    Bare filenames are safe to include because every candidate is resolved from
+    the repository root: a note naming ``helper.py`` for a file that only ever
+    lived in ``src/`` reads as a path git has no record of at the root, so it is
+    ignored rather than reported. Requiring the extension to be alphabetic keeps
+    version strings like ``v2.1.0`` out.
     """
     found: list[str] = []
     for token in _BACKTICK.findall(text):
         candidate = token.strip()
         if not candidate or any(char.isspace() for char in candidate):
             continue
-        if "/" not in candidate or "://" in candidate:
+        if "://" in candidate or candidate.startswith("-"):
             continue
-        if candidate.startswith("-"):
+        if "/" not in candidate and not _FILE_SUFFIX.search(candidate):
             continue
         normalized = candidate.rstrip("/")
         if normalized and normalized not in found:

@@ -184,5 +184,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.1.6
+2.1.7
 ```

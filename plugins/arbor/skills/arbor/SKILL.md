@@ -69,7 +69,7 @@ derailing the session. Remove it once it is done, filed, or rejected.
 Keep both short. `doctor` warns when memory passes 40 lines, because the packet
 that carries it has a hard budget.
 
-When a note names a path in backticks, that path is checked. If it is gone from
+When a note names a path or filename in backticks, it is checked from the repository root. If it is gone from
 disk but git has a commit for it, the note is still shown but marked `outdated`,
 and `doctor` reports it. A path git never tracked is not checked, because a
 branch name looks exactly like a path and a false alarm in injected context costs
