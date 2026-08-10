@@ -191,6 +191,8 @@ def _memory_row(root: Path) -> Row:
         return Row(label, MISSING, "run arbor init")
     if not memory.readable:
         return Row(label, FAIL, "not decodable as UTF-8")
+    if memory.conflicted:
+        return Row(label, FAIL, "has an unresolved merge conflict; reconcile it before trusting it")
     problems = []
     outdated = {
         anchor

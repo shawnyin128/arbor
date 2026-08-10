@@ -154,6 +154,13 @@ def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
     if not memory.entries:
         return None
     lines = []
+    if memory.conflicted:
+        # Both sides of the conflict are listed below, because the entry parser
+        # skips the markers. Saying so is what stops that from looking settled.
+        lines.append(
+            "- NOTE: `.arbor/memory.md` has an unresolved merge conflict; "
+            "both sides are listed here and the file needs reconciling."
+        )
     for entry in memory.entries:
         gone = notes.missing_anchors(root, entry)
         if gone:

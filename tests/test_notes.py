@@ -174,3 +174,40 @@ class TestMissingAnchors:
         loose = make_project(git=False)
         entry = notes.Entry(text="see `src/gone.py`", anchors=("src/gone.py",))
         assert notes.missing_anchors(loose.root, entry) == []
+
+
+class TestConflictDetection:
+    """The entry parser skips merge markers, so the conflict must be reported."""
+
+    CONFLICTED = (
+        "# M\n\n## Unresolved\n\n"
+        "- Shared baseline note\n"
+        "<<<<<<< HEAD\n"
+        "- Branch B: decide on the cache layout\n"
+        "=======\n"
+        "- Branch A: decide on the parser split\n"
+        ">>>>>>> feature-a\n"
+    )
+
+    def test_conflict_is_detected(self, project) -> None:
+        project.write(".arbor/memory.md", self.CONFLICTED)
+        assert notes.read_memory(project.root).conflicted
+
+    def test_both_sides_are_still_read(self, project) -> None:
+        project.write(".arbor/memory.md", self.CONFLICTED)
+        texts = notes.read_memory(project.root).texts
+        assert "Branch A: decide on the parser split" in texts
+        assert "Branch B: decide on the cache layout" in texts
+
+    def test_markers_are_not_read_as_entries(self, project) -> None:
+        project.write(".arbor/memory.md", self.CONFLICTED)
+        for text in notes.read_memory(project.root).texts:
+            assert "<<<" not in text and ">>>" not in text and text != "======="
+
+    def test_clean_file_is_not_flagged(self, project) -> None:
+        project.memory("An ordinary note")
+        assert not notes.read_memory(project.root).conflicted
+
+    def test_prose_mentioning_markers_is_not_flagged(self, project) -> None:
+        project.memory("The diff had a `=======` separator in it")
+        assert not notes.read_memory(project.root).conflicted

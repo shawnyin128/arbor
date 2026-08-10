@@ -148,6 +148,13 @@ MUTATIONS = [
         ["tests/test_packet.py", "-k", "path_is_gone"],
     ),
     Mutation(
+        "a conflicted notes file is presented as settled",
+        CORE / "notes.py",
+        "        conflicted=bool(_CONFLICT.search(text)),",
+        "        conflicted=False,",
+        ["tests/test_notes.py", "-k", "conflict_is_detected"],
+    ),
+    Mutation(
         "the launcher gains carriage returns",
         LAUNCHER,
         "\n",

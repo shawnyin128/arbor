@@ -46,6 +46,10 @@ _PLACEHOLDERS = frozenset(
 # entry, so a nested sub-bullet is not mistaken for a separate note.
 _ENTRY_START = re.compile(r"^[-*]\s+(?P<body>.*)$")
 _BACKTICK = re.compile(r"`([^`\n]+)`")
+# Unresolved merge markers. The entry parser skips them, which means both sides
+# of a conflict read as ordinary notes and the conflicted state is invisible
+# unless it is reported explicitly.
+_CONFLICT = re.compile(r"(?m)^(<{7} |={7}$|>{7} )")
 
 
 @dataclass(frozen=True)
@@ -62,6 +66,7 @@ class Notes:
 
     exists: bool = False
     readable: bool = True
+    conflicted: bool = False
     entries: list[Entry] = field(default_factory=list)
     stale: list[str] = field(default_factory=list)
     line_count: int = 0
@@ -156,6 +161,7 @@ def _parse(path: Path, headings: tuple[str, ...]) -> Notes:
     return Notes(
         exists=True,
         readable=True,
+        conflicted=bool(_CONFLICT.search(text)),
         entries=entries,
         stale=stale,
         line_count=len(text.splitlines()),

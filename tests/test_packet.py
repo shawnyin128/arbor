@@ -260,3 +260,18 @@ class TestOutdatedNotes:
     def test_does_not_mark_a_branch_name(self, project) -> None:
         project.memory("Work continues on `feature/streaming-reader`")
         assert "outdated" not in build(project)
+
+
+class TestConflictedNotes:
+    def test_packet_says_the_file_is_conflicted(self, project) -> None:
+        project.write(
+            ".arbor/memory.md",
+            "# M\n\n## Unresolved\n\n- Kept\n<<<<<<< HEAD\n- Mine\n=======\n- Theirs\n>>>>>>> other\n",
+        )
+        rendered = build(project)
+        assert "unresolved merge conflict" in rendered
+        assert "Mine" in rendered and "Theirs" in rendered
+
+    def test_clean_notes_carry_no_conflict_warning(self, project) -> None:
+        project.memory("An ordinary note")
+        assert "unresolved merge conflict" not in build(project)

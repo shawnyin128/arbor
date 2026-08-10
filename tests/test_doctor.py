@@ -224,3 +224,14 @@ class TestOutdatedMemoryAnchors:
         project.commit("feat: add parser")
         project.memory("Finish the rework in `src/parser.py`")
         assert row(doctor.collect(project.root), ".arbor/memory.md").status == doctor.OK
+
+
+class TestConflictedMemory:
+    def test_reported_as_fail(self, project) -> None:
+        project.write(
+            ".arbor/memory.md",
+            "# M\n\n## Unresolved\n\n<<<<<<< HEAD\n- Mine\n=======\n- Theirs\n>>>>>>> other\n",
+        )
+        entry = row(doctor.collect(project.root), ".arbor/memory.md")
+        assert entry.status == doctor.FAIL
+        assert "merge conflict" in entry.detail
