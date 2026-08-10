@@ -123,8 +123,8 @@ MUTATIONS = [
     Mutation(
         "doctor stops reporting whether hooks fired",
         CORE / "doctor.py",
-        '            rows.append(Row(f"{event} hook", WARN, "never fired in this project"))\n            continue',
-        '            rows.append(Row(f"{event} hook", OK, "assumed fine"))\n            continue',
+        '        rows.append(Row(label, WARN, "never fired in this project"))',
+        '        rows.append(Row(label, OK, "assumed fine"))',
         ["tests/test_doctor.py", "-k", "never_ran"],
     ),
     Mutation(
@@ -168,6 +168,13 @@ MUTATIONS = [
         "    if not vcs.is_ancestor(root, last):",
         "    if False:",
         ["tests/test_packet.py", "-k", "rewritten"],
+    ),
+    Mutation(
+        "task capture handles only TodoWrite, missing hosts that use the Task tools",
+        CORE / "hooks.py",
+        'TASK_TOOLS = frozenset({"TodoWrite", "TaskCreate", "TaskUpdate"})',
+        'TASK_TOOLS = frozenset({"TodoWrite"})',
+        ["tests/test_hooks.py", "-k", "captures_the_host_list"],
     ),
     Mutation(
         "the launcher gains carriage returns",

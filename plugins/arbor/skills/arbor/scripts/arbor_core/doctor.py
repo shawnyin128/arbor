@@ -39,7 +39,10 @@ PLACEHOLDER_MARKERS = (
     "inspect the repository itself before answering",
 )
 
-HOOK_EVENTS = ("SessionStart", "PostToolUse:TodoWrite", "SessionEnd")
+# The task-capture receipt is keyed by whichever tool the host exposes, so it is
+# reported by family rather than by one exact name.
+HOOK_EVENTS = ("SessionStart", "task capture", "SessionEnd")
+TASK_RECEIPT_PREFIX = "PostToolUse:"
 
 # Directories and files that are never durable project-map entrypoints.
 SKIP_MAP_NAMES = frozenset(
@@ -235,14 +238,30 @@ def _session_row(root: Path, state: dict) -> Row:
 
 
 def _hook_rows(state: dict) -> list[Row]:
+    receipts = state.get("receipts", {})
     rows = []
     for event in HOOK_EVENTS:
-        entry = session.receipt(state, event)
-        if not entry:
-            rows.append(Row(f"{event} hook", WARN, "never fired in this project"))
-            continue
-        version = entry.get("version", "unknown")
-        rows.append(Row(f"{event} hook", OK, f"last fired {entry.get('at', 'unknown')} (plugin {version})"))
+        if event == "task capture":
+            matches = {
+                key: value
+                for key, value in receipts.items()
+                if key.startswith(TASK_RECEIPT_PREFIX) and isinstance(value, dict)
+            }
+            entry = max(matches.values(), key=lambda item: item.get("at", "")) if matches else {}
+            label = "task capture hook"
+            if entry:
+                tools = ", ".join(sorted(key.split(":", 1)[1] for key in matches))
+                detail = f"last fired {entry.get('at', 'unknown')} via {tools} (plugin {entry.get('version', 'unknown')})"
+                rows.append(Row(label, OK, detail))
+                continue
+        else:
+            entry = session.receipt(state, event)
+            label = f"{event} hook"
+            if entry:
+                version = entry.get("version", "unknown")
+                rows.append(Row(label, OK, f"last fired {entry.get('at', 'unknown')} (plugin {version})"))
+                continue
+        rows.append(Row(label, WARN, "never fired in this project"))
     return rows
 
 

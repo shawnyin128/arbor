@@ -92,8 +92,10 @@ registration is needed.
 
 - `SessionStart` (`startup`, `resume`, `clear`, `compact`) injects the packet and
   reports a one-line summary to the user through `systemMessage`.
-- `PostToolUse` on `TodoWrite` snapshots the todo list, so in-flight work is
-  durable even if the session ends abruptly.
+- `PostToolUse` on the task tools snapshots the task list, so in-flight work is
+  durable even if the session ends abruptly. `TodoWrite` sends the whole list;
+  `TaskCreate` and `TaskUpdate` change one entry, so the host's own task files are
+  read instead. Which tools exist depends on the Claude Code version.
 - `SessionEnd` records the handoff summary.
 
 Each writes a receipt into `session.json`, which is how `doctor` can say whether a

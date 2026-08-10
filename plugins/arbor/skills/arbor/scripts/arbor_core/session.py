@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from . import SCHEMA_VERSION
-from .paths import ARBOR_DIR, SESSION_FILE, plugin_version
+from .paths import ARBOR_DIR, SESSION_FILE, host_tasks_dir, plugin_version
 
 TODO_STATUSES = ("in_progress", "pending", "completed")
 
@@ -141,6 +141,56 @@ def normalize_todos(raw: Any) -> list[dict[str, str]] | None:
     return items
 
 
+def read_host_tasks(session_id: str) -> list[dict[str, str]] | None:
+    """Read the host's own task list for a session.
+
+    Returns ``None`` when there is no such list, so callers can leave an existing
+    snapshot alone rather than replacing it with nothing.
+    """
+    directory = host_tasks_dir(session_id)
+    if directory is None:
+        return None
+    entries: list[tuple[int, dict[str, str]]] = []
+    try:
+        files = sorted(directory.glob("*.json"))
+    except OSError:
+        return None
+    for path in files:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        subject = data.get("subject")
+        status = data.get("status")
+        if not isinstance(subject, str) or not subject.strip():
+            continue
+        if status not in TODO_STATUSES:
+            continue
+        item = {"content": subject.strip(), "status": status}
+        active = data.get("activeForm")
+        if isinstance(active, str) and active.strip():
+            item["activeForm"] = active.strip()
+        try:
+            order = int(str(data.get("id", path.stem)))
+        except ValueError:
+            order = 0
+        entries.append((order, item))
+    if not entries:
+        return None
+    return [item for _order, item in sorted(entries, key=lambda pair: pair[0])]
+
+
+def _store_todos(root: Path, items: list[dict[str, str]], session_id: str, head: str, event: str) -> bool:
+    state = load(root)
+    state["todos"] = {"captured_at": utc_now(), "captured_head": head, "items": items}
+    if session_id:
+        state.setdefault("session", {})["id"] = session_id
+    record_receipt(state, event)
+    return save(root, state)
+
+
 def snapshot_todos(root: Path, raw: Any, session_id: str = "", head: str = "") -> bool:
     """Replace the todo snapshot from a ``TodoWrite`` payload.
 
@@ -152,12 +202,15 @@ def snapshot_todos(root: Path, raw: Any, session_id: str = "", head: str = "") -
     items = normalize_todos(raw)
     if items is None:
         return False
-    state = load(root)
-    state["todos"] = {"captured_at": utc_now(), "captured_head": head, "items": items}
-    if session_id:
-        state.setdefault("session", {})["id"] = session_id
-    record_receipt(state, "PostToolUse:TodoWrite")
-    return save(root, state)
+    return _store_todos(root, items, session_id, head, "PostToolUse:TodoWrite")
+
+
+def snapshot_host_tasks(root: Path, session_id: str, head: str = "", event: str = "PostToolUse:Task") -> bool:
+    """Replace the todo snapshot from the host's own task files."""
+    items = read_host_tasks(session_id)
+    if items is None:
+        return False
+    return _store_todos(root, items, session_id, head, event)
 
 
 def todo_items(state: dict[str, Any], status: str | None = None) -> list[dict[str, str]]:

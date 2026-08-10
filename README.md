@@ -39,13 +39,19 @@ Three hooks, registered by the plugin. Nothing is written into your project's
 | Hook | When | What it does |
 | --- | --- | --- |
 | `SessionStart` | start, resume, clear, compact | injects the context packet |
-| `PostToolUse` on `TodoWrite` | every todo change | snapshots the task list |
+| `PostToolUse` on the task tools | every task change | snapshots the task list |
 | `SessionEnd` | session ends | records a handoff summary |
 
-The todo snapshot is the load-bearing one. Claude's own task list is the ground
+The task snapshot is the load-bearing one. Claude's own task list is the ground
 truth for what was in flight, so nothing has to be summarized or inferred, and
 because it is written as the list changes, it survives a session that ends
 abruptly.
+
+Hosts expose that list in one of two ways. `TodoWrite` carries the whole list in
+its payload. The `Task` tools change one entry at a time, so a single payload
+cannot describe the list; for those Arbor reads the host's own task files, which
+are authoritative anyway. Both are matched, because which one exists depends on the
+Claude Code version.
 
 A typical injected packet:
 
@@ -180,7 +186,7 @@ implementation is not testing anything:
 python tests/mutations.py
 ```
 
-That breaks the implementation nineteen ways — removing the opt-in gate,
+That breaks the implementation twenty ways — removing the opt-in gate,
 inverting the budget drop order, reintroducing a timestamp into injected context,
 letting `init` overwrite user files, adding carriage returns to the launcher —
 and requires the covering tests to fail each time.
@@ -188,5 +194,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.1.8
+2.1.9
 ```

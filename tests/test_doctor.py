@@ -127,6 +127,21 @@ class TestHookReceipts:
             assert entry.status == doctor.WARN
             assert "never fired" in entry.detail
 
+    def test_task_capture_reports_which_tool_fired(self, project, tmp_path, monkeypatch) -> None:
+        """The receipt key depends on the host's tool, so the row reports the family."""
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        directory = tmp_path / "config" / "tasks" / "abc"
+        directory.mkdir(parents=True)
+        import json as _json
+
+        (directory / "1.json").write_text(
+            _json.dumps({"id": "1", "subject": "A", "status": "pending"}), encoding="utf-8"
+        )
+        hooks.todo_snapshot(project.payload(tool_name="TaskCreate", session_id="abc", tool_input={}))
+        entry = row(doctor.collect(project.root), "task capture hook")
+        assert entry.status == doctor.OK
+        assert "TaskCreate" in entry.detail
+
     def test_a_fired_hook_reports_when_and_which_version(self, project) -> None:
         hooks.session_start(project.payload(source="startup"))
         entry = row(doctor.collect(project.root), "SessionStart hook")

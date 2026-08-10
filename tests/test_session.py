@@ -134,3 +134,78 @@ class TestReceipts:
         state = session.load(project.root)
         assert session.todo_items(state)
         assert state["handoff"]["unfinished"] == 1
+
+
+class TestHostTaskFiles:
+    """The Task tools change one entry at a time, so the host's files are the list."""
+
+    def _write_tasks(self, tmp_path, session_id, tasks):
+        import json as _json
+
+        directory = tmp_path / "config" / "tasks" / session_id
+        directory.mkdir(parents=True)
+        for index, (subject, status) in enumerate(tasks, start=1):
+            (directory / f"{index}.json").write_text(
+                _json.dumps(
+                    {
+                        "id": str(index),
+                        "subject": subject,
+                        "description": "",
+                        "activeForm": f"Doing {subject}",
+                        "status": status,
+                        "blocks": [],
+                        "blockedBy": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+        return directory
+
+    def test_reads_the_list_in_id_order(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "s1", [("First", "completed"), ("Second", "in_progress"), ("Third", "pending")])
+        items = session.read_host_tasks("s1")
+        assert [item["content"] for item in items] == ["First", "Second", "Third"]
+        assert [item["status"] for item in items] == ["completed", "in_progress", "pending"]
+
+    def test_orders_by_numeric_id_not_filename(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "s1", [(f"Task {n}", "pending") for n in range(1, 12)])
+        items = session.read_host_tasks("s1")
+        # Lexical order would put 10 and 11 before 2.
+        assert [item["content"] for item in items][:3] == ["Task 1", "Task 2", "Task 3"]
+
+    def test_absent_directory_yields_none(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        assert session.read_host_tasks("nobody") is None
+
+    def test_blank_session_id_yields_none(self) -> None:
+        assert session.read_host_tasks("") is None
+
+    def test_corrupt_files_are_skipped_not_fatal(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        directory = self._write_tasks(tmp_path, "s1", [("Good", "pending")])
+        (directory / "9.json").write_text("{ broken", encoding="utf-8")
+        (directory / "8.json").write_bytes(b"\xff\xfe\x00")
+        items = session.read_host_tasks("s1")
+        assert [item["content"] for item in items] == ["Good"]
+
+    def test_unknown_status_is_dropped(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "s1", [("Keep", "pending"), ("Drop", "cancelled")])
+        assert [item["content"] for item in session.read_host_tasks("s1")] == ["Keep"]
+
+    def test_snapshot_writes_the_host_list(self, project, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "s1", [("Alpha", "in_progress"), ("Beta", "pending")])
+        assert session.snapshot_host_tasks(project.root, "s1", head="abc1234")
+        state = session.load(project.root)
+        assert [item["content"] for item in session.unfinished_todos(state)] == ["Alpha", "Beta"]
+        assert state["todos"]["captured_head"] == "abc1234"
+
+    def test_snapshot_leaves_state_alone_when_there_is_no_host_list(self, project, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        session.snapshot_todos(project.root, [{"content": "Keep me", "status": "pending"}])
+        assert session.snapshot_host_tasks(project.root, "absent") is False
+        state = session.load(project.root)
+        assert [item["content"] for item in session.todo_items(state)] == ["Keep me"]

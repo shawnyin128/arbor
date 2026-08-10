@@ -187,3 +187,55 @@ class TestUniversalRobustness:
     )
     def test_unusable_input_is_a_silent_skip(self, event: str, raw: str) -> None:
         assert hooks.ENTRYPOINTS[event](raw) == hooks.SKIP
+
+
+class TestTaskToolCapture:
+    """This host exposes TaskCreate/TaskUpdate rather than TodoWrite."""
+
+    def _write_tasks(self, tmp_path, session_id, tasks):
+        directory = tmp_path / "config" / "tasks" / session_id
+        directory.mkdir(parents=True, exist_ok=True)
+        for index, (subject, status) in enumerate(tasks, start=1):
+            (directory / f"{index}.json").write_text(
+                json.dumps({"id": str(index), "subject": subject, "status": status}),
+                encoding="utf-8",
+            )
+
+    @pytest.mark.parametrize("tool", ["TaskCreate", "TaskUpdate"])
+    def test_captures_the_host_list(self, project, tmp_path, monkeypatch, tool: str) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "abc", [("Wire it up", "in_progress"), ("Test it", "pending")])
+        payload = project.payload(tool_name=tool, session_id="abc", tool_input={"subject": "Wire it up"})
+        assert hooks.todo_snapshot(payload) == hooks.SKIP
+        state = session.load(project.root)
+        assert [item["content"] for item in session.unfinished_todos(state)] == ["Wire it up", "Test it"]
+
+    def test_receipt_names_the_tool_that_fired(self, project, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "abc", [("A", "pending")])
+        hooks.todo_snapshot(project.payload(tool_name="TaskCreate", session_id="abc", tool_input={}))
+        assert session.receipt(session.load(project.root), "PostToolUse:TaskCreate")
+
+    def test_ignores_unrelated_task_tools(self, project, tmp_path, monkeypatch) -> None:
+        """TaskStop manages background agents, not the task list."""
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "abc", [("A", "pending")])
+        payload = project.payload(tool_name="TaskStop", session_id="abc", tool_input={"task_id": "x"})
+        assert hooks.todo_snapshot(payload) == hooks.SKIP
+        assert session.todo_items(session.load(project.root)) == []
+
+    def test_session_end_refreshes_from_the_host_list(self, project, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "abc", [("Left open", "pending")])
+        hooks.session_end(project.payload(reason="clear", session_id="abc"))
+        state = session.load(project.root)
+        assert [item["content"] for item in session.unfinished_todos(state)] == ["Left open"]
+        assert state["handoff"]["unfinished"] == 1
+
+    def test_still_silent_outside_an_arbor_project(self, make_project, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "config"))
+        self._write_tasks(tmp_path, "abc", [("A", "pending")])
+        plain = make_project(arbor=False)
+        payload = plain.payload(tool_name="TaskCreate", session_id="abc", tool_input={})
+        assert hooks.todo_snapshot(payload) == hooks.SKIP
+        assert not (plain.root / ".arbor").exists()

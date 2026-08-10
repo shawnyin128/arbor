@@ -21,6 +21,10 @@ from .paths import is_arbor_project
 
 SESSION_START_SOURCES = frozenset({"startup", "resume", "clear", "compact"})
 
+# Tools that change the agent's task list. TodoWrite sends the whole list;
+# the Task tools change one entry at a time.
+TASK_TOOLS = frozenset({"TodoWrite", "TaskCreate", "TaskUpdate"})
+
 # Hook payloads are occasionally delivered with a UTF-8 byte order mark.
 BOM = chr(0xFEFF)
 
@@ -110,27 +114,35 @@ def session_start(raw: str) -> tuple[int, str]:
 
 
 def todo_snapshot(raw: str) -> tuple[int, str]:
-    """Persist the todo list from a ``TodoWrite`` call."""
+    """Persist the task list after the agent changed it.
+
+    Two shapes exist across hosts. ``TodoWrite`` carries the whole list in its
+    payload. The ``Task`` tools operate on one task at a time, so a single payload
+    cannot describe the list; for those the host's own task files are read, which
+    are authoritative anyway.
+    """
     payload = parse_payload(raw)
     if payload is None:
         return SKIP
     tool_name = payload.get("tool_name")
-    if isinstance(tool_name, str) and tool_name != "TodoWrite":
+    if not isinstance(tool_name, str) or tool_name not in TASK_TOOLS:
         return SKIP
     root = project_root(payload)
     if root is None or not is_arbor_project(root):
         return SKIP
 
-    tool_input = payload.get("tool_input")
-    if not isinstance(tool_input, dict):
-        return SKIP
     session_id = payload.get("session_id")
-    session.snapshot_todos(
-        root,
-        tool_input.get("todos"),
-        session_id if isinstance(session_id, str) else "",
-        head=vcs.head(root),
-    )
+    session_id = session_id if isinstance(session_id, str) else ""
+    head = vcs.head(root)
+
+    if tool_name == "TodoWrite":
+        tool_input = payload.get("tool_input")
+        if not isinstance(tool_input, dict):
+            return SKIP
+        session.snapshot_todos(root, tool_input.get("todos"), session_id, head=head)
+        return SKIP
+
+    session.snapshot_host_tasks(root, session_id, head=head, event=f"PostToolUse:{tool_name}")
     return SKIP
 
 
@@ -146,6 +158,10 @@ def session_end(raw: str) -> tuple[int, str]:
     status = vcs.status(root)
     reason = payload.get("reason")
     session_id = payload.get("session_id")
+    if isinstance(session_id, str) and session_id:
+        # Backstop: if a task changed without the tool hook firing, the host list
+        # is still correct at the end of the session.
+        session.snapshot_host_tasks(root, session_id, head=vcs.head(root), event="SessionEnd")
     session.record_handoff(
         root,
         reason=reason if isinstance(reason, str) else "",

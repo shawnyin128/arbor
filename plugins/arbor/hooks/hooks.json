@@ -1,5 +1,5 @@
 {
-  "description": "Arbor keeps a Claude Code session oriented in a local repository. SessionStart injects volatile handoff state, PostToolUse snapshots the todo list, and SessionEnd records a handoff summary. Every hook is silent in projects without a .arbor directory.",
+  "description": "Arbor keeps a Claude Code session oriented in a local repository. SessionStart injects volatile handoff state, PostToolUse snapshots the task list however the host exposes it, and SessionEnd records a handoff summary. Every hook is silent in projects without a .arbor directory.",
   "hooks": {
     "SessionStart": [
       {
@@ -16,7 +16,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "TodoWrite",
+        "matcher": "TodoWrite|TaskCreate|TaskUpdate",
         "hooks": [
           {
             "type": "command",

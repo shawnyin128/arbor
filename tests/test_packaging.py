@@ -68,9 +68,18 @@ class TestHookRegistration:
         entry = load_json(HOOKS_JSON)["hooks"]["SessionStart"][0]
         assert set(entry["matcher"].split("|")) == {"startup", "resume", "clear", "compact"}
 
-    def test_todo_capture_is_scoped_to_the_todo_tool(self) -> None:
+    def test_task_capture_matcher_matches_the_tools_the_code_handles(self) -> None:
+        """The matcher and the handled set must not drift apart.
+
+        A host exposes the task list through either TodoWrite or the Task tools.
+        Registering a matcher for a tool the code ignores would fire the hook for
+        nothing; handling a tool the matcher omits would silently capture nothing,
+        which is exactly how the TodoWrite-only matcher missed this host.
+        """
+        from arbor_core import hooks as hooks_module
+
         entry = load_json(HOOKS_JSON)["hooks"]["PostToolUse"][0]
-        assert entry["matcher"] == "TodoWrite"
+        assert set(entry["matcher"].split("|")) == set(hooks_module.TASK_TOOLS)
 
     @pytest.mark.parametrize("event", ["SessionStart", "PostToolUse", "SessionEnd"])
     def test_commands_resolve_through_the_plugin_root_variable(self, event: str) -> None:

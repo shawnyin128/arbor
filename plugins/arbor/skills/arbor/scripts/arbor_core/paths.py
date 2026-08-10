@@ -28,6 +28,29 @@ def is_arbor_project(root: Path) -> bool:
     return (root / ARBOR_DIR).is_dir()
 
 
+def host_tasks_dir(session_id: str) -> Path | None:
+    """Locate the host's own task files for a session.
+
+    Claude Code keeps one JSON file per task under
+    ``<config>/tasks/<session-id>/<n>.json``. That directory is the authoritative
+    list, which matters because the task tools operate on a single task at a time:
+    a hook payload for one create or update cannot describe the whole list.
+
+    Returns ``None`` when the directory does not exist, which is the normal case
+    for a session that never created a task and for hosts that do not keep this
+    state at all.
+    """
+    if not session_id:
+        return None
+    configured = os.environ.get("CLAUDE_CONFIG_DIR")
+    base = Path(configured).expanduser() if configured else Path.home() / ".claude"
+    try:
+        directory = base / "tasks" / session_id
+        return directory if directory.is_dir() else None
+    except (OSError, RuntimeError):
+        return None
+
+
 def plugin_root(start: Path | None = None) -> Path | None:
     """Locate the installed plugin root by walking up to its manifest."""
     current = (start or Path(__file__)).resolve()
