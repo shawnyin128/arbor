@@ -19,7 +19,9 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- Hooks have still not been observed firing from a real session. Receipts from the
-  installed copy confirm all three run, but this repository's `session.json` stays
-  absent until a session starts with the plugin loaded. Run `arbor doctor` in a new
-  session and expect the three hook rows to turn `ok`.
+- Hook verification is partly done. SessionStart is confirmed firing from a real
+  session: the receipt in `.arbor/session.json` reads plugin 2.1.8 with
+  source=startup, and the host displayed the systemMessage. Still unverified are
+  PostToolUse on TodoWrite and SessionEnd. To finish, ask a session to build a
+  three-item todo list with TodoWrite, then end that session and run
+  `arbor doctor` expecting all three hook rows to read `ok`.
