@@ -160,10 +160,12 @@ version. Whether a hook fired is then a fact `doctor` can report rather than an
 assumption. This was the one real advantage of abandoning hooks for an
 agent-executed protocol, and it turns out to be orthogonal to the trigger.
 
-**UTF-8 out, always.** Python encodes stdout with the platform locale, which on
-Windows is a legacy code page, while the host reads hook output as UTF-8. Left to
-the default, every non-ASCII character in a task title, note, or path reaches the
-model as a replacement character. Arbor pins its output encoding.
+**UTF-8 in both directions.** Python encodes and decodes the standard streams with
+the platform locale, which on Windows is a legacy code page, while the host speaks
+UTF-8. Left to the default, a non-ASCII task title reaches the model as a
+replacement character and a payload naming a non-ASCII path is mis-decoded on the
+way in. Arbor pins all three streams, and its tests force a hostile locale so the
+pin is verified everywhere rather than only where the platform disagrees.
 
 **Silence over noise.** Any unusable input — an empty probe payload, a byte order
 mark, a corrupt state file, a missing interpreter — is a silent skip with exit
@@ -199,5 +201,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.1.10
+2.1.11
 ```

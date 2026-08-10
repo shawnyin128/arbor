@@ -180,7 +180,7 @@ MUTATIONS = [
     Mutation(
         "hook output falls back to the platform locale encoding",
         SCRIPTS / "arbor.py",
-        '        _stream.reconfigure(encoding="utf-8")',
+        '        _stream.reconfigure(encoding="utf-8", errors=_errors)',
         "        pass",
         ["tests/test_encoding.py", "-k", "task_titles_survive"],
     ),

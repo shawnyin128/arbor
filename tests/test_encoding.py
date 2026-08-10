@@ -23,9 +23,17 @@ SAMPLES = ["核对 doctor 的行数", "Écrire les tests", "проверить �
 REPLACEMENT = chr(0xFFFD)
 
 
+# Force a hostile locale for the child. On Linux and macOS the default is already
+# UTF-8, so without this the pin is untestable there: removing it would change
+# nothing and the check would pass against a broken implementation. latin-1 cannot
+# represent any of the samples, so an unpinned stream fails loudly.
+HOSTILE_LOCALE = "latin-1"
+
+
 def run_hook(event: str, payload: dict, *, via_launcher: bool = False) -> tuple[int, bytes]:
     env = dict(os.environ)
     env.pop("CLAUDE_PROJECT_DIR", None)
+    env["PYTHONIOENCODING"] = HOSTILE_LOCALE
     if via_launcher:
         command = ["bash", str(LAUNCHER), event]
     else:
@@ -115,3 +123,24 @@ class TestThroughTheLauncher:
         text = raw.decode("utf-8")
         assert REPLACEMENT not in text
         assert "核对 doctor 的行数" in json.loads(text)["hookSpecificOutput"]["additionalContext"]
+
+
+class TestPayloadDecoding:
+    """The payload arrives as UTF-8 too, and is decoded with the same locale."""
+
+    def test_non_ascii_content_in_the_payload_round_trips(self, project) -> None:
+        payload = {
+            "cwd": str(project.root),
+            "tool_name": "TodoWrite",
+            "tool_input": {"todos": [{"content": "重写加载器", "status": "in_progress"}]},
+        }
+        code, _ = run_hook("todo-snapshot", payload)
+        assert code == 0
+        stored = json.loads((project.root / ".arbor" / "session.json").read_text(encoding="utf-8"))
+        assert stored["todos"]["items"][0]["content"] == "重写加载器"
+
+    def test_non_ascii_reason_does_not_break_the_handoff(self, project) -> None:
+        code, _ = run_hook("session-end", {"cwd": str(project.root), "reason": "已清空"})
+        assert code == 0
+        stored = json.loads((project.root / ".arbor" / "session.json").read_text(encoding="utf-8"))
+        assert stored["handoff"]["reason"] == "已清空"

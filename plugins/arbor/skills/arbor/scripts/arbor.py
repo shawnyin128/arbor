@@ -15,12 +15,13 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# Hook output is read as UTF-8 by the host, but Python encodes stdout with the
-# platform locale, which on Windows is a legacy code page. Left alone, every
-# non-ASCII character in a task title, note, or path reaches the model as U+FFFD.
-for _stream in (sys.stdout, sys.stderr):
+# The host speaks UTF-8 in both directions, but Python encodes and decodes the
+# standard streams with the platform locale, which on Windows is a legacy code
+# page. Left alone, a non-ASCII task title, note, or path is mangled on the way
+# out, and a payload naming a non-ASCII path is mis-decoded on the way in.
+for _stream, _errors in ((sys.stdin, "replace"), (sys.stdout, "strict"), (sys.stderr, "replace")):
     try:
-        _stream.reconfigure(encoding="utf-8")
+        _stream.reconfigure(encoding="utf-8", errors=_errors)
     except (AttributeError, OSError, ValueError):
         pass
 
