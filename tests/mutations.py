@@ -23,7 +23,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CORE = REPO_ROOT / "plugins" / "arbor" / "skills" / "arbor" / "scripts" / "arbor_core"
+SCRIPTS = REPO_ROOT / "plugins" / "arbor" / "skills" / "arbor" / "scripts"
+CORE = SCRIPTS / "arbor_core"
 LAUNCHER = REPO_ROOT / "plugins" / "arbor" / "hooks" / "arbor-hook.cmd"
 
 
@@ -175,6 +176,13 @@ MUTATIONS = [
         'TASK_TOOLS = frozenset({"TodoWrite", "TaskCreate", "TaskUpdate"})',
         'TASK_TOOLS = frozenset({"TodoWrite"})',
         ["tests/test_hooks.py", "-k", "captures_the_host_list"],
+    ),
+    Mutation(
+        "hook output falls back to the platform locale encoding",
+        SCRIPTS / "arbor.py",
+        '        _stream.reconfigure(encoding="utf-8")',
+        "        pass",
+        ["tests/test_encoding.py", "-k", "task_titles_survive"],
     ),
     Mutation(
         "the launcher gains carriage returns",

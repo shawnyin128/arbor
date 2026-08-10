@@ -79,6 +79,7 @@ def run_launcher(event: str, payload: str, *, shell: str, env: dict[str, str] | 
             [POSIX_BASH, str(LAUNCHER), event],
             input=payload,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             env=base,
         )
@@ -89,6 +90,7 @@ def run_launcher(event: str, payload: str, *, shell: str, env: dict[str, str] | 
         f'cmd.exe /d /s /c ""{LAUNCHER}" {event}"',
         input=payload,
         text=True,
+        encoding="utf-8",
         capture_output=True,
         env=base,
     )

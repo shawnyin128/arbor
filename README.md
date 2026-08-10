@@ -160,6 +160,11 @@ version. Whether a hook fired is then a fact `doctor` can report rather than an
 assumption. This was the one real advantage of abandoning hooks for an
 agent-executed protocol, and it turns out to be orthogonal to the trigger.
 
+**UTF-8 out, always.** Python encodes stdout with the platform locale, which on
+Windows is a legacy code page, while the host reads hook output as UTF-8. Left to
+the default, every non-ASCII character in a task title, note, or path reaches the
+model as a replacement character. Arbor pins its output encoding.
+
 **Silence over noise.** Any unusable input — an empty probe payload, a byte order
 mark, a corrupt state file, a missing interpreter — is a silent skip with exit
 code 0. A hook that fires in every project must fail quietly.
@@ -186,7 +191,7 @@ implementation is not testing anything:
 python tests/mutations.py
 ```
 
-That breaks the implementation twenty ways — removing the opt-in gate,
+That breaks the implementation twenty-one ways — removing the opt-in gate,
 inverting the budget drop order, reintroducing a timestamp into injected context,
 letting `init` overwrite user files, adding carriage returns to the launcher —
 and requires the covering tests to fail each time.
@@ -194,5 +199,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.1.9
+2.1.10
 ```

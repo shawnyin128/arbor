@@ -15,6 +15,15 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# Hook output is read as UTF-8 by the host, but Python encodes stdout with the
+# platform locale, which on Windows is a legacy code page. Left alone, every
+# non-ASCII character in a task title, note, or path reaches the model as U+FFFD.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError, ValueError):
+        pass
+
 from arbor_core import doctor as doctor_module  # noqa: E402
 from arbor_core import hooks as hooks_module  # noqa: E402
 from arbor_core import init as init_module  # noqa: E402

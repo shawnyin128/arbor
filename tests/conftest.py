@@ -91,9 +91,14 @@ class Project:
     root: Path
 
     def git(self, *args: str) -> subprocess.CompletedProcess[str]:
+        # Decode as UTF-8 explicitly. The platform locale is a legacy code page on
+        # Windows, and git echoes filenames, so a non-ASCII path in a fixture would
+        # otherwise raise inside subprocess's reader thread.
         return subprocess.run(
             ["git", "-C", str(self.root), *args],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=True,
             check=True,
         )
@@ -188,6 +193,7 @@ def run_cli(*args: str, stdin: str = "", cwd: Path | None = None) -> subprocess.
         [sys.executable, str(CLI), *args],
         input=stdin,
         text=True,
+        encoding="utf-8",
         capture_output=True,
         cwd=str(cwd) if cwd else None,
     )
