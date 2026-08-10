@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -178,6 +179,29 @@ MUTATIONS = [
 ]
 
 
+def restore(path: Path, original: bytes) -> None:
+    """Put a mutated file back, and refuse to continue if it cannot be done.
+
+    A restore can fail transiently — on Windows a subprocess spawned by the tests
+    may still hold the file open. Leaving a mutation on disk is the worst possible
+    outcome for this script, because the mutation is a deliberate defect: one such
+    failure silently disabled the opt-in gate that keeps hooks out of unrelated
+    projects. Retry, verify the bytes, and abort loudly rather than continue.
+    """
+    for attempt in range(5):
+        try:
+            path.write_bytes(original)
+        except OSError:
+            time.sleep(0.2 * (attempt + 1))
+            continue
+        if path.read_bytes() == original:
+            return
+    raise SystemExit(
+        f"FATAL: could not restore {path}. It is still mutated on disk. "
+        f"Run `git checkout -- {path.relative_to(REPO_ROOT).as_posix()}` before doing anything else."
+    )
+
+
 def apply(mutation: Mutation, text: str) -> str:
     if mutation.path == LAUNCHER and mutation.find == "\n":
         return text.replace("\n", "\r\n")
@@ -188,7 +212,12 @@ def main(argv: list[str]) -> int:
     escaped: list[str] = []
     for mutation in MUTATIONS:
         original = mutation.path.read_bytes()
-        text = original.decode("utf-8")
+        # Match against LF text regardless of how the working tree was checked
+        # out. With autocrlf on, a file restored by git arrives with CRLF, and a
+        # pattern written with newline escapes would silently stop matching; this
+        # script would then report a stale pattern instead of a real result. The
+        # restore writes the original bytes back, so the checkout form is kept.
+        text = original.decode("utf-8").replace("\r\n", "\n")
         if mutation.find not in text:
             escaped.append(f"{mutation.label}: pattern no longer present in {mutation.path.name}")
             print(f"  STALE       {mutation.label}")
@@ -202,7 +231,7 @@ def main(argv: list[str]) -> int:
                 text=True,
             )
         finally:
-            mutation.path.write_bytes(original)
+            restore(mutation.path, original)
         if proc.returncode == 0:
             escaped.append(f"{mutation.label}: {' '.join(mutation.selector)} still passed")
             print(f"  NOT CAUGHT  {mutation.label}")

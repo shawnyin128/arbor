@@ -164,6 +164,10 @@ code 0. A hook that fires in every project must fail quietly.
 python -m pytest
 ```
 
+Continuous integration runs the suite and the mutation check on Linux, macOS, and
+Windows, because the launcher's failure mode is a silent exit and only a matrix
+exercises both of its branches.
+
 The suite builds real temporary git repositories and covers hook payload
 robustness, the opt-in gate, budget enforcement and drop order, atomic state
 writes, initialization idempotence, doctor reporting, and the launcher under both
@@ -184,5 +188,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.1.7
+2.1.8
 ```

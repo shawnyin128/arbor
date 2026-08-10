@@ -9,8 +9,10 @@ test look like a passing one.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,14 +27,52 @@ CLI = SCRIPTS_DIR / "arbor.py"
 
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+# Deliberately outside the repository. A temp root inside it makes git's upward
+# search discover this repository from a project built to have none, and leaves
+# repository files open to a subprocess while tests are running.
+FALLBACK_TEMP = Path(tempfile.gettempdir()) / "arbor-pytest-tmp"
+
+
+def _default_temp_root_is_usable() -> bool:
+    """Report whether pytest can use the platform temp directory.
+
+    pytest keeps its temporary projects under ``<temp>/pytest-of-<user>`` and
+    scans that directory to pick the next run number. Some environments leave it
+    unreadable, which aborts collection before a single test runs and reads as a
+    broken suite rather than a broken environment.
+    """
+    root = Path(tempfile.gettempdir())
+    try:
+        probe = root / f"arbor-probe-{os.getpid()}"
+        probe.mkdir(exist_ok=True)
+        probe.rmdir()
+        for existing in root.glob("pytest-of-*"):
+            list(os.scandir(existing))
+    except OSError:
+        return False
+    return True
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Redirect the temp root to a private one when the default is unusable."""
+    if config.option.basetemp or _default_temp_root_is_usable():
+        return
+    FALLBACK_TEMP.mkdir(parents=True, exist_ok=True)
+    config.option.basetemp = str(FALLBACK_TEMP)
+
 
 @pytest.fixture(autouse=True)
-def isolate_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def isolate_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Remove ambient state that would leak the real repository into a test.
 
     ``CLAUDE_PROJECT_DIR`` is set inside a live Claude Code session and takes
     precedence over the payload ``cwd``, so leaving it set would point every hook
     under test at this repository instead of the temporary project.
+
+    ``GIT_CEILING_DIRECTORIES`` stops git's upward search at the temp root. Without
+    it, a project built to have no repository would discover whichever repository
+    happens to contain the temp directory, so the no-repo tests would pass or fail
+    depending on where the platform puts temporary files.
     """
     for name in (
         "CLAUDE_PROJECT_DIR",
@@ -41,6 +81,7 @@ def isolate_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         "ARBOR_GIT_TIMEOUT_SECONDS",
     ):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
 
 
 @dataclass
