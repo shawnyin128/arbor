@@ -155,6 +155,20 @@ MUTATIONS = [
         ["tests/test_notes.py", "-k", "conflict_is_detected"],
     ),
     Mutation(
+        "the budget warning only fires after the file is already over",
+        CORE / "packet.py",
+        "    if memory.line_count >= notes.LINE_BUDGET * notes.WARN_FRACTION:",
+        "    if memory.line_count > notes.LINE_BUDGET * 99:",
+        ["tests/test_packet.py", "-k", "still_room_to_act"],
+    ),
+    Mutation(
+        "near-duplicate detection stops flagging restatements",
+        CORE / "notes.py",
+        "            if difflib.SequenceMatcher(None, tokens[left], tokens[right]).ratio() >= ratio:",
+        "            if False:",
+        ["tests/test_notes.py", "-k", "restatement"],
+    ),
+    Mutation(
         "the launcher gains carriage returns",
         LAUNCHER,
         "\n",

@@ -275,3 +275,17 @@ class TestConflictedNotes:
     def test_clean_notes_carry_no_conflict_warning(self, project) -> None:
         project.memory("An ordinary note")
         assert "unresolved merge conflict" not in build(project)
+
+
+class TestMemoryBudgetHeadroom:
+    def test_warns_while_there_is_still_room_to_act(self, project) -> None:
+        from arbor_core import notes as notes_module
+
+        near = int(notes_module.LINE_BUDGET * notes_module.WARN_FRACTION)
+        project.memory(*[f"Open question number {i}" for i in range(near)])
+        rendered = build(project)
+        assert "prune a resolved entry before adding another" in rendered
+
+    def test_silent_when_well_under_budget(self, project) -> None:
+        project.memory("One short note")
+        assert "prune a resolved entry" not in build(project)

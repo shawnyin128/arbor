@@ -173,6 +173,11 @@ def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
     if memory.stale:
         ignored = plural(len(memory.stale), "legacy hook-written entry", "legacy hook-written entries")
         lines.append(f"- ({ignored} ignored; prune them)")
+    if memory.line_count >= notes.LINE_BUDGET * notes.WARN_FRACTION:
+        lines.append(
+            f"- (`.arbor/memory.md` is at {memory.line_count} of {notes.LINE_BUDGET} lines; "
+            "prune a resolved entry before adding another)"
+        )
     return Section("memory", "Unresolved", 3, "\n".join(lines), "read `.arbor/memory.md`")
 
 

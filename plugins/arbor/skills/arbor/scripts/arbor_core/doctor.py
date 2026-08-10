@@ -31,8 +31,6 @@ WARN = "warn"
 FAIL = "fail"
 MISSING = "missing"
 
-MEMORY_LINE_BUDGET = 40
-
 REQUIRED_GUIDE_SECTIONS = ("Project Goal", "Project Constraints", "Project Map")
 
 PLACEHOLDER_MARKERS = (
@@ -201,11 +199,17 @@ def _memory_row(root: Path) -> Row:
     }
     if outdated:
         problems.append(f"names {plural(len(outdated), 'path')} that no longer exist: {', '.join(sorted(outdated))}")
-    if memory.line_count > MEMORY_LINE_BUDGET:
-        problems.append(f"{memory.line_count} lines exceeds the {MEMORY_LINE_BUDGET}-line budget")
+    if memory.line_count > notes.LINE_BUDGET:
+        problems.append(f"{memory.line_count} lines exceeds the {notes.LINE_BUDGET}-line budget")
     if memory.stale:
         problems.append(f"{plural(len(memory.stale), 'legacy hook-written entry', 'legacy hook-written entries')} to prune")
-    detail = plural(len(memory.entries), "unresolved entry", "unresolved entries")
+    duplicates = notes.near_duplicates(memory.entries)
+    if duplicates:
+        problems.append(f"{plural(len(duplicates), 'possible near-duplicate pair')} worth merging")
+    detail = (
+        f"{plural(len(memory.entries), 'unresolved entry', 'unresolved entries')}, "
+        f"{memory.line_count} of {notes.LINE_BUDGET} lines"
+    )
     if problems:
         return Row(label, WARN, f"{detail}; {'; '.join(problems)}")
     return Row(label, OK, detail)

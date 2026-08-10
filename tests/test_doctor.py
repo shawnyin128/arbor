@@ -6,7 +6,7 @@ budget?". It reports and never repairs.
 
 from __future__ import annotations
 
-from arbor_core import doctor, hooks, init, session
+from arbor_core import doctor, hooks, init, notes, session
 from conftest import run_cli
 
 
@@ -99,7 +99,7 @@ class TestNotes:
         assert row(doctor.collect(project.root), ".arbor/memory.md").status == doctor.OK
 
     def test_oversized_memory_warns(self, project) -> None:
-        project.memory(*[f"Open question number {i}" for i in range(doctor.MEMORY_LINE_BUDGET + 5)])
+        project.memory(*[f"Open question number {i}" for i in range(notes.LINE_BUDGET + 5)])
         entry = row(doctor.collect(project.root), ".arbor/memory.md")
         assert entry.status == doctor.WARN
         assert "budget" in entry.detail
