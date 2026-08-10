@@ -19,14 +19,7 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- Four obsolete tags are still on the remote and cannot be removed from this
-  session, because the permission classifier blocks deleting tags. Deleting them
-  locally does nothing since fetch restores them. `v2.1.0` is the one that
-  matters: it sits in the 2.1 line but points at the superseded hookless work.
-  Finish with `git push origin --delete v2.1.0 v2.0.3 v2.0.4 v2.0.5`; all four
-  commits stay reachable through merge `27b99c8` so the tags can be recreated
-  exactly (v2.0.3 49ddc35, v2.0.4 277e703, v2.0.5 0cdcb2c, v2.1.0 fee8d5e).
-- No CI. `python -m pytest` and `python tests/mutations.py` are manual, so a
-  regression can reach a release unnoticed. An OS matrix is the highest-value
-  first workflow, because the launcher's CRLF failure mode is silent and only a
-  non-Windows runner would catch its inverse.
+- Hooks have still not been observed firing from a real session. Receipts from the
+  installed copy confirm all three run, but this repository's `session.json` stays
+  absent until a session starts with the plugin loaded. Run `arbor doctor` in a new
+  session and expect the three hook rows to turn `ok`.
