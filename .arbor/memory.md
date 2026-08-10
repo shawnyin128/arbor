@@ -19,19 +19,18 @@ entry was written, so a later session must confirm it still exists.
 
 ## Unresolved
 
-- Four obsolete tags still exist on the remote and cannot be removed from this
-  session: the permission classifier blocks `git push origin --delete` on tags.
-  Deleting them locally does nothing, because `git fetch` restores them from the
-  remote. `v2.1.0` is the one that matters, since it sits inside the 2.1 line but
-  points at the superseded hookless architecture. Run this to finish:
-  `git push origin --delete v2.1.0 v2.0.3 v2.0.4 v2.0.5`
-  Every one of those commits stays reachable through the supersede merge
-  `27b99c8`, so the tags can be recreated exactly:
-  v2.0.3 49ddc35, v2.0.4 277e703, v2.0.5 0cdcb2c, v2.1.0 fee8d5e.
-- Hooks have not yet been observed firing from a real session. The receipts in a
-  temporary project confirm all three run from the installed cache, but this
-  repository's own `session.json` will stay absent until a new session starts.
-  Run `arbor doctor` then to confirm the three hook rows turn `ok`.
+- Four obsolete tags are still on the remote and cannot be removed from this
+  session, because the permission classifier blocks deleting tags. Deleting them
+  locally does nothing since fetch restores them. `v2.1.0` is the one that
+  matters: it sits in the 2.1 line but points at the superseded hookless work.
+  Finish with `git push origin --delete v2.1.0 v2.0.3 v2.0.4 v2.0.5`; all four
+  commits stay reachable through merge `27b99c8` so the tags can be recreated
+  exactly (v2.0.3 49ddc35, v2.0.4 277e703, v2.0.5 0cdcb2c, v2.1.0 fee8d5e).
 - No CI. `python -m pytest` and `python tests/mutations.py` are manual, so a
-  regression can reach a release unnoticed. A GitHub Actions workflow running both
-  is the obvious next step.
+  regression can reach a release unnoticed. An OS matrix is the highest-value
+  first workflow, because the launcher's CRLF failure mode is silent and only a
+  non-Windows runner would catch its inverse.
+- Near-duplicate reporting shipped in 2.1.4 with no real-world hit yet: it is
+  validated on constructed cases and stays quiet on this repository's actual
+  notes. Revisit whether it earns its place after it has seen real use; it is the
+  weakest of the four changes in 2.1.2 through 2.1.5.
