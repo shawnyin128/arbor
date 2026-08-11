@@ -22,8 +22,14 @@ earned a real home: an issue, a design note, or a project doc.
   POSIX bash. The Permission-denied half of this note was wrong and is settled:
   `shell: bash` never protected against it, the mode did, and the launcher is now
   checked in 100755.
-- Find out whether the plugin install path preserves a file's executable bit. The
-  2.2.3 fix depends on it, and a zip-based install could drop it; the env var
-  `CLAUDE_CODE_PLUGIN_USE_ZIP_CACHE` exists, so that path is real. If the bit does
-  not survive, hooks.json has to stop relying on it, which is hard because the same
-  command string must work under both cmd.exe and a POSIX shell.
+- Check a backticked symbol the way a backticked path is already checked. Observed
+  in real use: a note reading "TODO in `_chunk_loss_sum`" makes a claim Arbor
+  verifies nothing about, because `notes.anchors` only accepts a token with a slash
+  or a file extension. The session had to say the entry was unconfirmed, which is
+  the exact hedge the path check exists to remove. `git grep -w` resolves a symbol
+  as cheaply as `rev-list` resolves a path, and the same invalidation rule applies:
+  report it only when git has a record of the symbol and the tree no longer does,
+  so a renamed local variable does not raise a false alarm. Measure it before
+  keeping it: an A/B where one arm's notes name symbols that have since been
+  renamed, scored on whether the session acts on a stale entry as though it were
+  current.
