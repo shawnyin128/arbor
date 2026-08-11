@@ -111,55 +111,64 @@ rewritten constantly and would only add noise to your history.
 
 ## Best practices
 
-Five things to say. That is the whole skill.
+There is no phrasebook. Talk the way you already talk; Claude decides when
+something is worth keeping. What follows is a real afternoon.
 
-| When | Say |
-| --- | --- |
-| Starting anything sizeable | "make a task list first" |
-| An unrelated idea comes up | "park that" |
-| Before you stop for the day | "note what's still undecided" |
-| A question finally gets answered | "that's settled, take it out of the notes" |
-| Coming back tomorrow | nothing — just ask for the next thing |
-
-### A first day, in full
-
-Monday afternoon:
+You are working on the tokenizer, and partway through you think out loud:
 
 ```text
-> make a task list, then start rewriting the tokenizer
-> hold on — one day we should cache the token index. park that.
-> we still haven't decided whether to keep the old adapter. note that.
-> stopping here for today
+> btw at some point we should probably cache the token index, it's O(n) every run
 ```
 
-Tuesday morning, in the same repository, you open Claude and ask for whatever is
-next. Before you finish typing it already knows the task you left half-done, the
-commits a teammate pushed overnight, the adapter decision you never made, and the
-idea you parked. You did not have to explain any of it.
+That is not the current task, so Claude writes one line down and keeps going. Two
+weeks later, when you ask what else was on the list, it is still there.
 
-### Keeping it useful
+Later the same afternoon you hit a fork and do not resolve it:
 
-Every few weeks, say **"go through the notes and drop anything already done"**.
-Notes are worth reading because they are short. A file nobody prunes turns into a
-file nobody reads.
+```text
+> i'm not sure whether to keep the old adapter. leave it for now
+```
 
-Two habits make the notes much better:
+Written down as an open question, not as a decision. Tomorrow it comes back as an
+open question, so nobody quietly assumes it was settled.
 
-- **One line per open question.** Not a design document. If it needs more room, it
-  needs an issue.
-- **Mention the file.** "Still deciding what to do about `src/adapter.py`" beats
-  "still deciding about the adapter", because Claude will tell you when that file
-  is gone and the note has gone stale.
+Then you stop:
+
+```text
+> ok that's enough for today
+```
+
+Next morning you open the same repository and just say what you want next. Claude
+already has the half-finished task, the commits your teammate pushed overnight, the
+adapter question, and the caching idea. You explain none of it.
+
+### It gets better if you do two things
+
+**Let it keep a task list on anything sizeable.** That list is what survives a
+session that ends badly — a crash, a closed laptop, a `/clear`. Work without one
+and there is nothing to pick up.
+
+**Mention the file when you know it.** "Not sure about `src/adapter.py`" is worth
+more than "not sure about the adapter", because Claude will tell you later when
+that file no longer exists and the note has gone stale.
+
+### When something settles, say so
+
+```text
+> we're keeping the adapter, that one's decided
+```
+
+Otherwise it sits in the notes forever. Every few weeks it is worth asking Claude
+to read through the notes and clear out anything already done.
 
 ### Good to know
 
-- Your notes are committed with the repository, so a teammate — or you on another
-  machine — gets them. A half-finished task list stays on the computer that made
-  it.
+- Notes are committed with the repository, so a teammate — or you on another
+  machine — gets them. A half-finished task list stays on the computer that made it.
 - In a project you have not set up, Arbor does nothing at all.
-- If you ever suspect it is not working, ask Claude to **"run arbor doctor"**. It
-  reports when each part last ran, which is the quickest way to tell "nothing to
-  say" from "not running".
+- If you suspect it is not working, ask Claude to run `arbor doctor`. It reports
+  when each part last ran, which is the quickest way to tell "nothing to say" from
+  "not running".
 
 ## Commands
 
@@ -286,5 +295,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.2.4
+2.2.5
 ```

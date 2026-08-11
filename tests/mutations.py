@@ -142,6 +142,13 @@ MUTATIONS = [
         ["tests/test_doctor.py", "-k", "never_tracked_is_not_flagged"],
     ),
     Mutation(
+        "the skill description goes back to naming Arbor's own maintenance verbs",
+        SCRIPTS.parent / "SKILL.md",
+        "whenever something ought to outlive this session, without waiting to be asked",
+        "to initialize its files or report whether its hooks fired",
+        ["tests/test_packaging.py", "-k", "situations_that_should_trigger_it"],
+    ),
+    Mutation(
         "a backticked import counts as wiring the guide",
         CORE / "packet.py",
         '        if GUIDE_IMPORT in stripped and f"`{GUIDE_IMPORT}`" not in stripped:',
@@ -200,21 +207,6 @@ MUTATIONS = [
         "        conflicted=bool(_CONFLICT.search(text)),",
         "        conflicted=False,",
         ["tests/test_notes.py", "-k", "conflict_is_detected"],
-    ),
-    Mutation(
-        "the budget warning goes back to gating the write",
-        CORE / "packet.py",
-        '            "Record anything new anyway, then prune an entry that is now resolved. "\n'
-        '            "Never leave a live decision unrecorded to stay inside the budget.)"',
-        '            "prune a resolved entry before adding another)"',
-        ["tests/test_packet.py", "-k", "never_gates_recording"],
-    ),
-    Mutation(
-        "the budget warning only fires after the file is already over",
-        CORE / "packet.py",
-        "    if memory.line_count >= notes.LINE_BUDGET * notes.WARN_FRACTION:",
-        "    if memory.line_count > notes.LINE_BUDGET * 99:",
-        ["tests/test_packet.py", "-k", "still_room_to_act"],
     ),
     Mutation(
         "a rewritten history produces a diff instead of a warning",

@@ -194,6 +194,18 @@ class TestSkillDocument:
         header = text.split("---")[1]
         assert "Not for" in header
 
+    def test_description_names_the_situations_that_should_trigger_it(self) -> None:
+        """A skill is routed on intent, so the description has to describe the user.
+
+        Written as Arbor's own maintenance verbs — "initializing", "reporting
+        whether hooks fired" — it never matched, because nobody asks for those. A
+        user says they had an idea, or that they are stopping for the day.
+        """
+        header = SKILL.read_text(encoding="utf-8").split("---")[1].lower()
+        for situation in ("idea", "deferred", "stopping", "design"):
+            assert situation in header, f"the description never mentions {situation}"
+        assert "without waiting to be asked" in header
+
     def test_stays_short_enough_to_be_read(self) -> None:
         lines = len(SKILL.read_text(encoding="utf-8").splitlines())
         assert lines < 140, f"SKILL.md grew to {lines} lines"

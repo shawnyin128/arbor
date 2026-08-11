@@ -22,11 +22,6 @@ from pathlib import Path
 from . import vcs
 from .paths import IDEAS_FILE, MEMORY_FILE, read_text_or_empty
 
-# The notes file is carried inside a hard-capped packet, so its own size is
-# bounded. Both the packet and doctor read this one definition.
-LINE_BUDGET = 40
-WARN_FRACTION = 0.8
-
 MEMORY_HEADINGS = ("Unresolved", "In-flight")
 IDEAS_HEADING = "Parked"
 

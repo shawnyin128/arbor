@@ -161,15 +161,6 @@ def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
     if memory.stale:
         ignored = plural(len(memory.stale), "legacy hook-written entry", "legacy hook-written entries")
         lines.append(f"- ({ignored} ignored; prune them)")
-    if memory.line_count >= notes.LINE_BUDGET * notes.WARN_FRACTION:
-        # Never phrase this as a precondition. Read as one, a full file becomes a
-        # reason not to record the thing the file exists for, which is worst
-        # exactly when the project has the most in flight.
-        lines.append(
-            f"- (`.arbor/memory.md` is at {memory.line_count} of {notes.LINE_BUDGET} lines. "
-            "Record anything new anyway, then prune an entry that is now resolved. "
-            "Never leave a live decision unrecorded to stay inside the budget.)"
-        )
     return Section("memory", "Unresolved", "\n".join(lines))
 
 

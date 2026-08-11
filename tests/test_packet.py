@@ -301,37 +301,6 @@ class TestConflictedNotes:
         assert "unresolved merge conflict" not in build(project)
 
 
-class TestMemoryBudgetHeadroom:
-    def test_warns_while_there_is_still_room_to_act(self, project) -> None:
-        from arbor_core import notes as notes_module
-
-        near = int(notes_module.LINE_BUDGET * notes_module.WARN_FRACTION)
-        project.memory(*[f"Open question number {i}" for i in range(near)])
-        rendered = build(project)
-        assert f"of {notes_module.LINE_BUDGET} lines" in rendered
-        assert "prune an entry that is now resolved" in rendered
-
-    def test_the_budget_never_gates_recording(self, project) -> None:
-        """A full file must not read as a reason to leave a decision unrecorded.
-
-        Observed in real use: the warning said to prune before adding, the file was
-        full, the entry that looked prunable turned out not to be, and the new
-        decision was never written down. The budget prompts a cleanup; it is never
-        a precondition.
-        """
-        from arbor_core import notes as notes_module
-
-        project.memory(*[f"Open question number {i}" for i in range(notes_module.LINE_BUDGET + 5)])
-        rendered = build(project)
-        assert "Record anything new anyway" in rendered
-        assert "Never leave a live decision unrecorded" in rendered
-        assert "before adding" not in rendered, "the warning must not state a precondition"
-
-    def test_silent_when_well_under_budget(self, project) -> None:
-        project.memory("One short note")
-        assert "of 40 lines" not in build(project)
-
-
 class TestSinceLastSession:
     """The one section nobody else ships: what landed while you were away."""
 

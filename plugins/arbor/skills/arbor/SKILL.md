@@ -1,6 +1,6 @@
 ---
 name: arbor
-description: "Use when setting up or checking Arbor in a project: initializing AGENTS.md, CLAUDE.md, and .arbor/ state, or reporting whether Arbor's hooks fired and its files are healthy. Not for project summaries, resume narration, or general maintenance advice."
+description: "Use in a project containing a .arbor directory whenever something ought to outlive this session, without waiting to be asked: the user mentions an idea or improvement that is not the current task; a decision gets deferred, or an option is left open, or you hit something you cannot resolve now; the user says they are stopping, wrapping up, or leaving; the user asks you to design or plan something, so the design is settled but unbuilt; or a previously open question finally gets answered and should be removed. Also use to set Arbor up in a project, or to check whether it is working. Not for narrating what happened, summarizing the project, or answering where we left off."
 ---
 
 # Arbor
@@ -94,8 +94,8 @@ An idea the user then asks you to work on has become the current task, so it sto
 belonging in `ideas.md`. Record what the work left undecided in `.arbor/memory.md`
 instead, and delete the parked line.
 
-Keep both short; `doctor` warns when memory passes 40 lines. The budget is a prompt
-to prune, never a reason to leave something unrecorded.
+Neither file has a size limit. An entry leaves because it is resolved, never
+because the file got long, and nothing is ever left unrecorded to keep one short.
 
 A path or filename in backticks is checked from the repository root. If it is gone
 from disk but git has a record of it, the note still appears, marked `outdated`, and

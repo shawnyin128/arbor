@@ -1,7 +1,7 @@
 """Doctor reporting contracts.
 
-Doctor is the answer to "did the hooks actually fire?" and "is the packet within
-budget?". It reports and never repairs.
+Doctor is the answer to "did the hooks actually fire?" and "how large is the
+injected packet?". It reports and never repairs.
 """
 
 from __future__ import annotations
@@ -158,15 +158,9 @@ class TestBridge:
 
 
 class TestNotes:
-    def test_memory_within_budget(self, project) -> None:
+    def test_a_healthy_memory_file_passes(self, project) -> None:
         project.memory("One open question")
         assert row(doctor.collect(project.root), ".arbor/memory.md").status == doctor.OK
-
-    def test_oversized_memory_warns(self, project) -> None:
-        project.memory(*[f"Open question number {i}" for i in range(notes.LINE_BUDGET + 5)])
-        entry = row(doctor.collect(project.root), ".arbor/memory.md")
-        assert entry.status == doctor.WARN
-        assert "budget" in entry.detail
 
     def test_legacy_entries_are_reported_for_pruning(self, project) -> None:
         project.write(".arbor/memory.md", "# M\n\n## Unresolved\n\n- [hook:resume] stale pointer\n")

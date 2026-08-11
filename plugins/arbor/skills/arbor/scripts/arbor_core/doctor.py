@@ -127,13 +127,13 @@ def _memory_row(root: Path) -> Row:
     }
     if outdated:
         problems.append(f"names {plural(len(outdated), 'path')} that no longer exist: {', '.join(sorted(outdated))}")
-    if memory.line_count > notes.LINE_BUDGET:
-        problems.append(f"{memory.line_count} lines exceeds the {notes.LINE_BUDGET}-line budget")
     if memory.stale:
         problems.append(f"{plural(len(memory.stale), 'legacy hook-written entry', 'legacy hook-written entries')} to prune")
+    # Size is reported, never judged. There is no line budget: an entry leaves
+    # this file when it is resolved, not when the file reaches some length.
     detail = (
         f"{plural(len(memory.entries), 'unresolved entry', 'unresolved entries')}, "
-        f"{memory.line_count} of {notes.LINE_BUDGET} lines"
+        f"{memory.line_count} lines"
     )
     if problems:
         return Row(label, WARN, f"{detail}; {'; '.join(problems)}")

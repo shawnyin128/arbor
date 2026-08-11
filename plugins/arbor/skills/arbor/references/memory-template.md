@@ -10,7 +10,9 @@ mattered to one conversation. If asked to remember one of those, work out what
 was non-obvious about it and record that instead.
 
 Update an entry rather than adding a near-duplicate. Delete an entry once it is
-committed, documented, or decided. A short file gets read; a long one does not.
+committed, documented, or decided. There is no size limit: an entry leaves because
+it is resolved, never because the file grew, and nothing is left unrecorded to keep
+this file short.
 
 Each entry should say what is unresolved and what the next session should do
 first. Naming a file or symbol makes a claim about how the code looked when the
