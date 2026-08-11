@@ -37,8 +37,8 @@ class TestManifest:
         assert manifest["name"] == "arbor"
         assert SEMVER.match(manifest["version"]), manifest["version"]
 
-    def test_version_is_in_the_2_1_line(self) -> None:
-        assert load_json(MANIFEST)["version"].startswith("2.1.")
+    def test_version_is_in_the_2_2_line(self) -> None:
+        assert load_json(MANIFEST)["version"].startswith("2.2.")
 
     def test_marketplace_points_at_the_plugin_root(self) -> None:
         entry = load_json(MARKETPLACE)["plugins"][0]

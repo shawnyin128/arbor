@@ -45,29 +45,55 @@ class TestGuide:
         assert entry.status == doctor.WARN
         assert "placeholder" in entry.detail
 
-    def test_map_entry_pointing_at_a_missing_path(self, project) -> None:
-        project.guide(map_entries=("README.md", "gone/"))
+    def test_a_path_git_tracked_but_now_gone_is_flagged(self, project) -> None:
+        project.write("src/parser.py", "x = 1\n")
+        project.commit("feat: add parser")
+        (project.root / "src" / "parser.py").unlink()
+        project.commit("refactor: drop parser")
+        project.guide(map_entries=("README.md", "src/parser.py"))
         entry = row(doctor.collect(project.root), "AGENTS.md")
         assert entry.status == doctor.WARN
-        assert "missing path" in entry.detail
+        assert "src/parser.py" in entry.detail
 
-    def test_nested_map_entry_is_flagged(self, project) -> None:
+    def test_a_stale_path_outside_the_map_is_flagged_too(self, project) -> None:
+        """A path in Project Constraints misleads exactly as much as one in the map."""
+        project.write("hooks/launcher.cmd", "rem x\n")
+        project.commit("feat: add launcher")
+        (project.root / "hooks" / "launcher.cmd").unlink()
+        project.commit("refactor: drop launcher")
+        project.write(
+            "AGENTS.md",
+            "# Agent Guide\n\n"
+            "## Project Goal\n\nShip a tested thing.\n\n"
+            "## Project Constraints\n\n- `hooks/launcher.cmd` must stay LF-only.\n\n"
+            "## Project Map\n\n- `README.md`: durable entrypoint.\n",
+        )
+        entry = row(doctor.collect(project.root), "AGENTS.md")
+        assert entry.status == doctor.WARN
+        assert "hooks/launcher.cmd" in entry.detail
+
+    def test_a_path_git_never_tracked_is_not_flagged(self, project) -> None:
+        """A branch name looks like a path, and a false alarm is its own distractor."""
+        project.write(
+            "AGENTS.md",
+            "# Agent Guide\n\n"
+            "## Project Goal\n\nShip a tested thing.\n\n"
+            "## Project Constraints\n\n- Work happens on `feature/streaming`.\n\n"
+            "## Project Map\n\n- `README.md`: durable entrypoint.\n",
+        )
+        assert row(doctor.collect(project.root), "AGENTS.md").status == doctor.OK
+
+    def test_a_map_naming_a_nested_path_is_accepted(self, project) -> None:
+        """Precise pointers beat a top-level census; only staleness is checked."""
         project.write("src/main.py", "x = 1\n")
+        project.commit("feat: add main")
         project.guide(map_entries=("README.md", "src/main.py"))
-        entry = row(doctor.collect(project.root), "AGENTS.md")
-        assert entry.status == doctor.WARN
-        assert "non-top-level" in entry.detail
+        assert row(doctor.collect(project.root), "AGENTS.md").status == doctor.OK
 
-    def test_unmapped_entrypoint_is_flagged(self, project) -> None:
+    def test_an_unmapped_directory_is_not_a_problem(self, project) -> None:
+        """A repository overview measurably does not help; completeness is not a goal."""
         project.mkdir("src")
-        project.guide(map_entries=("README.md",))
-        entry = row(doctor.collect(project.root), "AGENTS.md")
-        assert entry.status == doctor.WARN
-        assert "src/" in entry.detail
-
-    def test_artifact_directories_are_not_expected_in_the_map(self, project) -> None:
-        for name in ("outputs", "build", "node_modules", "__pycache__"):
-            project.mkdir(name)
+        project.mkdir("scripts")
         project.guide(map_entries=("README.md",))
         assert row(doctor.collect(project.root), "AGENTS.md").status == doctor.OK
 

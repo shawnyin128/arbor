@@ -122,6 +122,22 @@ class Project:
         self.git("add", "-A")
         self.git("commit", "-qm", message)
 
+    def track_upstream(self) -> None:
+        """Give the current branch a real upstream, level with it.
+
+        A clone would be heavier and a fabricated config entry would not exercise
+        the same git plumbing, so this creates a bare remote and pushes to it.
+        """
+        remote = self.root.parent / f"{self.root.name}-remote.git"
+        subprocess.run(
+            ["git", "init", "-q", "--bare", str(remote)],
+            check=True,
+            capture_output=True,
+        )
+        self.git("remote", "add", "origin", str(remote))
+        branch = self.git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        self.git("push", "-q", "-u", "origin", branch)
+
     def payload(self, **overrides: Any) -> str:
         data: dict[str, Any] = {"cwd": str(self.root), "session_id": "test-session"}
         data.update(overrides)

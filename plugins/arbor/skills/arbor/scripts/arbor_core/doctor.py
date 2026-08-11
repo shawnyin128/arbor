@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import notes, packet, session
+from . import notes, packet, session, vcs
 from .paths import (
     ARBOR_DIR,
     CLAUDE_BRIDGE,
@@ -44,32 +44,6 @@ PLACEHOLDER_MARKERS = (
 HOOK_EVENTS = ("SessionStart", "task capture", "SessionEnd")
 TASK_RECEIPT_PREFIX = "PostToolUse:"
 
-# Directories and files that are never durable project-map entrypoints.
-SKIP_MAP_NAMES = frozenset(
-    {
-        "artifacts",
-        "build",
-        "dist",
-        "fixture",
-        "fixtures",
-        "logs",
-        "node_modules",
-        "output",
-        "outputs",
-        "scratch",
-        "temp",
-        "tmp",
-        "venv",
-        "__pycache__",
-        "AGENTS.md",
-        "CLAUDE.md",
-        "LICENSE",
-    }
-)
-MAP_FILE_CANDIDATES = frozenset({"Makefile", "README.md", "package.json", "pyproject.toml"})
-
-_MAP_BULLET = re.compile(r"^\s*[-*]\s+(?:`(?P<quoted>[^`\n]+)`|(?P<bare>[A-Za-z0-9._/-]+/?))")
-
 
 @dataclass
 class Row:
@@ -87,48 +61,6 @@ def _section_body(text: str, heading: str) -> str | None:
     return match.group("body") if match else None
 
 
-def map_tokens(body: str) -> list[str]:
-    """Extract project-map path tokens from a Project Map section body."""
-    tokens = []
-    for line in body.splitlines():
-        match = _MAP_BULLET.match(line)
-        if not match:
-            continue
-        token = (match.group("quoted") or match.group("bare") or "").strip()
-        token = token.strip("'\"")
-        while token.startswith("./"):
-            token = token[2:]
-        if not token or "://" in token or token.startswith("#"):
-            continue
-        if any(char.isspace() for char in token):
-            continue
-        if Path(token).is_absolute():
-            continue
-        tokens.append(token)
-    return tokens
-
-
-def map_candidates(root: Path) -> list[str]:
-    """List durable top-level entrypoints that belong in the project map."""
-    try:
-        children = sorted(root.iterdir(), key=lambda item: item.name.lower())
-    except OSError:
-        return []
-    candidates = []
-    for child in children:
-        if child.name.startswith(".") or child.name in SKIP_MAP_NAMES:
-            continue
-        if child.is_dir():
-            candidates.append(f"{child.name}/")
-        elif child.name in MAP_FILE_CANDIDATES:
-            candidates.append(child.name)
-    return candidates
-
-
-def _token_matches(token: str, candidate: str) -> bool:
-    return token.rstrip("/") == candidate.rstrip("/")
-
-
 def _guide_row(root: Path) -> Row:
     path = root / PROJECT_GUIDE
     if not path.is_file():
@@ -144,28 +76,17 @@ def _guide_row(root: Path) -> Row:
     if any(marker in text.lower() for marker in PLACEHOLDER_MARKERS):
         problems.append("still contains template placeholder text")
 
-    body = _section_body(text, "Project Map") or ""
-    tokens = map_tokens(body)
-    if not tokens:
-        problems.append("Project Map lists no entries")
-    else:
-        stale = [token for token in tokens if not (root / token.rstrip("/")).exists()]
-        if stale:
-            problems.append(f"maps {plural(len(stale), 'missing path')}: {', '.join(stale)}")
-        nested = [token for token in tokens if "/" in token.rstrip("/")]
-        if nested:
-            problems.append(f"{plural(len(nested), 'non-top-level entry', 'non-top-level entries')}: {', '.join(nested)}")
-        unmapped = [
-            candidate
-            for candidate in map_candidates(root)
-            if not any(_token_matches(token, candidate) for token in tokens)
-        ]
-        if unmapped:
-            problems.append(f"{plural(len(unmapped), 'unmapped entrypoint')}: {', '.join(unmapped)}")
+    # Every backticked path in the guide is a claim about the tree, wherever it
+    # appears. The map is not privileged: a path named in Project Constraints
+    # misleads exactly as much when it goes stale.
+    claimed = notes.anchors(text)
+    stale = [path for path in claimed if not (root / path).exists() and vcs.knows_path(root, path)]
+    if stale:
+        problems.append(f"names {plural(len(stale), 'path')} git knows but disk does not: {', '.join(stale)}")
 
     if problems:
         return Row(str(PROJECT_GUIDE), WARN, "; ".join(problems))
-    return Row(str(PROJECT_GUIDE), OK, plural(len(tokens), "map entry", "map entries"))
+    return Row(str(PROJECT_GUIDE), OK, f"{plural(len(claimed), 'path claim')}, all present")
 
 
 def _bridge_row(root: Path) -> Row:
@@ -271,7 +192,7 @@ def _packet_row(root: Path) -> Row:
     limit = packet.budget()
     detail = f"{size} of {limit} chars"
     if size > limit:
-        return Row("context packet", FAIL, f"{detail}; over budget")
+        return Row("context packet", WARN, f"{detail}; the tail will spill to a file on disk")
     return Row("context packet", OK, detail)
 
 

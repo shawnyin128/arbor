@@ -1,14 +1,15 @@
 """The SessionStart context packet.
 
-Arbor injects only volatile state. The durable project guide reaches the model
-natively through ``CLAUDE.md`` importing ``AGENTS.md``, which also survives
-compaction, so spending injection budget on it would pay transport cost for
-content the host already loads.
+Arbor injects only volatile state, and only the part of it the host does not
+already supply. The durable project guide arrives natively through ``CLAUDE.md``
+importing ``AGENTS.md``, and the host appends a git block of its own carrying the
+branch, the full short status, and the five most recent commits, so none of that
+is worth transporting twice.
 
-Sections are bounded when they are built and dropped whole, lowest priority
-first, if the packet still exceeds its budget. A dropped section is replaced by
-the command or file that recovers it, so dropping defers information instead of
-losing it.
+Sections are bounded when they are built and emitted highest value first. There
+is no budget-driven dropping: over-budget hook output keeps its head, spills the
+rest to a file, and says so in context, so front-loading is what protects the
+information that matters.
 """
 
 from __future__ import annotations
@@ -20,7 +21,6 @@ from . import notes, session, vcs
 from .paths import (
     CLAUDE_BRIDGE,
     GUIDE_IMPORT,
-    SESSION_FILE,
     env_int,
     plural,
     read_text_or_empty,
@@ -32,9 +32,7 @@ _BUDGET_ENV = "ARBOR_CONTEXT_BUDGET"
 MAX_TODOS = 12
 MAX_SINCE_COMMITS = 5
 MAX_SINCE_PATHS = 8
-MAX_TREE_ENTRIES = 12
 MAX_IDEAS = 3
-MAX_COMMITS = 5
 
 HEADER = "# Arbor Session Context"
 
@@ -59,18 +57,13 @@ GUIDE_WARNING = (
 
 @dataclass
 class Section:
-    """One packet section with its drop priority and recovery hint."""
+    """One packet section."""
 
     key: str
     title: str
-    priority: int
     body: str
-    hint: str
-    dropped: bool = False
 
     def render(self) -> str:
-        if self.dropped:
-            return f"## {self.title}\n[omitted for context budget - {self.hint}]\n"
         return f"## {self.title}\n{self.body.rstrip()}\n"
 
 
@@ -95,29 +88,24 @@ def guide_is_wired(root: Path) -> bool:
     return False
 
 
-def _position_section(status: vcs.Status, head: str) -> Section | None:
-    if not status.is_repo:
+def _upstream_section(status: vcs.Status) -> Section | None:
+    """Report divergence from the upstream branch, and nothing else.
+
+    The host's own git block already names the branch and lists the working tree
+    and the recent commits. Divergence is the one position fact it never carries,
+    and only actual divergence is worth saying: "level with" and "no upstream"
+    describe a situation that needs no action.
+    """
+    if not status.is_repo or not status.upstream:
         return None
-    parts = []
-    if status.branch:
-        parts.append(f"branch {status.branch}")
-    if head:
-        parts.append(f"HEAD {head}")
-    if status.upstream:
-        if status.ahead or status.behind:
-            drift = []
-            if status.ahead:
-                drift.append(f"{status.ahead} ahead")
-            if status.behind:
-                drift.append(f"{status.behind} behind")
-            parts.append(f"{', '.join(drift)} of {status.upstream}")
-        else:
-            parts.append(f"level with {status.upstream}")
-    else:
-        parts.append("no upstream")
-    if not parts:
+    if not status.ahead and not status.behind:
         return None
-    return Section("position", "Position", 1, ", ".join(parts), "run `git status -sb`")
+    drift = []
+    if status.ahead:
+        drift.append(f"{status.ahead} ahead")
+    if status.behind:
+        drift.append(f"{status.behind} behind")
+    return Section("upstream", "Upstream", f"{', '.join(drift)} of {status.upstream}")
 
 
 def _todo_section(state: dict, head: str) -> Section | None:
@@ -141,7 +129,7 @@ def _todo_section(state: dict, head: str) -> Section | None:
             lines.append(f"- (+{len(unfinished) - MAX_TODOS} more)")
     else:
         lines.append("- every captured task was completed")
-    return Section("todos", "In flight", 2, "\n".join(lines), f"read `{SESSION_FILE.as_posix()}`")
+    return Section("todos", "In flight", "\n".join(lines))
 
 
 def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
@@ -149,9 +137,7 @@ def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
         return Section(
             "memory",
             "Unresolved",
-            4,
             "`.arbor/memory.md` could not be decoded as UTF-8; treat it as damaged, not as resume context.",
-            "repair `.arbor/memory.md`",
         )
     if not memory.entries:
         return None
@@ -180,18 +166,7 @@ def _memory_section(memory: notes.Notes, root: Path) -> Section | None:
             f"- (`.arbor/memory.md` is at {memory.line_count} of {notes.LINE_BUDGET} lines; "
             "prune a resolved entry before adding another)"
         )
-    return Section("memory", "Unresolved", 4, "\n".join(lines), "read `.arbor/memory.md`")
-
-
-def _tree_section(status: vcs.Status) -> Section | None:
-    if not status.entries:
-        return None
-    lines = [plural(status.dirty_count, "changed path")]
-    for code, path in status.entries[:MAX_TREE_ENTRIES]:
-        lines.append(f"{code} {path}")
-    if status.dirty_count > MAX_TREE_ENTRIES:
-        lines.append(f"(+{status.dirty_count - MAX_TREE_ENTRIES} more)")
-    return Section("tree", "Working tree", 5, "\n".join(lines), "run `git status --short`")
+    return Section("memory", "Unresolved", "\n".join(lines))
 
 
 def _ideas_section(ideas: notes.Notes) -> Section | None:
@@ -200,7 +175,7 @@ def _ideas_section(ideas: notes.Notes) -> Section | None:
     recent = ideas.entries[-MAX_IDEAS:]
     lines = [f"{len(ideas.entries)} parked; most recent:"]
     lines.extend(f"- {entry.text}" for entry in reversed(recent))
-    return Section("ideas", "Parked ideas", 6, "\n".join(lines), "read `.arbor/ideas.md`")
+    return Section("ideas", "Parked ideas", "\n".join(lines))
 
 
 def _since_section(root: Path, state: dict, head: str) -> Section | None:
@@ -221,10 +196,8 @@ def _since_section(root: Path, state: dict, head: str) -> Section | None:
         return Section(
             "since",
             "Since last session",
-            3,
             f"History was rewritten: the commit recorded last session ({last}) is no longer "
             "reachable from HEAD, so anything remembered about the tree may not apply.",
-            "run `git log --oneline -10`",
         )
 
     count = vcs.count_commits_since(root, last)
@@ -240,18 +213,11 @@ def _since_section(root: Path, state: dict, head: str) -> Section | None:
         lines.extend(f"  {entry}" for entry in changed)
         if total > MAX_SINCE_PATHS:
             lines.append(f"  (+{total - MAX_SINCE_PATHS} more)")
-    return Section("since", "Since last session", 3, "\n".join(lines), f"run `git log {last}..HEAD --oneline`")
-
-
-def _commits_section(root: Path) -> Section | None:
-    commits = vcs.recent_commits(root, MAX_COMMITS)
-    if not commits:
-        return None
-    return Section("commits", "Recent commits", 7, "\n".join(commits), "run `git log -10 --oneline`")
+    return Section("since", "Since last session", "\n".join(lines))
 
 
 def build_sections(root: Path) -> list[Section]:
-    """Collect every non-empty packet section in render order.
+    """Collect every non-empty packet section, highest value first.
 
     Nothing here may carry a wall-clock value. The packet is injected context, so
     a value that changes while the project does not would invalidate the prompt
@@ -260,21 +226,12 @@ def build_sections(root: Path) -> list[Section]:
     status = vcs.status(root)
     head = vcs.head(root) if status.is_repo else ""
     state = session.load(root)
-    since = _since_section(root, state, head)
-
-    # A "since last session" range subsumes a fixed-size recent-commit list and
-    # additionally says how much was missed, so rendering both would spend budget
-    # twice on the same commit subjects. The rewritten-history variant carries no
-    # commit list, so the recent-commit fallback still applies there.
-    lists_commits = since is not None and " since " in since.body
     candidates = [
-        _position_section(status, head),
         _todo_section(state, head),
-        since,
+        _since_section(root, state, head),
         _memory_section(notes.read_memory(root), root),
-        _tree_section(status),
         _ideas_section(notes.read_ideas(root)),
-        None if lists_commits else _commits_section(root),
+        _upstream_section(status),
     ]
     return [section for section in candidates if section is not None]
 
@@ -286,33 +243,10 @@ def _protocol(root: Path) -> str:
     return "\n".join(lines)
 
 
-def render(root: Path, sections: list[Section], limit: int | None = None) -> str:
-    """Render the packet, dropping low-priority sections to fit the budget.
-
-    Returns ``""`` when not even the protocol fits. The host discards
-    over-budget hook output silently, so emitting a half-written instruction
-    would lose the whole packet anyway while looking like it succeeded.
-    """
-    cap = budget() if limit is None else limit
+def render(root: Path, sections: list[Section]) -> str:
+    """Render the packet with its preamble, highest-value section first."""
     preamble = f"{HEADER}\n\n{_protocol(root)}\n"
-    if len(preamble) > cap:
-        return ""
-
-    def assemble() -> str:
-        return "\n".join([preamble, *(section.render() for section in sections)])
-
-    packet = assemble()
-    if len(packet) <= cap:
-        return packet
-
-    for section in sorted(sections, key=lambda item: item.priority, reverse=True):
-        section.dropped = True
-        packet = assemble()
-        if len(packet) <= cap:
-            return packet
-
-    # Every section is reduced to a hint line and the packet still does not fit.
-    return preamble
+    return "\n".join([preamble, *(section.render() for section in sections)])
 
 
 def summary(sections: list[Section], size: int) -> str:
@@ -322,19 +256,14 @@ def summary(sections: list[Section], size: int) -> str:
     does, so it costs no context tokens. It is the cheapest possible proof that
     the hook actually ran.
     """
-    loaded = [section.title.lower() for section in sections if not section.dropped]
-    omitted = [section.title.lower() for section in sections if section.dropped]
-    if not loaded and not omitted:
+    if not sections:
         return f"Arbor: no volatile state to restore ({size} chars)"
-    parts = [f"Arbor loaded {', '.join(loaded)}" if loaded else "Arbor loaded nothing"]
-    if omitted:
-        parts.append(f"omitted {', '.join(omitted)} for budget")
-    parts.append(f"{size} chars")
-    return "; ".join(parts)
+    loaded = ", ".join(section.title.lower() for section in sections)
+    return f"Arbor loaded {loaded}; {size} chars"
 
 
-def build(root: Path, limit: int | None = None) -> tuple[str, str]:
+def build(root: Path) -> tuple[str, str]:
     """Build the SessionStart packet and its receipt line for ``root``."""
     sections = build_sections(root)
-    rendered = render(root, sections, limit)
+    rendered = render(root, sections)
     return rendered, summary(sections, len(rendered))

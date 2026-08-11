@@ -100,14 +100,6 @@ def status(root: Path) -> Status:
     )
 
 
-def recent_commits(root: Path, limit: int) -> list[str]:
-    """Return up to ``limit`` recent commits as ``"<short-hash> <date> <subject>"``."""
-    output = _run(root, ["log", f"-{limit}", "--no-merges", "--date=short", "--pretty=format:%h %ad %s"])
-    if not output:
-        return []
-    return [line for line in output.splitlines() if line.strip()]
-
-
 def head(root: Path) -> str:
     """Return the short HEAD hash, or ``""`` when unavailable."""
     output = _run(root, ["rev-parse", "--short", "HEAD"])

@@ -19,8 +19,14 @@ project guide.
   directory must make every hook a silent no-op with exit code 0.
 - Injected context must carry no wall-clock value; a clock that ticks while the
   project sits still invalidates the prompt prefix cache for nothing.
-- The injected packet must stay under its budget. Host hook output above roughly
-  10,000 characters is discarded silently, so over-budget output loses everything.
+- Inject nothing the host already injects. It appends its own git block carrying
+  the branch, the full `git status --short`, and the five most recent commits, so
+  a second copy costs tokens, and a copy truncated differently from the host's can
+  provoke the agent into re-checking a fact it already had.
+- Sections are emitted highest value first, and the packet is not trimmed to a
+  budget. Above roughly 10,000 characters the host keeps the head, writes the
+  whole output to a file, and says so in context, so nothing is lost and
+  front-loading is what protects what matters.
 - Machine state belongs in `.arbor/session.json` and is written only by hooks;
   agent-written notes belong in `.arbor/memory.md` and `.arbor/ideas.md`.
 - `arbor doctor` reports and never repairs. Nothing rewrites `AGENTS.md`.
@@ -31,11 +37,17 @@ project guide.
 
 ## Project Map
 
-- `README.md`: public overview, install, hook table, and design rationale.
-- `plugins/`: the published plugin. Holds the Claude manifest, plugin-level hook
-  registration and launcher under `hooks/`, and the single `arbor` skill whose
-  `scripts/arbor_core/` package is the one implementation behind both the hooks
-  and the CLI.
-- `tests/`: pytest suite. Fixtures build real temporary git repositories; native
-  paths only, because a Git Bash POSIX path silently defeats a Windows hook.
-- `docs/`: local design notes and specs, not published.
+Entries state something the tree cannot show. A path list is not one: an agent
+finds files with glob and grep, and a repository overview measurably does not
+reduce the steps it takes to reach the files it must change.
+
+- `plugins/arbor/skills/arbor/scripts/arbor_core/` is the one implementation
+  behind both the hooks and the CLI. Behavior changes go here, never into a
+  second copy beside the launcher.
+- New hooks register in `plugins/arbor/hooks/hooks.json` at plugin level. Nothing
+  ever writes into a project's `.claude/settings.json`.
+- Test fixtures build real temporary git repositories and must use native paths
+  only, because a Git Bash POSIX path silently defeats a Windows hook.
+- `tests/ab_harness.py` spends real tokens against a live `claude` CLI and is not
+  collected by pytest. Run it when a claim about injected context needs evidence.
+- `docs/` holds local design notes and is not published.

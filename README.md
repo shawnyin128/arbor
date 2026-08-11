@@ -3,11 +3,17 @@
 A Claude Code plugin that restores the volatile half of project context when a
 session starts.
 
-Claude Code already carries durable context well: a `CLAUDE.md` that imports
-`AGENTS.md` loads every session and survives compaction. What it cannot carry is
-the state that changes between sessions — where git is, which tasks were in
-flight, what decision was left open, which idea got mentioned and dropped. Arbor
-captures that with hooks and injects it back, in about a thousand characters.
+Claude Code already carries more than it used to. A `CLAUDE.md` that imports
+`AGENTS.md` loads every session and survives compaction, and the host appends its
+own git block with the branch, the full short status, and the five most recent
+commits. What nothing native carries is state from *last* session: which tasks
+were in flight, what landed while you were away, what decision was left open,
+which idea got mentioned and dropped. Arbor captures that with hooks and injects
+it back, in about a thousand characters.
+
+Every section below was A/B tested against a session with the packet withheld.
+Three earlier sections that restated the host's git block were removed in 2.2.0
+after measuring no benefit from them.
 
 No daemon, no port, no database, no model calls. Plain files in the repository.
 
@@ -60,9 +66,6 @@ A typical injected packet:
 
 Volatile project state recovered by Arbor. ...
 
-## Position
-branch feature/parser, HEAD a1b2c3d, 2 ahead of origin/feature/parser
-
 ## In flight
 1 unfinished, 4 done
 - [>] Wire the streaming reader into the CLI
@@ -78,18 +81,16 @@ branch feature/parser, HEAD a1b2c3d, 2 ahead of origin/feature/parser
 ## Unresolved
 - Whether to keep the legacy adapter; depends on the parser decision
 
-## Working tree
-3 changed paths
- M src/parser.py
-?? tests/test_streaming.py
-
 ## Parked ideas
 2 parked; most recent:
 - Cache the token index between runs
+
+## Upstream
+2 ahead of origin/feature/parser
 ```
 
-You also get a one-line summary in the session UI — "Arbor loaded position, in
-flight, working tree; 1204 chars" — through the `systemMessage` channel, which
+You also get a one-line summary in the session UI — "Arbor loaded in flight,
+unresolved, parked ideas; 1048 chars" — through the `systemMessage` channel, which
 the model never sees and which therefore costs no context.
 
 ## Files
@@ -128,11 +129,22 @@ is. It reports and never repairs.
 
 ## Design notes
 
-**Budget.** Hook output above roughly 10,000 characters is discarded by the host
-silently. The packet is capped below that, and when it does not fit, whole
-sections are dropped from the least important upward — recent commits first,
-in-flight tasks nearly last — each replaced by the one command that recovers it.
-Dropping defers information rather than losing it.
+**Nothing the host already sends.** Claude Code appends its own git block to every
+session: the branch, the whole `git status --short`, and the five most recent
+commits. Arbor used to restate all three. A 42-run A/B — the same fixture with the
+packet injected and withheld — answered those three questions correctly in both
+arms and needed no extra turns without Arbor, while the duplicated commit list
+provoked an extra verification turn. They were removed in 2.2.0. What survived
+measured a real gap: parked ideas went from 0/3 correct to 3/3, unresolved notes
+from 1/3 to 3/3, and the in-flight task list from 8 turns to 1. Re-run it with
+`python tests/ab_harness.py`.
+
+**Front-loading, not trimming.** A payload over roughly 10,000 characters is not
+discarded: the host keeps the head, writes the whole thing to a file, and says so
+in context. Measured directly, at 9,400 characters it arrives whole, and at 13,500
+and 40,000 the head arrives with a pointer to the complete text on disk. So the
+packet is ordered most valuable first and never trimmed; per-section caps keep it
+near a thousand characters anyway.
 
 **No clocks in injected context.** A timestamp that ticks while the project sits
 still would invalidate the prompt prefix cache every session for no gain, so the
@@ -144,8 +156,8 @@ commit they were taken at, Arbor can report what landed while you were away —
 commit count, subjects, and which files were created, deleted, or renamed. If
 that recorded commit is no longer reachable, it says history was rewritten
 instead of computing a diff against it, because that fact matters more than any
-diff derived from it. When this section renders, `Recent commits` is dropped: the
-range subsumes it.
+diff derived from it. This is the one section nothing native can produce: no
+native session state stores a commit to measure from.
 
 **Notes are checked, not just repeated.** A note that names a path in backticks is
 making a claim about the tree. If that path is gone from disk and git has a commit
@@ -199,13 +211,14 @@ implementation is not testing anything:
 python tests/mutations.py
 ```
 
-That breaks the implementation twenty-one ways — removing the opt-in gate,
-inverting the budget drop order, reintroducing a timestamp into injected context,
+That breaks the implementation twenty-five ways — removing the opt-in gate,
+putting back a section the host already sends, reintroducing a timestamp into
+injected context,
 letting `init` overwrite user files, adding carriage returns to the launcher —
 and requires the covering tests to fail each time.
 
 ## Version
 
 ```text
-2.1.11
+2.2.0
 ```

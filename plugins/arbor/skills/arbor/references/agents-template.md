@@ -4,8 +4,13 @@
 This is the durable project guide. Claude Code loads it through the @AGENTS.md
 import in CLAUDE.md, so it is in context every session and survives compaction.
 
-Keep it short. Durable facts only: what this project is for, the constraints
-that are not obvious from the code, and the map of top-level entrypoints.
+Keep it short, well under 200 lines. Durable facts only, and only ones the
+codebase cannot show by itself: what this project is for, the constraints a
+newcomer would get wrong, and where a given kind of change belongs.
+
+Leave out anything the agent can find with glob, grep, or git: directory
+listings, dependency lists, and repository tours. Those measurably do not help it
+reach the files it needs to change, and they are the first thing to go stale.
 Anything that changes week to week belongs in .arbor/memory.md or in git.
 -->
 
@@ -24,10 +29,13 @@ section once the durable goal is known.
 ## Project Map
 
 Arbor has not recorded a durable project map for this repository yet. Inspect the
-repository directly before answering project-structure questions, and keep this
-section as the entrypoint to durable project context once the map is known.
+repository directly before answering project-structure questions, and replace this
+section once there is something to say that the tree cannot show.
 
-- List only durable top-level entrypoints, such as `src/`, `tests/`, or
-  `README.md`, one bullet each.
-- Describe important nested modules inside a bullet's description rather than
-  giving them their own bullet.
+- Every bullet must state a rule, not a location: where new code of a given kind
+  belongs, a boundary not to cross, or a trap that has caught someone.
+- Name the exact file that matters, nested or not. A precise pointer earns its
+  characters; a directory census does not.
+- If a path here is renamed, fix it the same day. `arbor doctor` reports paths in
+  this file that git has a record of but disk no longer has, because a guide that
+  confidently names the wrong file is worse than one that names none.

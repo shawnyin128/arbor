@@ -1,10 +1,11 @@
 """Context packet contracts.
 
-Two properties matter most here. Hook output above roughly 10,000 characters is
-discarded by the host without warning, so the packet must stay inside its budget
-under every input. And injected context that changes while the project does not
-would invalidate the prompt prefix cache every session, so the packet must carry
-no wall-clock value.
+Two properties matter most here. The packet must not repeat what the host already
+injects: its own git block carries the branch, the full short status, and the five
+most recent commits, and an A/B run measured no accuracy or step benefit from a
+second copy. And injected context that changes while the project does not would
+invalidate the prompt prefix cache every session, so the packet must carry no
+wall-clock value.
 """
 
 from __future__ import annotations
@@ -33,20 +34,16 @@ class TestStructure:
         assert rendered.startswith("# Arbor Session Context")
         assert "not as a reason to invoke planning, review, or workflow tools" in rendered
 
-    def test_sections_appear_in_priority_order(self, project) -> None:
+    def test_sections_appear_highest_value_first(self, project) -> None:
         project.bridge()
         project.memory("Decide whether to split the parser")
         project.ideas("Try a streaming reader")
-        project.write("dirty.txt", "x\n")
         add_todos(project, ("Do a thing", "in_progress"))
         rendered = build(project)
         order = [
-            rendered.index("## Position"),
             rendered.index("## In flight"),
             rendered.index("## Unresolved"),
-            rendered.index("## Working tree"),
             rendered.index("## Parked ideas"),
-            rendered.index("## Recent commits"),
         ]
         assert order == sorted(order)
 
@@ -57,13 +54,58 @@ class TestStructure:
         assert "## In flight" not in rendered
         assert "## Unresolved" not in rendered
         assert "## Parked ideas" not in rendered
-        assert "## Working tree" not in rendered
 
     def test_omits_git_sections_outside_a_repository(self, make_project) -> None:
         loose = make_project(git=False)
-        rendered = build(loose)
-        assert "## Position" not in rendered
+        assert "## Upstream" not in build(loose)
+
+
+class TestNoNativeDuplication:
+    """The host appends its own git block; repeating it buys nothing and costs tokens."""
+
+    def test_never_lists_the_working_tree(self, project) -> None:
+        project.bridge()
+        project.write("dirty.txt", "x\n")
+        rendered = build(project)
+        assert "## Working tree" not in rendered
+        assert "dirty.txt" not in rendered
+
+    def test_never_lists_recent_commits(self, project) -> None:
+        project.bridge()
+        project.commit("feat: something the host already reports")
+        rendered = build(project)
         assert "## Recent commits" not in rendered
+        assert "something the host already reports" not in rendered
+
+    def test_never_names_the_branch_or_head(self, project) -> None:
+        project.bridge()
+        add_todos(project, ("Task", "pending"))
+        rendered = build(project)
+        assert "## Position" not in rendered
+        assert "branch " not in rendered
+        assert "HEAD " not in rendered
+
+
+class TestUpstream:
+    """Divergence is the one position fact the host's git block never carries."""
+
+    def test_absent_without_an_upstream(self, project) -> None:
+        project.bridge()
+        assert "## Upstream" not in build(project)
+
+    def test_absent_when_level_with_the_upstream(self, project) -> None:
+        project.bridge()
+        project.track_upstream()
+        assert "## Upstream" not in build(project)
+
+    def test_reports_being_ahead(self, project) -> None:
+        project.bridge()
+        project.track_upstream()
+        project.write("new.txt", "x\n")
+        project.commit("feat: land something locally")
+        rendered = build(project)
+        assert "## Upstream" in rendered
+        assert "1 ahead of" in rendered
 
     def test_carries_no_wall_clock_value(self, project) -> None:
         """A clock in injected context busts the prompt prefix cache for nothing."""
@@ -146,63 +188,53 @@ class TestNotesRendering:
         assert "Idea 0" not in rendered, "only the most recent ideas are shown"
 
 
-class TestWorkingTree:
-    def test_lists_changed_paths_with_status_codes(self, project) -> None:
-        project.write("added.txt", "x\n")
-        rendered = build(project)
-        assert "1 changed path" in rendered
-        assert "?? added.txt" in rendered
+class TestFrontLoading:
+    """Over-budget output keeps its head, so ordering protects information.
 
-    def test_caps_listed_paths(self, project) -> None:
-        for index in range(packet.MAX_TREE_ENTRIES + 4):
-            project.write(f"file{index}.txt", "x\n")
-        assert "(+4 more)" in build(project)
+    Measured against the host directly: a 13,500-character SessionStart payload
+    arrived head-first with the remainder written to a file and announced in
+    context. Nothing is discarded, so trimming the packet would throw away
+    information the host would have delivered.
+    """
 
-
-class TestBudget:
     def _load_project(self, project) -> None:
         project.bridge()
         project.memory(*[f"Unresolved item number {index} with plenty of text" for index in range(60)])
         project.ideas(*[f"Parked idea number {index} with plenty of text" for index in range(40)])
         add_todos(project, *[(f"Task number {index} with a long description", "pending") for index in range(40)])
-        for index in range(40):
-            project.write(f"noise{index}.txt", "x\n")
 
-    def test_never_exceeds_the_budget(self, project) -> None:
+    def test_per_section_caps_hold_the_packet_under_the_host_limit(self, project) -> None:
+        """Absurd input must not need trimming: the caps already bound the packet."""
         self._load_project(project)
-        for limit in (9500, 4000, 2000, 1000, 800, 500, 200, 10):
-            rendered = packet.render(project.root, packet.build_sections(project.root), limit)
-            assert len(rendered) <= limit, f"packet exceeded limit {limit}"
+        rendered = build(project)
+        assert len(rendered) < packet.DEFAULT_BUDGET
 
-    def test_drops_lowest_priority_sections_first(self, project) -> None:
+    def test_emits_every_section_whole(self, project) -> None:
         self._load_project(project)
-        sections = packet.build_sections(project.root)
-        rendered = packet.render(project.root, sections, 2600)
-        dropped = {section.key for section in sections if section.dropped}
-        assert "commits" in dropped
-        assert "todos" not in dropped, "in-flight state must outlive low-priority sections"
-        assert "position" not in dropped
+        rendered = build(project)
+        assert "omitted" not in rendered
+        for heading in ("## In flight", "## Unresolved", "## Parked ideas"):
+            assert heading in rendered
 
-    def test_dropped_sections_state_how_to_recover_them(self, project) -> None:
+    def test_the_most_valuable_section_comes_first(self, project) -> None:
+        """The host keeps the head of an over-budget payload, so ordering matters."""
+        from arbor_core import vcs
+
         self._load_project(project)
-        sections = packet.build_sections(project.root)
-        rendered = packet.render(project.root, sections, 2600)
-        assert "omitted for context budget" in rendered
-        assert "git log" in rendered
+        session.record_handoff(project.root, "clear", "main", vcs.head(project.root), 0)
+        project.write("later.txt", "x\n")
+        project.commit("feat: land work while away")
+        rendered = build(project)
+        headings = ("## In flight", "## Since last session", "## Unresolved", "## Parked ideas")
+        for heading in headings:
+            assert heading in rendered, f"{heading} must be present for this to test ordering"
+        assert rendered.index("## In flight") == min(rendered.index(h) for h in headings)
 
-    def test_protocol_is_the_last_thing_dropped(self, project) -> None:
+    def test_a_loaded_project_still_produces_a_packet(self, project) -> None:
         self._load_project(project)
-        rendered = packet.render(project.root, packet.build_sections(project.root), 900)
-        assert rendered.startswith("# Arbor Session Context")
-        assert "## Recent commits" not in rendered or "omitted" in rendered
-
-    def test_emits_nothing_when_even_the_protocol_does_not_fit(self, project) -> None:
-        self._load_project(project)
-        assert packet.render(project.root, packet.build_sections(project.root), 50) == ""
-
-    def test_hook_skips_rather_than_emitting_a_partial_protocol(self, project, monkeypatch) -> None:
-        monkeypatch.setenv("ARBOR_CONTEXT_BUDGET", "50")
-        assert hooks.session_start(project.payload(source="startup")) == hooks.SKIP
+        code, output = hooks.session_start(project.payload(source="startup"))
+        assert code == 0
+        assert "Arbor Session Context" in output
 
     def test_budget_is_configurable(self, project, monkeypatch) -> None:
         monkeypatch.setenv("ARBOR_CONTEXT_BUDGET", "777")
@@ -213,12 +245,6 @@ class TestBudget:
         monkeypatch.setenv("ARBOR_CONTEXT_BUDGET", value)
         assert packet.budget() == packet.DEFAULT_BUDGET
 
-    def test_hook_output_stays_within_the_host_limit(self, project) -> None:
-        """The whole JSON envelope, not just the packet, must fit the host cap."""
-        self._load_project(project)
-        _code, output = hooks.session_start(project.payload(source="startup"))
-        assert len(output) < 10000
-
 
 class TestReceipt:
     def test_names_loaded_sections(self, project) -> None:
@@ -228,13 +254,11 @@ class TestReceipt:
         assert "in flight" in receipt
         assert "chars" in receipt
 
-    def test_names_omitted_sections(self, project) -> None:
+    def test_says_so_when_there_is_nothing_to_restore(self, project) -> None:
         project.bridge()
-        project.memory(*[f"Unresolved item {index} with text" for index in range(60)])
-        sections = packet.build_sections(project.root)
-        packet.render(project.root, sections, 1200)
-        receipt = packet.summary(sections, 1200)
-        assert "omitted" in receipt
+        project.commit("chore: add bridge")
+        _rendered, receipt = packet.build(project.root)
+        assert "no volatile state to restore" in receipt
 
 
 class TestOutdatedNotes:
@@ -368,9 +392,11 @@ class TestSinceLastSession:
         assert "(+3 more)" in build(project)
 
 
-class TestSinceSubsumesRecentCommits:
-    def test_recent_commits_is_dropped_when_the_range_is_known(self, project) -> None:
-        from arbor_core import session, vcs
+class TestSinceIsTheOnlyCommitSection:
+    """The host lists recent commits; only the range since last session is Arbor's."""
+
+    def test_the_range_renders_without_a_recent_commit_list(self, project) -> None:
+        from arbor_core import vcs
 
         session.record_handoff(project.root, "clear", "main", vcs.head(project.root), 0)
         project.write("later.txt", "x\n")
@@ -379,13 +405,8 @@ class TestSinceSubsumesRecentCommits:
         assert "## Since last session" in rendered
         assert "## Recent commits" not in rendered
 
-    def test_recent_commits_survives_when_history_was_rewritten(self, project) -> None:
-        from arbor_core import session
-
-        session.record_handoff(project.root, "clear", "main", "deadbee", 0)
+    def test_nothing_replaces_it_when_there_is_no_recorded_head(self, project) -> None:
+        project.bridge()
         rendered = build(project)
-        assert "History was rewritten" in rendered
-        assert "## Recent commits" in rendered
-
-    def test_recent_commits_survives_without_a_recorded_head(self, project) -> None:
-        assert "## Recent commits" in build(project)
+        assert "## Since last session" not in rendered
+        assert "## Recent commits" not in rendered

@@ -66,8 +66,8 @@ near-duplicate.
 not part of the current task. Appending is how the idea survives without
 derailing the session. Remove it once it is done, filed, or rejected.
 
-Keep both short. `doctor` warns when memory passes 40 lines, because the packet
-that carries it has a hard budget.
+Keep both short. `doctor` warns when memory passes 40 lines: a long note is a
+worse note, and the injected packet is meant to be re-read every session.
 
 When a note names a path or filename in backticks, it is checked from the repository root. If it is gone from
 disk but git has a commit for it, the note is still shown but marked `outdated`,
@@ -77,13 +77,19 @@ more than the warning saves.
 
 ## Updating AGENTS.md
 
-Change it when the durable goal, a real constraint, or the top-level map changes.
-Project Map bullets are top-level entrypoints only; describe nested modules
-inside a bullet's description. Keep transient state out of it entirely.
+Change it when the durable goal or a real constraint changes. Keep transient state
+out of it entirely.
+
+Every Project Map bullet must say something the tree cannot show: where new code
+of a given kind belongs, a boundary not to cross, a trap. A path list is not one,
+because the agent finds files with glob and grep and a repository overview does
+not measurably reduce the steps it takes to reach the files it must change. Point
+at the exact file that matters, nested or not, rather than listing directories for
+completeness.
 
 Nothing in Arbor rewrites `AGENTS.md` automatically. `doctor` reports drift —
-entries pointing at paths that no longer exist, top-level directories missing
-from the map — and leaves the edit to you.
+any backticked path in the guide that git has a record of but disk no longer has —
+and leaves the edit to you.
 
 ## Hooks
 

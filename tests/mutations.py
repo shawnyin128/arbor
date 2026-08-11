@@ -76,11 +76,35 @@ MUTATIONS = [
         ["tests/test_session.py", "-k", "refuses_to_create_state_outside"],
     ),
     Mutation(
-        "budget drops the most important sections first",
+        "the working tree the host already lists comes back into the packet",
         CORE / "packet.py",
-        "    for section in sorted(sections, key=lambda item: item.priority, reverse=True):",
-        "    for section in sorted(sections, key=lambda item: item.priority):",
-        ["tests/test_packet.py", "-k", "drops_lowest_priority"],
+        "    candidates = [\n        _todo_section(state, head),",
+        '    candidates = [\n        Section("tree", "Working tree", "\\n".join(\n'
+        '            f"{code} {path}" for code, path in status.entries) or "clean"),\n'
+        "        _todo_section(state, head),",
+        ["tests/test_packet.py", "-k", "never_lists_the_working_tree"],
+    ),
+    Mutation(
+        "the branch the host already names comes back into the packet",
+        CORE / "packet.py",
+        "    candidates = [\n        _todo_section(state, head),",
+        '    candidates = [\n        Section("position", "Position", f"branch {status.branch}"),\n'
+        "        _todo_section(state, head),",
+        ["tests/test_packet.py", "-k", "never_names_the_branch_or_head"],
+    ),
+    Mutation(
+        "the upstream section renders when there is nothing to say",
+        CORE / "packet.py",
+        "    if not status.ahead and not status.behind:\n        return None",
+        "    if False:\n        return None",
+        ["tests/test_packet.py", "-k", "level_with_the_upstream"],
+    ),
+    Mutation(
+        "In flight stops being the first section the host would keep",
+        CORE / "packet.py",
+        "    candidates = [\n        _todo_section(state, head),\n        _since_section(root, state, head),",
+        "    candidates = [\n        _since_section(root, state, head),\n        _todo_section(state, head),",
+        ["tests/test_packet.py", "-k", "most_valuable_section_comes_first"],
     ),
     Mutation(
         "a wall-clock timestamp returns to injected context",
@@ -90,11 +114,18 @@ MUTATIONS = [
         ["tests/test_packet.py", "-k", "wall_clock"],
     ),
     Mutation(
-        "over-budget packets are emitted instead of withheld",
-        CORE / "packet.py",
-        '    if len(preamble) > cap:\n        return ""',
-        '    if False:\n        return ""',
-        ["tests/test_packet.py", "-k", "never_exceeds or does_not_fit"],
+        "the guide's stale-path check narrows back to the Project Map section",
+        CORE / "doctor.py",
+        "    claimed = notes.anchors(text)",
+        '    claimed = notes.anchors(_section_body(text, "Project Map") or "")',
+        ["tests/test_doctor.py", "-k", "stale_path_outside_the_map"],
+    ),
+    Mutation(
+        "the guide flags paths git never tracked, so a branch name reads as broken",
+        CORE / "doctor.py",
+        "    stale = [path for path in claimed if not (root / path).exists() and vcs.knows_path(root, path)]",
+        "    stale = [path for path in claimed if not (root / path).exists()]",
+        ["tests/test_doctor.py", "-k", "never_tracked_is_not_flagged"],
     ),
     Mutation(
         "a backticked import counts as wiring the guide",
