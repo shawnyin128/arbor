@@ -202,6 +202,14 @@ MUTATIONS = [
         ["tests/test_notes.py", "-k", "conflict_is_detected"],
     ),
     Mutation(
+        "the budget warning goes back to gating the write",
+        CORE / "packet.py",
+        '            "Record anything new anyway, then prune an entry that is now resolved. "\n'
+        '            "Never leave a live decision unrecorded to stay inside the budget.)"',
+        '            "prune a resolved entry before adding another)"',
+        ["tests/test_packet.py", "-k", "never_gates_recording"],
+    ),
+    Mutation(
         "the budget warning only fires after the file is already over",
         CORE / "packet.py",
         "    if memory.line_count >= notes.LINE_BUDGET * notes.WARN_FRACTION:",

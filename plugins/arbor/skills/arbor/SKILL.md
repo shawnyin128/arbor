@@ -5,14 +5,14 @@ description: "Use when setting up or checking Arbor in a project: initializing A
 
 # Arbor
 
-Arbor restores the volatile half of project context. The durable half —
-`AGENTS.md`, loaded through the `@AGENTS.md` import in `CLAUDE.md` — is carried by
-Claude Code itself. Arbor's hooks supply what no static file can: where git is,
-which tasks were in flight, what is still unresolved, and which ideas were parked.
+Arbor restores what Claude Code does not carry between sessions: the task list that
+was in flight, what landed while you were away, what is still unresolved, and which
+ideas were parked. The host supplies the durable guide through `CLAUDE.md` importing
+`AGENTS.md`, and a git block of its own, so Arbor injects neither.
 
-Use this skill to initialize a project, or to report Arbor's state. Do not use it
-to answer "what does this project do?" or "where were we?" — the injected
-SessionStart packet plus the project's own files already answer those.
+Use this skill to initialize a project or report Arbor's state, not to answer "what
+does this project do?" or "where were we?" — the SessionStart packet and the
+project's files already answer those.
 
 ## Commands
 
@@ -90,14 +90,16 @@ near-duplicate.
 not part of the current task. Appending is how the idea survives without
 derailing the session. Remove it once it is done, filed, or rejected.
 
-Keep both short. `doctor` warns when memory passes 40 lines: a long note is a
-worse note, and the injected packet is meant to be re-read every session.
+An idea the user then asks you to work on has become the current task, so it stops
+belonging in `ideas.md`. Record what the work left undecided in `.arbor/memory.md`
+instead, and delete the parked line.
 
-When a note names a path or filename in backticks, it is checked from the repository root. If it is gone from
-disk but git has a commit for it, the note is still shown but marked `outdated`,
-and `doctor` reports it. A path git never tracked is not checked, because a
-branch name looks exactly like a path and a false alarm in injected context costs
-more than the warning saves.
+Keep both short; `doctor` warns when memory passes 40 lines. The budget is a prompt
+to prune, never a reason to leave something unrecorded.
+
+A path or filename in backticks is checked from the repository root. If it is gone
+from disk but git has a record of it, the note still appears, marked `outdated`, and
+`doctor` reports it. A path git never tracked is not checked.
 
 ## Updating AGENTS.md
 
@@ -125,8 +127,7 @@ registration is needed.
   reports a one-line summary to the user through `systemMessage`.
 - `PostToolUse` on the task tools snapshots the task list, so in-flight work is
   durable even if the session ends abruptly. `TodoWrite` sends the whole list;
-  `TaskCreate` and `TaskUpdate` change one entry, so the host's own task files are
-  read instead. Which tools exist depends on the Claude Code version.
+  `TaskCreate` and `TaskUpdate` change one entry, so the host's task files are read.
 - `SessionEnd` records the handoff summary.
 
 Each writes a receipt into `session.json`, which is how `doctor` can say whether a
