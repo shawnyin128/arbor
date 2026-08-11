@@ -15,17 +15,22 @@ earned a real home: an issue, a design note, or a project doc.
 ## Parked
 
 - Use the `InstructionsLoaded` hook to record that `CLAUDE.md` and its `@AGENTS.md`
-  import actually loaded, turning doctor's static import check into observed fact.
-- Warn on memory staleness by commit distance, not only by line count: an entry
-  written many commits ago is more suspect than a long one.
-- Investigate `watchPaths` in SessionStart output for keeping edits to
-  `.arbor/memory.md` visible mid-session without a re-injection.
-- Consider a `PostCompact` hook: compaction is exactly when volatile context is
-  lost, and SessionStart only covers it if the host reports source `compact`.
+  import actually loaded. Doctor infers this today by reading the file, so it
+  cannot see the cases that matter: `claudeMdExcludes` skipping the file, or a
+  declined external-import approval, which disables the import permanently and
+  never asks again. Either one silently costs the user the durable half of their
+  context. Matching only the `session_start` load reason keeps it to one
+  invocation per session.
+- Report note age in commit distance from `arbor doctor`, not in the packet. The
+  primitive already exists as `vcs.count_commits_since`, and `git blame` plus
+  `rev-list` measured 82ms on this repository. Keep it a display hint only:
+  path existence stays the invalidation signal, and a "written 34 commits ago"
+  line inside injected context would be a distractor.
 - Investigate whether `shell: bash` in hooks.json is the right choice on Windows.
-  CI showed that `bash` on PATH can be WSL's own bash.exe under System32, which
-  on a machine with no distribution prints an installation notice and exits 1
-  without reading the script. If Claude Code resolves it that way, Arbor's hooks
-  break before the launcher runs, and the polyglot's cmd branch never gets a
-  chance. Dropping `shell: bash` would let cmd.exe run the .cmd on Windows, but
-  needs checking that a POSIX shell still executes it on macOS and Linux.
+  CI showed that `bash` on PATH can be WSL's own launcher, which on a machine with
+  no distribution prints an installation notice and exits 1 without reading the
+  script, so the hook would fail before the launcher runs. Dropping `shell: bash`
+  is not a one-line change: the launcher has no shebang and git mode 100644, so a
+  POSIX host would fail with Permission denied, and adding a shebang makes cmd.exe
+  report an unknown command on its first line. Not observed biting on this machine
+  or on the GitHub Windows runner, both of which resolved a working POSIX bash.
