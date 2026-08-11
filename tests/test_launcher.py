@@ -96,10 +96,52 @@ def run_launcher(event: str, payload: str, *, shell: str, env: dict[str, str] | 
     )
 
 
+def run_launcher_as_the_host_does(event: str, payload: str):
+    """Invoke the launcher the way ``hooks.json`` does: execute the file.
+
+    Passing the path to bash as an argument, which the other helper does, never
+    consults the executable bit. The host executes the file, so a launcher checked
+    in as mode 100644 fails with "Permission denied" on any POSIX host while every
+    bash-argument test stays green. That is how this shipped broken.
+    """
+    base = dict(os.environ)
+    base.pop("CLAUDE_PROJECT_DIR", None)
+    base.pop("ARBOR_PYTHON", None)
+    return subprocess.run(
+        ["sh", "-c", f'"{LAUNCHER}" {event}'],
+        input=payload,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        env=base,
+    )
+
+
 class TestFileForm:
     def test_contains_no_carriage_returns(self) -> None:
         assert b"\r" not in LAUNCHER.read_bytes(), (
             "a CR makes the shell branch silently no-op; .gitattributes must pin LF"
+        )
+
+    def test_is_checked_in_executable(self) -> None:
+        """The host executes this file, so the bit has to survive a fresh clone.
+
+        Windows cannot express the bit on disk, which is why this reads the git
+        index rather than the filesystem: the mode must be right on every platform,
+        including the one that cannot show it.
+        """
+        listed = subprocess.run(
+            ["git", "ls-files", "-s", "--", str(LAUNCHER)],
+            cwd=str(LAUNCHER.parent),
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        ).stdout
+        assert listed.startswith("100755 "), (
+            f"launcher must be mode 100755; git reports {listed.split()[0] if listed else 'nothing'}. "
+            "Without the bit a POSIX host fails with Permission denied before the "
+            "polyglot guard is ever read."
         )
 
     def test_opens_with_the_polyglot_guard(self) -> None:
@@ -117,6 +159,29 @@ class TestFileForm:
         """Presence on PATH is not enough: the Windows python3 stub resolves and fails."""
         text = LAUNCHER.read_text(encoding="utf-8")
         assert '-c ""' in text
+
+
+@pytest.mark.skipif(shutil.which("sh") is None, reason="no POSIX sh available")
+class TestHostInvocation:
+    """The one shape that matters: exactly what `hooks.json` asks the host to run.
+
+    Every other launcher test hands the path to an interpreter, which skips the
+    executable bit. This class executes the file, so it fails the way a real
+    session failed: `Permission denied` before the polyglot guard is read.
+    """
+
+    def test_injects_context_when_executed_rather_than_interpreted(self, project) -> None:
+        result = run_launcher_as_the_host_does("session-start", project.payload(source="startup"))
+        assert "Permission denied" not in (result.stderr or ""), detail(result)
+        assert result.returncode == 0, detail(result)
+        data = json.loads(result.stdout)
+        assert data["hookSpecificOutput"]["additionalContext"].startswith("# Arbor Session Context")
+
+    def test_silent_for_a_project_without_arbor_when_executed(self, make_project) -> None:
+        plain = make_project(arbor=False)
+        result = run_launcher_as_the_host_does("session-start", plain.payload(source="startup"))
+        assert result.returncode == 0, detail(result)
+        assert result.stdout == "", detail(result)
 
 
 @pytest.mark.skipif(POSIX_BASH is None, reason="no POSIX bash available")

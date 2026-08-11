@@ -17,8 +17,13 @@ earned a real home: an issue, a design note, or a project doc.
 - Investigate whether `shell: bash` in hooks.json is the right choice on Windows.
   CI showed that `bash` on PATH can be WSL's own launcher, which on a machine with
   no distribution prints an installation notice and exits 1 without reading the
-  script, so the hook would fail before the launcher runs. Dropping `shell: bash`
-  is not a one-line change: the launcher has no shebang and git mode 100644, so a
-  POSIX host would fail with Permission denied, and adding a shebang makes cmd.exe
-  report an unknown command on its first line. Not observed biting on this machine
-  or on the GitHub Windows runner, both of which resolved a working POSIX bash.
+  script, so the hook would fail before the launcher runs. Not observed biting on
+  this machine or on the GitHub Windows runner, both of which resolved a working
+  POSIX bash. The Permission-denied half of this note was wrong and is settled:
+  `shell: bash` never protected against it, the mode did, and the launcher is now
+  checked in 100755.
+- Find out whether the plugin install path preserves a file's executable bit. The
+  2.2.3 fix depends on it, and a zip-based install could drop it; the env var
+  `CLAUDE_CODE_PLUGIN_USE_ZIP_CACHE` exists, so that path is real. If the bit does
+  not survive, hooks.json has to stop relying on it, which is hard because the same
+  command string must work under both cmd.exe and a POSIX shell.

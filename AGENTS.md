@@ -47,7 +47,14 @@ python tests/mutations.py              # break the implementation 27 ways
   agent-written notes belong in `.arbor/memory.md` and `.arbor/ideas.md`.
 - `arbor doctor` reports and never repairs. Nothing rewrites `AGENTS.md`.
 - `plugins/arbor/hooks/arbor-hook.cmd` is parsed by both `cmd.exe` and POSIX
-  shells and must stay LF-only; a stray CR makes it silently no-op.
+  shells. It must stay LF-only, because a stray CR makes it silently no-op, and it
+  must stay mode 100755 in git, because the host executes the file rather than
+  handing it to an interpreter: without the bit a POSIX host fails with Permission
+  denied before the polyglot guard is ever read. Windows cannot show the bit, so
+  only `git ls-files -s` proves it.
+- A launcher test must execute the file the way `hooks.json` does. Passing the path
+  to `bash` as an argument skips the executable bit, which is how a broken launcher
+  once passed on all three CI platforms.
 - Behavior changes need a pytest contract, and the contract must be shown to fail
   when the implementation is broken.
 
