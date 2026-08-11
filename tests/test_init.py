@@ -31,6 +31,29 @@ class TestFreshProject:
         init.run(plain.root)
         assert packet.guide_is_wired(plain.root)
 
+    def test_new_bridge_carries_the_header_init_mandates(self, make_project) -> None:
+        """A user who initializes with Arbor will not run `/init`, whose header this is."""
+        plain = make_project(arbor=False)
+        init.run(plain.root)
+        text = (plain.root / "CLAUDE.md").read_text(encoding="utf-8")
+        assert text.startswith("# CLAUDE.md\n")
+        assert "guidance to Claude Code (claude.ai/code)" in text
+
+    def test_the_scaffolded_guide_asks_for_a_single_test_command(self, make_project) -> None:
+        """`/init` calls this out specifically, and it is the one agents need most."""
+        plain = make_project(arbor=False)
+        init.run(plain.root)
+        text = (plain.root / "AGENTS.md").read_text(encoding="utf-8")
+        assert "## Commands" in text
+        assert "single" in text
+
+    def test_the_scaffolded_guide_repeats_the_refusals_init_makes(self, make_project) -> None:
+        plain = make_project(arbor=False)
+        init.run(plain.root)
+        text = (plain.root / "AGENTS.md").read_text(encoding="utf-8").lower()
+        for refusal in ("do not repeat yourself", "easily discovered", "generic development"):
+            assert refusal in text, refusal
+
     def test_machine_state_is_kept_out_of_review(self, make_project) -> None:
         plain = make_project(arbor=False)
         init.run(plain.root)

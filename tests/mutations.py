@@ -114,6 +114,20 @@ MUTATIONS = [
         ["tests/test_packet.py", "-k", "wall_clock"],
     ),
     Mutation(
+        "Commands stops being required, reopening the gap left by displacing /init",
+        CORE / "doctor.py",
+        'REQUIRED_GUIDE_SECTIONS = ("Project Goal", "Commands", "Project Constraints", "Project Map")',
+        'REQUIRED_GUIDE_SECTIONS = ("Project Goal", "Project Constraints", "Project Map")',
+        ["tests/test_doctor.py", "-k", "commands_is_required"],
+    ),
+    Mutation(
+        "an unfilled Commands placeholder reads as a settled answer",
+        CORE / "doctor.py",
+        '    "has not recorded the commands for this repository",\n',
+        "",
+        ["tests/test_doctor.py", "-k", "unfilled_commands_section"],
+    ),
+    Mutation(
         "the guide's stale-path check narrows back to the Project Map section",
         CORE / "doctor.py",
         "    claimed = notes.anchors(text)",

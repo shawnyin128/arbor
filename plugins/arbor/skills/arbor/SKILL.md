@@ -26,11 +26,34 @@ python scripts/arbor.py context --root .
 
 - `init` creates missing files and never overwrites existing content. Its one
   edit to an existing file is appending `@AGENTS.md` to a `CLAUDE.md` that lacks
-  it. Add `--dry-run` to preview.
+  it. Add `--dry-run` to preview. It writes placeholders, not content — filling
+  them in is the second half of initializing, described below.
 - `doctor` reports one row per surface, including when each hook last fired and
   how large the injected packet is. Add `--strict` to exit nonzero unless every
   row is `ok`. It reports; it never repairs.
 - `context` prints the packet SessionStart would inject, for debugging.
+
+## Initializing a project
+
+Running `init` is half the job. A user who initializes with Arbor will not also
+run Claude Code's `/init`, so the placeholders `init` leaves behind are a gap
+until you fill them. Do that in the same turn, from the repository itself:
+
+1. Read the build and test configuration — `package.json`, `pyproject.toml`,
+   `Makefile`, `justfile`, CI workflows — and write the real command lines into
+   `Commands`, including how to run one test rather than the whole suite.
+2. Read `README.md`, and any `.cursor/rules/`, `.cursorrules`, or
+   `.github/copilot-instructions.md`, and carry over the parts that state a rule.
+   Do not copy prose that merely describes the project.
+3. Write the architecture that takes reading several files to see — what talks to
+   what, and which boundaries exist — into `Project Map` as rules about where code
+   belongs, naming exact files.
+4. Replace the `Project Goal` placeholder with one or two sentences.
+5. Show the user what you wrote and ask them to correct it. You inferred it; they
+   know it.
+
+Leave a placeholder in place rather than guessing. `doctor` reports an unfilled
+section, and an honest gap beats an invented answer that reads as settled fact.
 
 ## Files
 

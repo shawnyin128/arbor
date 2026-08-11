@@ -8,6 +8,22 @@ decisions, and parked ideas. Claude Code already carries the durable half throug
 a `CLAUDE.md` that imports `AGENTS.md`, so Arbor deliberately does not inject the
 project guide.
 
+## Commands
+
+```bash
+python -m pytest                       # the suite
+python -m pytest tests/test_packet.py  # one file
+python tests/mutations.py              # break the implementation 25 ways
+```
+
+- `pytest` needs an explicit `--basetemp` outside this repository on a machine
+  whose default temporary directory is not writable; inside it, git parent
+  discovery and file locks break the fixtures.
+- `tests/ab_harness.py` is not collected by pytest. It drives a live `claude` CLI
+  and spends real tokens, so run it deliberately: `--experiment packet` asks
+  whether the injected packet beats the host's own context, `--experiment guide`
+  whether a Project Map earns its characters.
+
 ## Project Constraints
 
 - Claude Code only. Codex support, project-level hook registration, and installed

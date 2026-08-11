@@ -167,6 +167,7 @@ class Project:
             "AGENTS.md",
             "# Agent Guide\n\n"
             "## Project Goal\n\nShip a tested thing.\n\n"
+            "## Commands\n\n- Run one test with `pytest -k name`.\n\n"
             "## Project Constraints\n\n- Keep it small.\n\n"
             f"## Project Map\n\n{entries}\n",
         )

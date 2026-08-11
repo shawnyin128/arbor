@@ -168,6 +168,63 @@ PROBES: tuple[Probe, ...] = (
 )
 
 
+# The guide experiment varies AGENTS.md instead of the packet, to answer a
+# separate question: does a Project Map earn its characters, and does stating
+# placement rules beat listing directories? The layout is deliberately one a
+# newcomer would guess wrong, since a map can only help where guessing fails.
+GUIDE_ARMS = ("none", "census", "rules")
+
+GUIDE_HEAD = (
+    "# Agent Guide\n\n"
+    "## Project Goal\n\nA text pipeline for the A/B harness.\n\n"
+    "## Project Constraints\n\n- Nothing here is real code.\n"
+)
+
+GUIDE_MAPS = {
+    "none": "",
+    # Descriptive: what Codex's /init asks for and what Arbor's template used to.
+    "census": (
+        "\n## Project Map\n\n"
+        "- `internal/`: internal packages.\n"
+        "- `src/`: application source.\n"
+        "- `lib/`: shared helpers.\n"
+        "- `tools/`: developer tooling.\n"
+        "- `tests/`: tests.\n"
+    ),
+    # Prescriptive: rules and boundaries, which is what 2.2.0 asks for instead.
+    "rules": (
+        "\n## Project Map\n\n"
+        "- All lexing lives in `internal/lex/scanner.py`. A new token rule goes in\n"
+        "  its `RULES` table, never in a new file.\n"
+        "- `src/` holds only the CLI entry point and must not import from `lib/`.\n"
+        "- `lib/` is vendored third-party code. Never edit it.\n"
+    ),
+}
+
+GUIDE_PROBES = (
+    Probe(
+        name="locate",
+        section="(find the file to change)",
+        native=True,
+        question=(
+            "Which single file implements tokenization in this project? "
+            "Reply with only its path, nothing else."
+        ),
+        needles=("internal/lex/scanner.py",),
+    ),
+    Probe(
+        name="place",
+        section="(where new code goes)",
+        native=True,
+        question=(
+            "I need to add one new token rule for hexadecimal literals. Reply with "
+            "only the path of the file I should edit, nothing else."
+        ),
+        needles=("internal/lex/scanner.py",),
+    ),
+)
+
+
 @dataclass
 class Result:
     """One probe run in one arm."""
@@ -359,6 +416,131 @@ def build_fixture(root: Path) -> Fixture:
     return fixture
 
 
+def build_guide_fixture(root: Path) -> Fixture:
+    """Create a project whose layout a newcomer would guess wrong.
+
+    Tokenizing lives under `internal/lex/`, while `src/`, `lib/` and `tools/` all
+    hold plausible decoys. Without that mismatch a map has nothing to contribute,
+    and the experiment would only prove the layout was already obvious.
+    """
+    remove_tree(root)
+    root.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    git(root, "config", "user.email", "probe@example.invalid")
+    git(root, "config", "user.name", "Arbor AB Probe")
+
+    write(root / "README.md", "# pipeline\n\nA text pipeline.\n")
+    write(
+        root / "internal" / "lex" / "scanner.py",
+        '"""Turn source text into tokens."""\n\n'
+        "RULES = [\n"
+        '    ("NUMBER", r"[0-9]+"),\n'
+        '    ("NAME", r"[A-Za-z_]+"),\n'
+        "]\n\n\n"
+        "def scan(text):\n"
+        "    return [(kind, pattern) for kind, pattern in RULES]\n",
+    )
+    write(root / "internal" / "lex" / "__init__.py", "from .scanner import scan\n")
+    write(
+        root / "src" / "cli.py",
+        "from internal.lex import scan\n\n\n"
+        "def main(argv):\n"
+        "    return scan(argv[0])\n",
+    )
+    write(root / "lib" / "vendored_parser.py", "def parse(tokens):\n    return tokens\n")
+    write(root / "tools" / "bench.py", "def bench():\n    return None\n")
+    write(root / "tests" / "test_scan.py", "def test_scan():\n    assert True\n")
+    write(root / "CLAUDE.md", "@AGENTS.md\n\n## Claude Code\n\nA probe fixture.\n")
+    write(root / "AGENTS.md", GUIDE_HEAD)
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "feat: add the pipeline")
+    return Fixture(root=root)
+
+
+def set_guide_arm(fixture: Fixture, arm: str) -> None:
+    """Write the AGENTS.md variant for ``arm``, leaving the tree otherwise identical."""
+    (fixture.root / "AGENTS.md").write_text(
+        GUIDE_HEAD + GUIDE_MAPS[arm], encoding="utf-8", newline="\n"
+    )
+
+
+def run_guide_probe(fixture: Fixture, probe: Probe, arm: str, model: str) -> Result:
+    """Ask one guide probe with one AGENTS.md variant in place."""
+    set_guide_arm(fixture, arm)
+    command = [
+        claude_cli(),
+        "-p",
+        probe.question,
+        "--output-format",
+        "json",
+        "--allowedTools",
+        ALLOWED_TOOLS,
+        "--disallowedTools",
+        "Write Edit NotebookEdit WebFetch WebSearch Task",
+    ]
+    if model:
+        command += ["--model", model]
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    done = subprocess.run(
+        command,
+        cwd=str(fixture.root),
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        timeout=600,
+    )
+    blank = Result(probe.name, arm, False, 0, 0, 0, 0.0, "")
+    if not done.stdout.strip():
+        blank.error = (done.stderr or "no stdout").strip()[:300]
+        return blank
+    try:
+        payload = json.loads(done.stdout)
+    except json.JSONDecodeError:
+        blank.error = f"unparseable stdout: {done.stdout[:200]}"
+        return blank
+    usage = payload.get("usage") or {}
+    answer = payload.get("result") or ""
+    return Result(
+        probe=probe.name,
+        arm=arm,
+        correct=probe.scores(answer.replace("\\", "/")),
+        turns=int(payload.get("num_turns") or 0),
+        input_tokens=sum(
+            int(usage.get(key) or 0)
+            for key in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+        ),
+        output_tokens=int(usage.get("output_tokens") or 0),
+        cost_usd=float(payload.get("total_cost_usd") or 0.0),
+        answer=answer.strip().replace("\n", " ")[:160],
+        injected=True,
+    )
+
+
+def report_guide(results: list[Result]) -> None:
+    """Print correctness and turns per probe per AGENTS.md variant."""
+    print()
+    header = f"{'probe':10s}" + "".join(f"{arm + ' ok':>11s}{arm + ' turns':>12s}" for arm in GUIDE_ARMS)
+    print(header)
+    print("-" * len(header))
+    for probe in GUIDE_PROBES:
+        line = f"{probe.name:10s}"
+        for arm in GUIDE_ARMS:
+            rows = [r for r in results if r.probe == probe.name and r.arm == arm]
+            ok = f"{sum(r.correct for r in rows)}/{len(rows)}" if rows else "-"
+            turns = [r.turns for r in rows if not r.error]
+            med = f"{statistics.median(turns):.0f}" if turns else "-"
+            line += f"{ok:>11s}{med:>12s}"
+        print(line)
+    print(f"\n{len(results)} runs, {sum(r.cost_usd for r in results):.2f} USD reported by the host")
+    print("\nAnswers given, for auditing the scorer:")
+    for row in results:
+        print(f"  {'ok ' if row.correct else 'BAD'} {row.probe:8s} {row.arm:7s} {row.answer!r}")
+
+
 def set_arm(fixture: Fixture, arm: str) -> None:
     """Put ``.arbor/`` in place for arm ``on`` and out of the way for arm ``off``."""
     live = fixture.root / ".arbor"
@@ -547,7 +729,35 @@ def main() -> int:
         help="where to build the throwaway project (default: a sibling of this repo)",
     )
     parser.add_argument("--json", default="", help="also write raw results here")
+    parser.add_argument(
+        "--experiment",
+        default="packet",
+        choices=("packet", "guide"),
+        help="packet: is the injected packet worth it. guide: is a Project Map worth it.",
+    )
     args = parser.parse_args()
+
+    if args.experiment == "guide":
+        target = Path(args.fixture) if args.fixture else REPO.parent / "arbor-ab-guide"
+        print(f"building guide fixture at {target}")
+        fixture = build_guide_fixture(target)
+        results: list[Result] = []
+        total = len(GUIDE_PROBES) * len(GUIDE_ARMS) * args.reps
+        done = 0
+        for probe in GUIDE_PROBES:
+            for arm in GUIDE_ARMS:
+                for _ in range(args.reps):
+                    done += 1
+                    print(f"[{done}/{total}] {probe.name}/{arm} ... ", end="", flush=True)
+                    row = run_guide_probe(fixture, probe, arm, args.model)
+                    results.append(row)
+                    print("ok" if row.correct else ("ERR" if row.error else "wrong"))
+        report_guide(results)
+        if args.json:
+            Path(args.json).write_text(
+                json.dumps([vars(r) for r in results], indent=2), encoding="utf-8"
+            )
+        return 0
 
     chosen = PROBES
     if args.probes:

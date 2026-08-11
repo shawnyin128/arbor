@@ -97,7 +97,7 @@ the model never sees and which therefore costs no context.
 
 | File | Written by | Holds |
 | --- | --- | --- |
-| `AGENTS.md` | you | durable goal, constraints, project map |
+| `AGENTS.md` | you and the agent | goal, commands, constraints, placement rules |
 | `CLAUDE.md` | `init`, then you | the `@AGENTS.md` import, plus your own notes |
 | `.arbor/memory.md` | the agent | what is still unresolved |
 | `.arbor/ideas.md` | the agent | ideas raised in passing |
@@ -122,6 +122,18 @@ python plugins/arbor/skills/arbor/scripts/arbor.py context --root .
 `init` is additive: it creates what is missing and never overwrites what exists.
 Its one edit to an existing file is appending `@AGENTS.md` to a `CLAUDE.md` that
 lacks it, because without that line the durable guide is never loaded.
+
+Initializing with Arbor means you will not run Claude Code's own `/init`, so the
+scaffold covers what `/init` produces and refuses what it refuses. It asks for
+build, test, and lint commands — including how to run a single test, which `/init`
+calls out specifically — and for architecture stated as rules about where code
+belongs. It leaves out the five things `/init` declines to write: repetition,
+obvious instructions, discoverable file structure, generic development practice,
+and invented sections. New `CLAUDE.md` files carry the header `/init` mandates;
+an existing one still only gains the import line.
+
+Filling those sections in needs the repository read, which the CLI does not do —
+it makes no model calls. The `arbor` skill does it, in the same turn as `init`.
 
 `doctor` prints one row per surface and answers the two questions that are
 otherwise invisible: when each hook last fired, and how big the injected packet
@@ -211,7 +223,7 @@ implementation is not testing anything:
 python tests/mutations.py
 ```
 
-That breaks the implementation twenty-five ways — removing the opt-in gate,
+That breaks the implementation twenty-seven ways — removing the opt-in gate,
 putting back a section the host already sends, reintroducing a timestamp into
 injected context,
 letting `init` overwrite user files, adding carriage returns to the launcher —
@@ -220,5 +232,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.2.0
+2.2.1
 ```

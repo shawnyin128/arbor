@@ -16,6 +16,12 @@ def row(rows, surface: str) -> doctor.Row:
     return matches[0]
 
 
+def _section(text: str, heading: str) -> str:
+    body = doctor._section_body(text, heading)
+    assert body is not None, f"no {heading} section in the scaffold"
+    return body
+
+
 class TestNonArborProject:
     def test_reports_only_that_arbor_is_absent(self, make_project) -> None:
         plain = make_project(arbor=False)
@@ -39,8 +45,38 @@ class TestGuide:
         assert entry.status == doctor.WARN
         assert "Project Constraints" in entry.detail
 
+    def test_commands_is_required(self, project) -> None:
+        """Initializing with Arbor displaces `/init`, whose first output is commands."""
+        project.write(
+            "AGENTS.md",
+            "# Guide\n\n## Project Goal\n\nA goal.\n\n"
+            "## Project Constraints\n\n- Small.\n\n"
+            "## Project Map\n\n- `README.md`: overview.\n",
+        )
+        entry = row(doctor.collect(project.root), "AGENTS.md")
+        assert entry.status == doctor.WARN
+        assert "Commands" in entry.detail
+
     def test_template_placeholder_is_flagged(self, project) -> None:
         init.run(project.root)
+        entry = row(doctor.collect(project.root), "AGENTS.md")
+        assert entry.status == doctor.WARN
+        assert "placeholder" in entry.detail
+
+    def test_an_unfilled_commands_section_is_flagged(self, project) -> None:
+        """Every other section is written, so only the Commands marker can raise this."""
+        init.run(project.root)
+        scaffold = (project.root / "AGENTS.md").read_text(encoding="utf-8")
+        commands = _section(scaffold, "Commands")
+        assert "has not recorded the commands for this repository" in commands
+        project.write(
+            "AGENTS.md",
+            "# Agent Guide\n\n"
+            "## Project Goal\n\nShip a tested thing.\n\n"
+            f"## Commands\n{commands}\n"
+            "## Project Constraints\n\n- Keep it small.\n\n"
+            "## Project Map\n\n- `README.md`: overview.\n",
+        )
         entry = row(doctor.collect(project.root), "AGENTS.md")
         assert entry.status == doctor.WARN
         assert "placeholder" in entry.detail
@@ -65,6 +101,7 @@ class TestGuide:
             "AGENTS.md",
             "# Agent Guide\n\n"
             "## Project Goal\n\nShip a tested thing.\n\n"
+            "## Commands\n\n- Run one test with `pytest -k name`.\n\n"
             "## Project Constraints\n\n- `hooks/launcher.cmd` must stay LF-only.\n\n"
             "## Project Map\n\n- `README.md`: durable entrypoint.\n",
         )
@@ -78,6 +115,7 @@ class TestGuide:
             "AGENTS.md",
             "# Agent Guide\n\n"
             "## Project Goal\n\nShip a tested thing.\n\n"
+            "## Commands\n\n- Run one test with `pytest -k name`.\n\n"
             "## Project Constraints\n\n- Work happens on `feature/streaming`.\n\n"
             "## Project Map\n\n- `README.md`: durable entrypoint.\n",
         )

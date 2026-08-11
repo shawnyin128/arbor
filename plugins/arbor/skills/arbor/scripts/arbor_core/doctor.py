@@ -31,11 +31,15 @@ WARN = "warn"
 FAIL = "fail"
 MISSING = "missing"
 
-REQUIRED_GUIDE_SECTIONS = ("Project Goal", "Project Constraints", "Project Map")
+# Commands is required because running Arbor's init means the user will not run
+# Claude Code's `/init`, and commands are the first of the two content areas that
+# `/init` produces.
+REQUIRED_GUIDE_SECTIONS = ("Project Goal", "Commands", "Project Constraints", "Project Map")
 
 PLACEHOLDER_MARKERS = (
     "has not recorded a stable project goal",
     "has not recorded a durable project map",
+    "has not recorded the commands for this repository",
     "inspect the repository itself before answering",
 )
 
