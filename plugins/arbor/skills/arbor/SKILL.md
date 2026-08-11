@@ -45,9 +45,10 @@ until you fill them. Do that in the same turn, from the repository itself:
 2. Read `README.md`, and any `.cursor/rules/`, `.cursorrules`, or
    `.github/copilot-instructions.md`, and carry over the parts that state a rule.
    Do not copy prose that merely describes the project.
-3. Write the architecture that takes reading several files to see — what talks to
-   what, and which boundaries exist — into `Project Map` as rules about where code
-   belongs, naming exact files.
+3. Write the big picture into `Project Map`: what talks to what, who owns which
+   state, which invariants span files, and where a kind of change belongs when the
+   layout does not say. Name exact files. Include a fact only if learning it took
+   you more than one `ls` or one file.
 4. Replace the `Project Goal` placeholder with one or two sentences.
 5. Show the user what you wrote and ask them to correct it. You inferred it; they
    know it.
@@ -103,12 +104,13 @@ more than the warning saves.
 Change it when the durable goal or a real constraint changes. Keep transient state
 out of it entirely.
 
-Every Project Map bullet must say something the tree cannot show: where new code
-of a given kind belongs, a boundary not to cross, a trap. A path list is not one,
-because the agent finds files with glob and grep and a repository overview does
-not measurably reduce the steps it takes to reach the files it must change. Point
-at the exact file that matters, nested or not, rather than listing directories for
-completeness.
+`Project Map` is the big picture: the architecture that takes reading several
+files to see. What talks to what, which component owns which state, which
+invariants span files, and where a kind of change belongs when the layout does not
+say. Test every bullet by asking whether one `ls` or one open file would have
+taught it; if so, cut it. A directory census fails that test, and it also costs
+more than it returns, because the agent finds files with glob and grep faster than
+it reads a list. Point at the exact file that matters, nested or not.
 
 Nothing in Arbor rewrites `AGENTS.md` automatically. `doctor` reports drift —
 any backticked path in the guide that git has a record of but disk no longer has —

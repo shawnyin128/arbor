@@ -53,17 +53,19 @@ python tests/mutations.py              # break the implementation 25 ways
 
 ## Project Map
 
-Entries state something the tree cannot show. A path list is not one: an agent
-finds files with glob and grep, and a repository overview measurably does not
-reduce the steps it takes to reach the files it must change.
+The big picture, meaning what takes reading several files to see. A directory
+listing is not that, and costs more than it returns: the agent finds files with
+glob and grep faster than it reads a list.
 
+- One write path, three readers. Hooks are the only writer of
+  `.arbor/session.json`; `packet.py` reads it to build what SessionStart injects,
+  and `doctor.py` reads the same file to report whether hooks fired. Change the
+  shape of that state and all three move together.
 - `plugins/arbor/skills/arbor/scripts/arbor_core/` is the one implementation
-  behind both the hooks and the CLI. Behavior changes go here, never into a
-  second copy beside the launcher.
-- New hooks register in `plugins/arbor/hooks/hooks.json` at plugin level. Nothing
-  ever writes into a project's `.claude/settings.json`.
+  behind both the hooks and the CLI. `hooks.py` and `arbor.py` are entrypoints
+  over it, so behavior changes go into the package, never into either caller.
+- New hooks register in `plugins/arbor/hooks/hooks.json` at plugin level, and the
+  boundary that makes that safe is the `.arbor/` gate: absent it, every hook exits
+  0 silently. Nothing ever writes into a project's `.claude/settings.json`.
 - Test fixtures build real temporary git repositories and must use native paths
   only, because a Git Bash POSIX path silently defeats a Windows hook.
-- `tests/ab_harness.py` spends real tokens against a live `claude` CLI and is not
-  collected by pytest. Run it when a claim about injected context needs evidence.
-- `docs/` holds local design notes and is not published.

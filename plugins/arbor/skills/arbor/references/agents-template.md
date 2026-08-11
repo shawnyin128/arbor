@@ -54,12 +54,20 @@ the build and test configuration before answering, and replace this section.
 
 Arbor has not recorded a durable project map for this repository yet. Inspect the
 repository directly before answering project-structure questions, and replace this
-section once there is something to say that the tree cannot show.
+section with the big picture once you know it.
 
-- Every bullet must state a rule, not a location: where new code of a given kind
-  belongs, a boundary not to cross, or a trap that has caught someone.
+This section is the big picture: the architecture that takes reading several files
+to see. Apply that as a test to every bullet. Could a reader learn this from one
+`ls`, or from opening one file? Then it does not belong here.
+
+- What talks to what, and in which direction. Which component owns a piece of
+  state and which ones only read it.
+- Invariants that span more than one file, and the boundaries that keep them:
+  what must not import what, what must stay in sync with what.
+- Where a given kind of change belongs, when that is not obvious from the layout.
 - Name the exact file that matters, nested or not. A precise pointer earns its
-  characters; a directory census does not.
+  characters; a directory census does not, because the agent finds files with glob
+  and grep faster than it reads a list.
 - If a path here is renamed, fix it the same day. `arbor doctor` reports paths in
   this file that git has a record of but disk no longer has, because a guide that
   confidently names the wrong file is worse than one that names none.

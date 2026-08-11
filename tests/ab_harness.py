@@ -172,7 +172,7 @@ PROBES: tuple[Probe, ...] = (
 # separate question: does a Project Map earn its characters, and does stating
 # placement rules beat listing directories? The layout is deliberately one a
 # newcomer would guess wrong, since a map can only help where guessing fails.
-GUIDE_ARMS = ("none", "census", "rules")
+GUIDE_ARMS = ("none", "census", "rules", "bigpicture")
 
 GUIDE_HEAD = (
     "# Agent Guide\n\n"
@@ -191,13 +191,26 @@ GUIDE_MAPS = {
         "- `tools/`: developer tooling.\n"
         "- `tests/`: tests.\n"
     ),
-    # Prescriptive: rules and boundaries, which is what 2.2.0 asks for instead.
+    # Prescriptive: rules and boundaries, which is what 2.2.0 asked for.
     "rules": (
         "\n## Project Map\n\n"
         "- All lexing lives in `internal/lex/scanner.py`. A new token rule goes in\n"
         "  its `RULES` table, never in a new file.\n"
         "- `src/` holds only the CLI entry point and must not import from `lib/`.\n"
         "- `lib/` is vendored third-party code. Never edit it.\n"
+    ),
+    # The big picture: relationships that take reading several files to see. This
+    # names no file the caller must edit, so it cannot win a locate probe by
+    # giving the answer away, the way `rules` can.
+    "bigpicture": (
+        "\n## Project Map\n\n"
+        "- One producer, two consumers. Lexing produces the token stream that both\n"
+        "  the CLI and the vendored parser consume; the parser never re-lexes, so a\n"
+        "  change to token shape breaks both call sites at once.\n"
+        "- The token kinds are declared in one table and consumed positionally\n"
+        "  downstream, so adding a kind without updating the consumer is silent.\n"
+        "- `tools/` is developer tooling outside the pipeline and imports nothing\n"
+        "  from it.\n"
     ),
 }
 
@@ -221,6 +234,21 @@ GUIDE_PROBES = (
             "only the path of the file I should edit, nothing else."
         ),
         needles=("internal/lex/scanner.py",),
+    ),
+    # A locate probe cannot stand in for the big picture: this asks what else
+    # breaks, which no path list answers and which takes reading several files.
+    Probe(
+        name="ripple",
+        section="(what else a change breaks)",
+        native=True,
+        question=(
+            "If I add a new token kind to the lexer, name every other file that has "
+            "to change with it. Reply with only the paths, one per line."
+        ),
+        # No decoy check here: substring matching cannot tell "tools/bench.py is
+        # affected" from "tools/bench.py is not affected", and penalising the
+        # second scores a correct answer as wrong.
+        needles=("lib/vendored_parser.py", "src/cli.py"),
     ),
 )
 
@@ -430,6 +458,9 @@ def build_guide_fixture(root: Path) -> Fixture:
     git(root, "config", "user.name", "Arbor AB Probe")
 
     write(root / "README.md", "# pipeline\n\nA text pipeline.\n")
+    # Both consumers switch on token kind exhaustively, so a new kind really does
+    # force edits in each. The `ripple` probe's answer must be derivable by reading
+    # these three files; the map only saves the reading.
     write(
         root / "internal" / "lex" / "scanner.py",
         '"""Turn source text into tokens."""\n\n'
@@ -443,12 +474,32 @@ def build_guide_fixture(root: Path) -> Fixture:
     write(root / "internal" / "lex" / "__init__.py", "from .scanner import scan\n")
     write(
         root / "src" / "cli.py",
-        "from internal.lex import scan\n\n\n"
+        "from internal.lex import scan\n\n"
+        "LABELS = {\n"
+        '    "NUMBER": "number",\n'
+        '    "NAME": "identifier",\n'
+        "}\n\n\n"
         "def main(argv):\n"
-        "    return scan(argv[0])\n",
+        "    for kind, _pattern in scan(argv[0]):\n"
+        "        print(LABELS[kind])\n",
     )
-    write(root / "lib" / "vendored_parser.py", "def parse(tokens):\n    return tokens\n")
-    write(root / "tools" / "bench.py", "def bench():\n    return None\n")
+    write(
+        root / "lib" / "vendored_parser.py",
+        "HANDLERS = {\n"
+        '    "NUMBER": lambda value: int(value),\n'
+        '    "NAME": lambda value: str(value),\n'
+        "}\n\n\n"
+        "def parse(tokens):\n"
+        "    return [HANDLERS[kind](value) for kind, value in tokens]\n",
+    )
+    write(
+        root / "tools" / "bench.py",
+        "import time\n\n\n"
+        "def bench(callable_under_test):\n"
+        "    start = time.monotonic()\n"
+        "    callable_under_test()\n"
+        "    return time.monotonic() - start\n",
+    )
     write(root / "tests" / "test_scan.py", "def test_scan():\n    assert True\n")
     write(root / "CLAUDE.md", "@AGENTS.md\n\n## Claude Code\n\nA probe fixture.\n")
     write(root / "AGENTS.md", GUIDE_HEAD)
