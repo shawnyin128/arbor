@@ -109,6 +109,50 @@ means neither has to be told apart from the other, and the two Markdown files
 stay reviewable in a diff. `init` gitignores `session.json`, because it is
 rewritten constantly and would only add noise to your history.
 
+## Using it well
+
+Arbor fills some of this in on its own. The rest is only as good as what you put
+there, and five habits make the difference.
+
+**Let Claude keep a task list.** `In flight` is a copy of Claude's own list, so
+nothing has to be summarized and nothing can drift — but only if a list exists.
+Work without one and the section stays empty, which costs you the most useful
+thing Arbor carries between sessions.
+
+**Say what is unresolved before you stop.** Asking for it — "note what's still
+open before we finish" — is more reliable than hoping it happens by itself. The
+same goes for an idea you mention in passing: "park that" puts one line in
+`.arbor/ideas.md` instead of derailing what you were doing.
+
+**Delete entries once they are settled.** A note earns its place by still being
+open. `.arbor/memory.md` is meant to stay under 40 lines and `doctor` warns when it
+does not, because a short file gets read and a long one gets skimmed.
+
+**Name real paths in your notes.** A note mentioning `` `src/parser.py` `` is
+checked: if that file is gone, the note still appears but is marked `outdated`
+rather than presented as current fact. A note that names only a function is not
+checked, so prefer the path when you have one.
+
+**Put in `AGENTS.md` only what the code cannot show.** How to build and test it,
+including how to run a single test. The architecture that takes reading several
+files to see — what talks to what, and which boundaries matter. Name the exact
+file that matters: a precise pointer is worth far more than a list of directories,
+which Claude can produce for itself with one search.
+
+When something feels wrong, run `doctor`. Arbor stays silent in projects it is not
+set up for, so no output does not mean no problem; `doctor` is what tells those
+apart, because it reports when each hook last fired.
+
+### What it deliberately does not do
+
+- **Follow you to another machine.** Session state is local and gitignored. The two
+  Markdown notes files are committed, so those travel with the repository; the
+  in-flight task list does not.
+- **Repeat git state.** Claude Code already puts the branch, the working tree, and
+  the recent commits into every session. Arbor reports only what that leaves out.
+- **Touch a project without a `.arbor/` directory.** Its hooks run in every project
+  you open and do nothing in all the others.
+
 ## Commands
 
 The `arbor` skill runs these; you can also run them directly.
