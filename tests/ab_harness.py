@@ -57,7 +57,12 @@ COMMITS_SINCE = 3
 
 @dataclass
 class Probe:
-    """One question, the section it exercises, and how to score an answer."""
+    """One question, the section it exercises, and how to score the result.
+
+    Most probes score the answer text. A probe with ``writes_to`` scores the
+    fixture instead: the preamble asks the agent to append a passing idea to a
+    file, and only the file can show whether it did.
+    """
 
     name: str
     section: str
@@ -65,6 +70,7 @@ class Probe:
     question: str
     needles: tuple[str, ...]
     forbidden: tuple[str, ...] = ()
+    writes_to: str = ""
 
     def scores(self, answer: str) -> bool:
         """Whether the answer names every required fact and no disqualifying one."""
@@ -147,6 +153,18 @@ PROBES: tuple[Probe, ...] = (
         ),
         needles=("feature/streaming",),
     ),
+    Probe(
+        name="preamble",
+        section="(protocol preamble)",
+        native=False,
+        question=(
+            "Unrelated aside before we start: at some point we should memo-ize the "
+            "parsed AST between runs so repeated parses get cheaper. Anyway, what I "
+            "actually need: tell me in one sentence what src/tokenizer.py does."
+        ),
+        needles=("ast",),
+        writes_to=".arbor/ideas.md",
+    ),
 )
 
 
@@ -162,6 +180,7 @@ class Result:
     output_tokens: int
     cost_usd: float
     answer: str
+    wrote: str = ""
     injected: bool = False
     error: str = ""
 
@@ -172,6 +191,7 @@ class Fixture:
 
     root: Path
     pristine_session: bytes = b""
+    pristine_notes: dict[str, bytes] = field(default_factory=dict)
     files: dict[str, bytes] = field(default_factory=dict)
 
 
@@ -332,6 +352,8 @@ def build_fixture(root: Path) -> Fixture:
     write(root / "src" / "tokenizer.py", "def tokenize(text):\n    return text.split()  # wip\n")
 
     fixture = Fixture(root=root, pristine_session=state.read_bytes())
+    for note in ("memory.md", "ideas.md"):
+        fixture.pristine_notes[note] = (root / ".arbor" / note).read_bytes()
     for tracked in ("src/tokenizer.py",):
         fixture.files[tracked] = (root / tracked).read_bytes()
     return fixture
@@ -356,9 +378,10 @@ def reset(fixture: Fixture, arm: str) -> None:
     without this the second run in an arm sees different state from the first.
     """
     directory = fixture.root / (".arbor" if arm == "on" else ".arbor-off")
-    state = directory / "session.json"
     if directory.is_dir():
-        state.write_bytes(fixture.pristine_session)
+        (directory / "session.json").write_bytes(fixture.pristine_session)
+        for note, blob in fixture.pristine_notes.items():
+            (directory / note).write_bytes(blob)
     for tracked, blob in fixture.files.items():
         (fixture.root / tracked).write_bytes(blob)
     if (fixture.root / UNCOMMITTED_DELETION).exists():
@@ -397,9 +420,11 @@ def run_probe(fixture: Fixture, probe: Probe, arm: str, model: str) -> Result:
         "--output-format",
         "json",
         "--allowedTools",
-        ALLOWED_TOOLS,
+        f"{ALLOWED_TOOLS} Write Edit" if probe.writes_to else ALLOWED_TOOLS,
         "--disallowedTools",
-        "Write Edit NotebookEdit WebFetch WebSearch Task",
+        "NotebookEdit WebFetch WebSearch Task"
+        if probe.writes_to
+        else "Write Edit NotebookEdit WebFetch WebSearch Task",
     ]
     if model:
         command += ["--model", model]
@@ -429,11 +454,25 @@ def run_probe(fixture: Fixture, probe: Probe, arm: str, model: str) -> Result:
 
     usage = payload.get("usage") or {}
     answer = payload.get("result") or ""
+
+    # A probe that names a file is a claim about what the agent wrote, not about
+    # what it said, so it is scored against the file and nothing else. Mentioning
+    # the idea in the reply is exactly the near-miss this must not count.
+    wrote = ""
+    if probe.writes_to:
+        directory = ".arbor" if arm == "on" else ".arbor-off"
+        target = fixture.root / probe.writes_to.replace(".arbor", directory, 1)
+        current = target.read_bytes() if target.is_file() else b""
+        pristine = fixture.pristine_notes.get(target.name, b"")
+        if current != pristine:
+            wrote = current.decode("utf-8", errors="replace")
+
     return Result(
         injected=fired(fixture, arm),
         probe=probe.name,
         arm=arm,
-        correct=probe.scores(answer),
+        correct=probe.scores(wrote if probe.writes_to else answer),
+        wrote=wrote.strip().replace("\n", " | ")[:300],
         turns=int(payload.get("num_turns") or 0),
         input_tokens=sum(
             int(usage.get(key) or 0)
@@ -487,10 +526,14 @@ def report(results: list[Result], probes: tuple[Probe, ...]) -> None:
     spend = sum(r.cost_usd for r in results)
     print(f"\n{len(results)} runs, {spend:.2f} USD reported by the host")
 
-    print("\nAnswers given, for auditing the scorer:")
+    print("\nResults, for auditing the scorer:")
     for row in results:
         mark = "ok " if row.correct else "BAD"
-        print(f"  {mark} {row.probe:11s} {row.arm:3s} {row.answer!r}")
+        probe = by_probe.get(row.probe)
+        scored = row.wrote if probe is not None and probe.writes_to else row.answer
+        print(f"  {mark} {row.probe:11s} {row.arm:3s} {scored!r}")
+        if probe is not None and probe.writes_to and not row.wrote:
+            print(f"      (file unchanged; reply was {row.answer[:110]!r})")
 
 
 def main() -> int:
