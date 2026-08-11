@@ -2,18 +2,18 @@
 
 ## Project Goal
 
-Arbor is a Claude Code plugin that restores the volatile half of project context
-at session start: git position, the task list that was in flight, unresolved
-decisions, and parked ideas. Claude Code already carries the durable half through
-a `CLAUDE.md` that imports `AGENTS.md`, so Arbor deliberately does not inject the
-project guide.
+Arbor is a Claude Code plugin that restores the project state Claude Code does not
+carry across sessions: the task list that was in flight, what landed while you
+were away, unresolved decisions, and parked ideas. The host already supplies the
+durable guide through a `CLAUDE.md` that imports `AGENTS.md`, and its own git block
+for branch, status, and recent commits, so Arbor injects neither.
 
 ## Commands
 
 ```bash
 python -m pytest                       # the suite
 python -m pytest tests/test_packet.py  # one file
-python tests/mutations.py              # break the implementation 25 ways
+python tests/mutations.py              # break the implementation 27 ways
 ```
 
 - `pytest` needs an explicit `--basetemp` outside this repository on a machine

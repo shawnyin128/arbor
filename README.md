@@ -97,7 +97,7 @@ the model never sees and which therefore costs no context.
 
 | File | Written by | Holds |
 | --- | --- | --- |
-| `AGENTS.md` | you and the agent | goal, commands, constraints, placement rules |
+| `AGENTS.md` | you and the agent | goal, commands, constraints, the big picture |
 | `CLAUDE.md` | `init`, then you | the `@AGENTS.md` import, plus your own notes |
 | `.arbor/memory.md` | the agent | what is still unresolved |
 | `.arbor/ideas.md` | the agent | ideas raised in passing |
@@ -126,8 +126,10 @@ lacks it, because without that line the durable guide is never loaded.
 Initializing with Arbor means you will not run Claude Code's own `/init`, so the
 scaffold covers what `/init` produces and refuses what it refuses. It asks for
 build, test, and lint commands — including how to run a single test, which `/init`
-calls out specifically — and for architecture stated as rules about where code
-belongs. It leaves out the five things `/init` declines to write: repetition,
+calls out specifically — and for the big picture, which `/init` defines as the
+architecture that takes reading several files to understand. Applied as a test to
+every bullet, that criterion keeps a relationship spanning files and cuts anything
+one `ls` would show. It leaves out the five things `/init` declines to write: repetition,
 obvious instructions, discoverable file structure, generic development practice,
 and invented sections. New `CLAUDE.md` files carry the header `/init` mandates;
 an existing one still only gains the import line.
@@ -232,5 +234,5 @@ and requires the covering tests to fail each time.
 ## Version
 
 ```text
-2.2.1
+2.2.2
 ```

@@ -1,6 +1,6 @@
 {
   "name": "arbor",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Restores the volatile project state Claude Code does not carry across sessions: which tasks were in flight, what landed while you were away, what is still unresolved, and which ideas were parked. Hook-driven, file-first, no daemon.",
   "author": {
     "name": "Shawn",
