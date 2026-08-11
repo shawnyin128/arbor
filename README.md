@@ -109,49 +109,57 @@ means neither has to be told apart from the other, and the two Markdown files
 stay reviewable in a diff. `init` gitignores `session.json`, because it is
 rewritten constantly and would only add noise to your history.
 
-## Using it well
+## Best practices
 
-Arbor fills some of this in on its own. The rest is only as good as what you put
-there, and five habits make the difference.
+Five things to say. That is the whole skill.
 
-**Let Claude keep a task list.** `In flight` is a copy of Claude's own list, so
-nothing has to be summarized and nothing can drift — but only if a list exists.
-Work without one and the section stays empty, which costs you the most useful
-thing Arbor carries between sessions.
+| When | Say |
+| --- | --- |
+| Starting anything sizeable | "make a task list first" |
+| An unrelated idea comes up | "park that" |
+| Before you stop for the day | "note what's still undecided" |
+| A question finally gets answered | "that's settled, take it out of the notes" |
+| Coming back tomorrow | nothing — just ask for the next thing |
 
-**Say what is unresolved before you stop.** Asking for it — "note what's still
-open before we finish" — is more reliable than hoping it happens by itself. The
-same goes for an idea you mention in passing: "park that" puts one line in
-`.arbor/ideas.md` instead of derailing what you were doing.
+### A first day, in full
 
-**Delete entries once they are settled.** A note earns its place by still being
-open. `.arbor/memory.md` is meant to stay under 40 lines and `doctor` warns when it
-does not, because a short file gets read and a long one gets skimmed.
+Monday afternoon:
 
-**Name real paths in your notes.** A note mentioning `` `src/parser.py` `` is
-checked: if that file is gone, the note still appears but is marked `outdated`
-rather than presented as current fact. A note that names only a function is not
-checked, so prefer the path when you have one.
+```text
+> make a task list, then start rewriting the tokenizer
+> hold on — one day we should cache the token index. park that.
+> we still haven't decided whether to keep the old adapter. note that.
+> stopping here for today
+```
 
-**Put in `AGENTS.md` only what the code cannot show.** How to build and test it,
-including how to run a single test. The architecture that takes reading several
-files to see — what talks to what, and which boundaries matter. Name the exact
-file that matters: a precise pointer is worth far more than a list of directories,
-which Claude can produce for itself with one search.
+Tuesday morning, in the same repository, you open Claude and ask for whatever is
+next. Before you finish typing it already knows the task you left half-done, the
+commits a teammate pushed overnight, the adapter decision you never made, and the
+idea you parked. You did not have to explain any of it.
 
-When something feels wrong, run `doctor`. Arbor stays silent in projects it is not
-set up for, so no output does not mean no problem; `doctor` is what tells those
-apart, because it reports when each hook last fired.
+### Keeping it useful
 
-### What it deliberately does not do
+Every few weeks, say **"go through the notes and drop anything already done"**.
+Notes are worth reading because they are short. A file nobody prunes turns into a
+file nobody reads.
 
-- **Follow you to another machine.** Session state is local and gitignored. The two
-  Markdown notes files are committed, so those travel with the repository; the
-  in-flight task list does not.
-- **Repeat git state.** Claude Code already puts the branch, the working tree, and
-  the recent commits into every session. Arbor reports only what that leaves out.
-- **Touch a project without a `.arbor/` directory.** Its hooks run in every project
-  you open and do nothing in all the others.
+Two habits make the notes much better:
+
+- **One line per open question.** Not a design document. If it needs more room, it
+  needs an issue.
+- **Mention the file.** "Still deciding what to do about `src/adapter.py`" beats
+  "still deciding about the adapter", because Claude will tell you when that file
+  is gone and the note has gone stale.
+
+### Good to know
+
+- Your notes are committed with the repository, so a teammate — or you on another
+  machine — gets them. A half-finished task list stays on the computer that made
+  it.
+- In a project you have not set up, Arbor does nothing at all.
+- If you ever suspect it is not working, ask Claude to **"run arbor doctor"**. It
+  reports when each part last ran, which is the quickest way to tell "nothing to
+  say" from "not running".
 
 ## Commands
 
