@@ -56,13 +56,26 @@ class TestHookRegistration:
     def test_plugin_ships_a_hook_manifest(self) -> None:
         assert HOOKS_JSON.is_file(), "hooks are registered at plugin level in this release"
 
-    def test_registers_exactly_the_three_intended_events(self) -> None:
+    def test_registers_exactly_the_four_intended_events(self) -> None:
         hooks = load_json(HOOKS_JSON)["hooks"]
-        assert set(hooks) == {"SessionStart", "PostToolUse", "SessionEnd"}
+        assert set(hooks) == {"SessionStart", "UserPromptSubmit", "PostToolUse", "SessionEnd"}
 
     def test_stop_hook_is_not_registered(self) -> None:
-        """Stop fired once per turn, which churned state and could mask the reply."""
+        """Blocking a stop replaces the answer the user asked for.
+
+        Measured against the host: a Stop hook returning `decision: block` left the
+        turn result as the continuation the hook asked for, with the assistant's
+        real reply absent from it. Arbor reaches the model through
+        UserPromptSubmit instead, which injects without blocking and costs no extra
+        turn.
+        """
         assert "Stop" not in load_json(HOOKS_JSON)["hooks"]
+
+    def test_the_prompt_nudge_never_blocks(self) -> None:
+        """It runs on every message, so it must never gate or delay one."""
+        entry = load_json(HOOKS_JSON)["hooks"]["UserPromptSubmit"][0]["hooks"][0]
+        assert "prompt-nudge" in entry["command"]
+        assert entry["timeout"] <= 10
 
     def test_session_start_matches_every_context_losing_source(self) -> None:
         entry = load_json(HOOKS_JSON)["hooks"]["SessionStart"][0]

@@ -142,6 +142,20 @@ MUTATIONS = [
         ["tests/test_doctor.py", "-k", "never_tracked_is_not_flagged"],
     ),
     Mutation(
+        "the nudge keeps asking after the session already recorded something",
+        CORE / "session.py",
+        '    if notes_fingerprint(root) != session.get("notes_at_start"):\n        return False',
+        "    if False:\n        return False",
+        ["tests/test_hooks.py", "-k", "stops_once_a_note_is_written"],
+    ),
+    Mutation(
+        "the nudge fires before the session has got anywhere",
+        CORE / "session.py",
+        "    return bool(moved or tasks_changed or prompts >= NUDGE_AFTER_PROMPTS)",
+        "    return True",
+        ["tests/test_hooks.py", "-k", "silent_before_the_session_has_got_anywhere"],
+    ),
+    Mutation(
         "the skill description goes back to naming Arbor's own maintenance verbs",
         SCRIPTS.parent / "SKILL.md",
         "whenever something ought to outlive this session, without waiting to be asked",

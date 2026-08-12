@@ -107,6 +107,87 @@ class TestSessionStart:
         assert entry.get("version")
 
 
+class TestPromptNudge:
+    """It runs on every user message, so both halves of the gate carry the design.
+
+    Fire when nothing has been recorded and there is nothing to record, and it is
+    noise on every turn. Stay silent once something has been written, and it is a
+    reminder that never stops. The point is to make recording happen without the
+    user having to ask, so it must fire exactly in the gap.
+    """
+
+    def start(self, project) -> None:
+        hooks.session_start(project.payload(source="startup"))
+
+    def nudge(self, project) -> tuple[int, str]:
+        return hooks.prompt_nudge(project.payload(prompt="carry on"))
+
+    def test_silent_before_the_session_has_got_anywhere(self, project) -> None:
+        self.start(project)
+        assert self.nudge(project) == hooks.SKIP
+
+    def test_fires_after_a_few_turns_of_pure_discussion(self, project) -> None:
+        """The reported failure was an afternoon of design with nothing committed."""
+        from arbor_core import session as session_module
+
+        self.start(project)
+        for _ in range(session_module.NUDGE_AFTER_PROMPTS - 1):
+            assert self.nudge(project) == hooks.SKIP
+        code, output = self.nudge(project)
+        assert code == 0
+        assert "design agreed" in output
+
+    def test_fires_once_a_commit_landed_and_nothing_was_written(self, project) -> None:
+        self.start(project)
+        project.write("feature.py", "x = 1\n")
+        project.commit("feat: land something")
+        code, output = self.nudge(project)
+        assert code == 0
+        assert "recorded nothing" in output
+
+    def test_fires_after_the_task_list_changed(self, project) -> None:
+        self.start(project)
+        hooks.todo_snapshot(
+            project.payload(tool_name="TodoWrite", tool_input={"todos": [{"content": "A", "status": "pending"}]})
+        )
+        code, _output = self.nudge(project)
+        assert code == 0
+
+    def test_stops_once_a_note_is_written(self, project) -> None:
+        self.start(project)
+        project.write("feature.py", "x = 1\n")
+        project.commit("feat: land something")
+        assert self.nudge(project)[0] == 0
+        project.memory("Undecided: whether to keep the adapter")
+        assert self.nudge(project) == hooks.SKIP
+
+    def test_stops_once_an_idea_is_parked(self, project) -> None:
+        self.start(project)
+        project.write("feature.py", "x = 1\n")
+        project.commit("feat: land something")
+        project.ideas("Cache the token index between runs")
+        assert self.nudge(project) == hooks.SKIP
+
+    def test_rewriting_a_note_with_identical_bytes_records_nothing(self, project) -> None:
+        """Content, not mtime: restoring the same text has recorded nothing."""
+        project.memory("An existing question")
+        self.start(project)
+        project.write("feature.py", "x = 1\n")
+        project.commit("feat: land something")
+        project.memory("An existing question")
+        assert self.nudge(project)[0] == 0
+
+    def test_silent_in_a_project_without_arbor(self, make_project) -> None:
+        plain = make_project(arbor=False)
+        assert hooks.prompt_nudge(plain.payload(prompt="hello")) == hooks.SKIP
+
+    def test_silent_when_no_session_start_was_recorded(self, project) -> None:
+        """Without a baseline there is no way to tell recorded from unrecorded."""
+        project.write("feature.py", "x = 1\n")
+        project.commit("feat: land something")
+        assert self.nudge(project) == hooks.SKIP
+
+
 class TestTodoSnapshot:
     def _payload(self, project, todos, **overrides):
         return project.payload(tool_name="TodoWrite", tool_input={"todos": todos}, **overrides)

@@ -113,6 +113,48 @@ def session_start(raw: str) -> tuple[int, str]:
     return 0, json.dumps(output, ensure_ascii=False)
 
 
+NUDGE = (
+    "Arbor: this session has changed the project but recorded nothing. If anything "
+    "said so far was an aside worth keeping, a decision deferred, a design agreed "
+    "but unbuilt, or an open question now answered, write it to `.arbor/ideas.md` "
+    "or `.arbor/memory.md` now. If there is genuinely nothing, ignore this line."
+)
+
+
+def prompt_nudge(raw: str) -> tuple[int, str]:
+    """Ask, once the session has work to show and nothing written down.
+
+    This runs on every user message, which is the only moment adjacent to what the
+    user actually said: an aside is not a request, so nothing routes on it, and a
+    reminder delivered at SessionStart sits thousands of tokens away by the time it
+    matters. It injects and never blocks. A Stop hook could also reach the model,
+    but blocking a stop was measured to replace the assistant's final answer with
+    the continuation, which costs the user more than the reminder is worth.
+    """
+    payload = parse_payload(raw)
+    if payload is None:
+        return SKIP
+    root = project_root(payload)
+    if root is None or not is_arbor_project(root):
+        return SKIP
+
+    try:
+        prompts = session.count_prompt(root)
+        if not session.nothing_recorded_yet(root, vcs.head(root), prompts):
+            return SKIP
+    except OSError:
+        return SKIP
+
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": NUDGE,
+        },
+        "suppressOutput": True,
+    }
+    return 0, json.dumps(output, ensure_ascii=False)
+
+
 def todo_snapshot(raw: str) -> tuple[int, str]:
     """Persist the task list after the agent changed it.
 
@@ -175,6 +217,7 @@ def session_end(raw: str) -> tuple[int, str]:
 
 ENTRYPOINTS = {
     "session-start": session_start,
+    "prompt-nudge": prompt_nudge,
     "todo-snapshot": todo_snapshot,
     "session-end": session_end,
 }

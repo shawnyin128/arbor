@@ -12,6 +12,7 @@ still cannot leave state in an unrelated repository.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -20,7 +21,8 @@ from pathlib import Path
 from typing import Any
 
 from . import SCHEMA_VERSION
-from .paths import ARBOR_DIR, SESSION_FILE, host_tasks_dir, plugin_version
+from . import vcs
+from .paths import ARBOR_DIR, IDEAS_FILE, MEMORY_FILE, SESSION_FILE, host_tasks_dir, plugin_version
 
 TODO_STATUSES = ("in_progress", "pending", "completed")
 
@@ -248,6 +250,21 @@ def record_handoff(root: Path, reason: str, branch: str, head: str, dirty_count:
     return save(root, state)
 
 
+def notes_fingerprint(root: Path) -> str:
+    """Fingerprint the agent-written notes, for detecting that they changed.
+
+    Content rather than mtime, because a rewrite that restores the same bytes has
+    recorded nothing, and because git checkouts move mtimes without changing text.
+    """
+    digest = hashlib.sha256()
+    for relative in (MEMORY_FILE, IDEAS_FILE):
+        try:
+            digest.update((root / relative).read_bytes())
+        except OSError:
+            digest.update(b"\0")
+    return digest.hexdigest()[:16]
+
+
 def record_start(root: Path, session_id: str, source: str) -> bool:
     """Stamp the SessionStart receipt and note the new session."""
     state = load(root)
@@ -256,8 +273,48 @@ def record_start(root: Path, session_id: str, source: str) -> bool:
     session["source"] = source
     if session_id:
         session["id"] = session_id
+    # The baseline the prompt nudge compares against: anything written to the
+    # notes after this point counts as this session having recorded something.
+    session["notes_at_start"] = notes_fingerprint(root)
+    session["head_at_start"] = vcs.head(root)
     record_receipt(state, "SessionStart")
     return save(root, state)
+
+
+# A session has to get somewhere before an unwritten note means anything, but a
+# commit is the wrong bar: the case this exists for is an afternoon of design that
+# produced conversation and no commit yet. Turns count as progress too.
+NUDGE_AFTER_PROMPTS = 3
+
+
+def count_prompt(root: Path) -> int:
+    """Record that the user sent a message, and return the count for this session."""
+    state = load(root)
+    session = state.setdefault("session", {})
+    count = session.get("prompts")
+    session["prompts"] = (count if isinstance(count, int) else 0) + 1
+    save(root, state)
+    return session["prompts"]
+
+
+def nothing_recorded_yet(root: Path, head: str, prompts: int) -> bool:
+    """Whether this session got somewhere and wrote none of it down.
+
+    Both halves matter. Without the first, a session that has barely started gets
+    asked about notes it could not have. Without the second, a session that already
+    recorded something keeps being asked.
+    """
+    state = load(root)
+    session = state.get("session", {})
+    if not isinstance(session, dict) or not session.get("started_at"):
+        return False
+    if notes_fingerprint(root) != session.get("notes_at_start"):
+        return False
+
+    moved = bool(head) and head != session.get("head_at_start")
+    captured = state.get("todos", {}).get("captured_at", "")
+    tasks_changed = isinstance(captured, str) and captured >= session["started_at"]
+    return bool(moved or tasks_changed or prompts >= NUDGE_AFTER_PROMPTS)
 
 
 def receipt(state: dict[str, Any], event: str) -> dict[str, str]:
