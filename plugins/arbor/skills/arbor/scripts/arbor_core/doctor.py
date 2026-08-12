@@ -45,7 +45,9 @@ PLACEHOLDER_MARKERS = (
 
 # The task-capture receipt is keyed by whichever tool the host exposes, so it is
 # reported by family rather than by one exact name.
-HOOK_EVENTS = ("SessionStart", "task capture", "SessionEnd")
+HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "task capture", "SessionEnd")
+# Events whose silence is correct rather than suspicious.
+QUIET_BY_DESIGN = frozenset({"UserPromptSubmit"})
 TASK_RECEIPT_PREFIX = "PostToolUse:"
 
 
@@ -186,6 +188,12 @@ def _hook_rows(state: dict) -> list[Row]:
                 version = entry.get("version", "unknown")
                 rows.append(Row(label, OK, f"last fired {entry.get('at', 'unknown')} (plugin {version})"))
                 continue
+        if event in QUIET_BY_DESIGN:
+            # Staying quiet is this hook's normal state: it only speaks when a
+            # session got somewhere and recorded nothing. Reporting silence as a
+            # problem would leave a warning on every healthy project.
+            rows.append(Row(label, OK, "quiet; nothing needed recording yet"))
+            continue
         rows.append(Row(label, WARN, "never fired in this project"))
     return rows
 

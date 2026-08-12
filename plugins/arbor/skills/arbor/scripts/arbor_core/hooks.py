@@ -145,6 +145,7 @@ def prompt_nudge(raw: str) -> tuple[int, str]:
     except OSError:
         return SKIP
 
+    session.record_nudge(root)
     output = {
         "hookSpecificOutput": {
             "hookEventName": "UserPromptSubmit",

@@ -181,9 +181,19 @@ class TestHookReceipts:
     def test_hooks_that_never_ran_are_reported(self, project) -> None:
         rows = doctor.collect(project.root)
         for event in doctor.HOOK_EVENTS:
+            if event in doctor.QUIET_BY_DESIGN:
+                continue
             entry = row(rows, f"{event} hook")
             assert entry.status == doctor.WARN
             assert "never fired" in entry.detail
+
+    def test_a_hook_whose_silence_is_correct_is_not_a_warning(self, project) -> None:
+        """The nudge speaks only when a session recorded nothing, so quiet is healthy."""
+        rows = doctor.collect(project.root)
+        for event in doctor.QUIET_BY_DESIGN:
+            entry = row(rows, f"{event} hook")
+            assert entry.status == doctor.OK
+            assert "quiet" in entry.detail
 
     def test_task_capture_reports_which_tool_fired(self, project, tmp_path, monkeypatch) -> None:
         """The receipt key depends on the host's tool, so the row reports the family."""
@@ -207,7 +217,7 @@ class TestHookReceipts:
         assert "last fired" in entry.detail
         assert "plugin" in entry.detail
 
-    def test_all_three_hooks_report_after_a_full_session(self, project) -> None:
+    def test_every_hook_reports_after_a_full_session(self, project) -> None:
         hooks.session_start(project.payload(source="startup"))
         hooks.todo_snapshot(
             project.payload(tool_name="TodoWrite", tool_input={"todos": [{"content": "A", "status": "pending"}]})

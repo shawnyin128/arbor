@@ -297,6 +297,17 @@ def count_prompt(root: Path) -> int:
     return session["prompts"]
 
 
+def record_nudge(root: Path) -> bool:
+    """Stamp the receipt that says the nudge actually reached the model.
+
+    Counting prompts is not the same as asking: the hook runs on every message and
+    stays quiet on most. Only this proves it spoke, which is what `doctor` reports.
+    """
+    state = load(root)
+    record_receipt(state, "UserPromptSubmit")
+    return save(root, state)
+
+
 def nothing_recorded_yet(root: Path, head: str, prompts: int) -> bool:
     """Whether this session got somewhere and wrote none of it down.
 
