@@ -39,12 +39,13 @@ than failing.
 
 ## What it does
 
-Three hooks, registered by the plugin. Nothing is written into your project's
+Four hooks, registered by the plugin. Nothing is written into your project's
 `.claude/settings.json`.
 
 | Hook | When | What it does |
 | --- | --- | --- |
 | `SessionStart` | start, resume, clear, compact | injects the context packet |
+| `UserPromptSubmit` | every message you send | asks for a note if the session has recorded none |
 | `PostToolUse` on the task tools | every task change | snapshots the task list |
 | `SessionEnd` | session ends | records a handoff summary |
 
@@ -111,8 +112,11 @@ rewritten constantly and would only add noise to your history.
 
 ## Best practices
 
-There is no phrasebook. Talk the way you already talk; Claude decides when
-something is worth keeping. What follows is a real afternoon.
+**Work the way you already work.** You never have to tell Arbor anything: when
+something is worth keeping — an aside, a decision you put off, a design agreed but
+not yet built — Claude writes it down as it goes, and you see it happen.
+
+What follows is a real afternoon, to show what that looks like.
 
 You are working on the tokenizer, and partway through you think out loud:
 
@@ -275,9 +279,9 @@ Windows, because the launcher's failure mode is a silent exit and only a matrix
 exercises both of its branches.
 
 The suite builds real temporary git repositories and covers hook payload
-robustness, the opt-in gate, budget enforcement and drop order, atomic state
-writes, initialization idempotence, doctor reporting, and the launcher under both
-`cmd.exe` and POSIX shells.
+robustness, the opt-in gate, atomic state writes, initialization idempotence,
+doctor reporting, when the note reminder speaks and when it stays quiet, and the
+launcher run the way the host runs it, under both `cmd.exe` and POSIX shells.
 
 The suite is itself checked, because a test that also passes against a broken
 implementation is not testing anything:
@@ -286,9 +290,9 @@ implementation is not testing anything:
 python tests/mutations.py
 ```
 
-That breaks the implementation twenty-seven ways — removing the opt-in gate,
+That breaks the implementation twenty-nine ways — removing the opt-in gate,
 putting back a section the host already sends, reintroducing a timestamp into
-injected context,
+injected context, letting the note reminder nag after something was recorded,
 letting `init` overwrite user files, adding carriage returns to the launcher —
 and requires the covering tests to fail each time.
 
